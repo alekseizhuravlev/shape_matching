@@ -17,7 +17,8 @@ datasets:
     name: FaustTrain
     type: PairFaustDataset
     phase: train
-    data_root: ../data/FAUST_r
+    # data_root: ../data/FAUST_r
+    data_root: data/FAUST_r
     return_evecs: True
     return_faces: True
     num_evecs: 200
@@ -27,7 +28,8 @@ datasets:
     name: FaustTest
     type: PairFaustDataset
     phase: test
-    data_root: ../data/FAUST_r
+    # data_root: ../data/FAUST_r
+    data_root: data/FAUST_r
     return_evecs: True
     return_faces: True
     num_evecs: 200

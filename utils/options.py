@@ -104,12 +104,20 @@ def dict2str(opt, indent_level=1):
     return msg
 
 
-def parse_options(root_path, is_train=True):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--opt', type=str, required=True, help='Path to option YAML file.')
+def parse_options(root_path, is_train=True, use_argparse=True):
+    
+    if use_argparse:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--opt', type=str, required=True,
+                            default='options/train/faust.yaml',
+                            help='Path to option YAML file.')
 
-    args = parser.parse_args()
-    opt = parse(args.opt, root_path, is_train=is_train)
+        args = parser.parse_args()
+        opt = parse(args.opt, root_path, is_train=is_train)
+        
+    else:
+        opt_path = 'options/train/faust.yaml'
+        opt = parse(opt_path, root_path, is_train=is_train)
 
     # distributed settings
     if opt['backend'] == 'dp':
