@@ -166,6 +166,15 @@ class BaseModel:
                 dist_x = to_numpy(dist_x)
                 corr_x = to_numpy(corr_x)
                 corr_y = to_numpy(corr_y)
+                
+                # print(data_x['name'], data_y['name'])
+                # print('dist_x.shape:', dist_x.shape)
+                # print('corr_x.shape:', corr_x.shape)
+                # print('corr_y.shape:', corr_y.shape)
+                # print('p2p.shape:', p2p.shape)
+                # print('Pyx.shape:', Pyx.shape)
+                # print('Cxy.shape:', Cxy.shape)
+                
 
                 # compute geodesic error
                 geo_err = self.metrics['geo_error'](dist_x, corr_x, corr_y, p2p, return_mean=False)

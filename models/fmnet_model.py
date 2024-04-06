@@ -95,6 +95,7 @@ class FMNetModel(BaseModel):
             # convert functional map to point-to-point map
             p2p = fmap2pointmap(Cxy, evecs_x, evecs_y)
 
+            # TODO: check if it is the same as Pyx before
             # compute Pyx from functional map
             Pyx = evecs_y @ Cxy @ evecs_trans_x
 

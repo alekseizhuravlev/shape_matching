@@ -659,7 +659,7 @@ def get_operators(verts, faces, k=120, normals=None,
 
     found = False
     if cache_dir:
-        assert osp.isdir(cache_dir)
+        assert osp.isdir(cache_dir), f'Invalid cache directory: {cache_dir}'
         hash_key_str = str(hash_arrays((verts_np, faces_np)))
 
         # Search through buckets with matching hashes.

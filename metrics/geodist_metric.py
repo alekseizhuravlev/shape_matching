@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from utils.registry import METRIC_REGISTRY
 
+counter = 0
 
 @METRIC_REGISTRY.register()
 def calculate_geodesic_error(dist_x, corr_x, corr_y, p2p, return_mean=True):
@@ -17,7 +18,51 @@ def calculate_geodesic_error(dist_x, corr_x, corr_y, p2p, return_mean=True):
     Returns:
         avg_geodesic_error (np.ndarray): Average geodesic error.
     """
+    
+    
+    # def perm2mat(perm, dim0):
+    #     import torch
+        
+    #     n = len(perm)
+    #     mat = torch.zeros(dim0, n)
+    #     mat[perm, torch.arange(n)] = 1
+    #     return mat
+    
+    # print('Calculating geodesic error')
+    # print('dist_x.shape:', dist_x.shape)
+    # print('corr_x.shape:', corr_x.shape)
+    # print('corr_y.shape:', corr_y.shape)
+    # print('p2p.shape:', p2p.shape)
+    
+    # print('p2p[corr_y].shape:', p2p[corr_y].shape)
+    
+    # print('corr_x:', corr_x[:10])
+    # print('corr_y:', corr_y[:10])
+    # print('p2p:', p2p[:10])
+    # print('p2p[corr_y]:', p2p[corr_y][:10])
+    
+    
+    # P_yGT = perm2mat(corr_y, dim0=p2p.shape[0]).to('cuda')
+    # P_xGT = perm2mat(corr_x, dim0=5000).to('cuda')
+    
+    # p2p_mat = perm2mat(p2p, dim0=5000).to('cuda')
+    
+    # rhs = p2p_mat @ P_yGT
+    
+    # rhs_vec = np.argmax(rhs.cpu(), axis=0)
+    # # print('rhs_vec:', rhs_vec[:10])
+    
+    # assert np.allclose(rhs_vec.numpy(), p2p[corr_y])
+    
+    # global counter
+    # counter += 1
+    
+    # if counter > 1:
+    #     exit(0)
+    
+    
     ind21 = np.stack([corr_x, p2p[corr_y]], axis=-1)
+    
     ind21 = np.ravel_multi_index(ind21.T, dims=[dist_x.shape[0], dist_x.shape[0]])
     geo_err = np.take(dist_x, ind21)
     if return_mean:
