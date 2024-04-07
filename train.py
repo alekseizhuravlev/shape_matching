@@ -20,7 +20,7 @@ def init_tb_loggers(opt):
     return tb_logger
 
 
-def create_train_val_dataloader(opt, logger):
+def create_train_val_dataloader(opt, logger=None):
     train_set, val_set = None, None
     # create train and val datasets
     for dataset_name, dataset_opt in opt['datasets'].items():
@@ -53,19 +53,23 @@ def create_train_val_dataloader(opt, logger):
         len(train_set) * dataset_enlarge_ratio / batch_size)
     total_epochs = int(opt['train']['total_epochs'])
     total_iters = total_epochs * num_iter_per_epoch
-    logger.info('Training statistics:'
-                f'\n\tNumber of train images: {len(train_set)}'
-                f'\n\tDataset enlarge ratio: {dataset_enlarge_ratio}'
-                f'\n\tBatch size: {batch_size}'
-                f'\n\tWorld size (gpu number): {opt["world_size"]}'
-                f'\n\tRequire iter number per epoch: {num_iter_per_epoch}'
-                f'\n\tTotal epochs: {total_epochs}; iters: {total_iters}.')
+    
+    if logger is not None:
+        logger.info('Training statistics:'
+                    f'\n\tNumber of train images: {len(train_set)}'
+                    f'\n\tDataset enlarge ratio: {dataset_enlarge_ratio}'
+                    f'\n\tBatch size: {batch_size}'
+                    f'\n\tWorld size (gpu number): {opt["world_size"]}'
+                    f'\n\tRequire iter number per epoch: {num_iter_per_epoch}'
+                    f'\n\tTotal epochs: {total_epochs}; iters: {total_iters}.')
 
     val_loader = build_dataloader(
         val_set, opt['datasets'], 'val', num_gpu=opt['num_gpu'], dist=opt['dist'], sampler=None,
         seed=opt['manual_seed'])
-    logger.info('Validation statistics:'
-                f'\n\tNumber of val images: {len(val_set)}')
+    
+    if logger is not None:
+        logger.info('Validation statistics:'
+                    f'\n\tNumber of val images: {len(val_set)}')
 
     return train_loader, train_sampler, val_loader, total_epochs, total_iters
 

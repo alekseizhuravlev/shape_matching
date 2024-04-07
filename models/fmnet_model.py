@@ -89,16 +89,37 @@ class FMNetModel(BaseModel):
             Pyx = evecs_y @ Cxy @ evecs_trans_x
         else:
             # compute Pxy
+            # SiknhornNorm( Fx @ Fy^T ) - softmax with tau
+            # this is a hard (normal) permutation matrix
             Pyx = self.compute_permutation_matrix(feat_y, feat_x, bidirectional=False).squeeze()
+
+
+            ############################################
+            
+            # the next step explicitly enforces
+            # the functional map Cxy to be associated
+            # with a valid point-wise map
+            
+            ############################################
+
+            # functional map
             Cxy = evecs_trans_y @ (Pyx @ evecs_x)
 
             # convert functional map to point-to-point map
+            # this is a hard (normal) permutation matrix
+            # NN[ (evecs_x @ C12.T), evecs_y]
             p2p = fmap2pointmap(Cxy, evecs_x, evecs_y)
+            
 
-            # TODO: check if it is the same as Pyx before
+
             # compute Pyx from functional map
+            # Aleksei: this is not the same as Pyx before
+            # evecs doesn't include all eigenvectors (not infinite dimensional)
+            # so this Pyx is the low pass filtered version
+            # of the real permutation matrix
+            # interpret this as a soft permutation matrix
             Pyx = evecs_y @ Cxy @ evecs_trans_x
-
+            
         # finish record
         timer.record()
 

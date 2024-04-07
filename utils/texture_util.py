@@ -10,8 +10,27 @@ def write_obj_pair(file_name1, file_name2, verts1, faces1, verts2, faces2, Pyx, 
         write_obj_with_texture(verts1, faces1, file_name1, uv1, texture_file)
 
     # write off for shape 2
+    # Aleksei: this Pyx is a soft permutation matrix
     uv2 = Pyx @ uv1
     write_obj_with_texture(verts2, faces2, file_name2, uv2, texture_file)
+    
+    # print('uv1', uv1)
+    # print('uv2', uv2)
+    # print('Pyx', Pyx)
+    
+    # # print max element in each row of Pyx
+    # print('max element in each row of Pyx:', np.max(Pyx, axis=1))
+    # # column
+    # # print('max element in each column of Pyx:', np.max(Pyx, axis=0))
+    
+    # # print mean and median per row of Pyx
+    # print('mean per row of Pyx:', np.mean(Pyx, axis=1))
+    # print('median per row of Pyx:', np.median(Pyx, axis=1))
+    
+    # # sum per row and column
+    # print('sum per row of Pyx:', np.sum(Pyx, axis=1))
+    # print('sum per column of Pyx:', np.sum(Pyx, axis=0))
+    # exit(0)
 
 
 def generate_tex_coords(verts, col1=1, col2=0, mult_const=1):

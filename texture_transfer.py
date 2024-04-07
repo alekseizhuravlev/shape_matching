@@ -74,8 +74,8 @@ def update_network(loss_metrics, feature_extractor, optimizer):
 
 if __name__ == '__main__':
     # read shape pair
-    filename1 = '/data/caodongliang/FAUST_r/off/tr_reg_080.off'
-    filename2 = '/data/caodongliang/FAUST_r/off/tr_reg_081.off'
+    filename1 = 'data/FAUST_r/off/tr_reg_080.off'
+    filename2 = 'data/FAUST_r/off/tr_reg_081.off'
 
     vert_np_x, face_np_x = read_shape(filename1)
     vert_np_y, face_np_y = read_shape(filename2)
@@ -190,4 +190,4 @@ if __name__ == '__main__':
         save_dict = {'Cxy': Cxy, 'p2p': p2p + 1}  # plus one for MATLAB
         sio.savemat(os.path.join(result_path, f'{name_x}-{name_y}.mat'), save_dict)
 
-    print(f'Finished, see the results under {result_path}')
+    print(f'Finished, see the results under {result_path}, name_x = {name_x}, name_y = {name_y}')
