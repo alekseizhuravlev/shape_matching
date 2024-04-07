@@ -48,6 +48,11 @@ class RegularizedFMNet(nn.Module):
             C_i.append(C.transpose(1, 2))
 
         Cxy = torch.cat(C_i, dim=1)
+        
+        print('Cxy.shape', Cxy.shape)
+        print('Cxy', Cxy)
+        exit(0)
+        
         return Cxy
 
     def forward(self, feat_x, feat_y, evals_x, evals_y, evecs_trans_x, evecs_trans_y):
