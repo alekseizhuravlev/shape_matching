@@ -104,7 +104,7 @@ def dict2str(opt, indent_level=1):
     return msg
 
 
-def parse_options(root_path, is_train=True, use_argparse=True):
+def parse_options(root_path, is_train=True, use_argparse=True, opt_path=None):
     
     if use_argparse:
         parser = argparse.ArgumentParser()
@@ -116,7 +116,8 @@ def parse_options(root_path, is_train=True, use_argparse=True):
         opt = parse(args.opt, root_path, is_train=is_train)
         
     else:
-        opt_path = 'options/train/faust.yaml'
+        if opt_path is None:
+            opt_path = 'options/train/faust.yaml'
         opt = parse(opt_path, root_path, is_train=is_train)
 
     # distributed settings
