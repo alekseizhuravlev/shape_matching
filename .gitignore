@@ -1,5 +1,6 @@
 data/*
 data_pt_geometric/*
+func_maps/*
 *.npy
 # Byte-compiled / optimized / DLL files
 __pycache__/

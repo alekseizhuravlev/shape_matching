@@ -584,7 +584,9 @@ class PairTopKidsDataset(Dataset):
     def __init__(self, data_root, phase='train',
                  return_faces=True,
                  return_evecs=True, num_evecs=200,
-                 return_dist=False):
+                 return_dist=False,
+                 return_corr=True # added by Aleksei, not used
+                 ):
         assert phase in ['train', 'test'], f'Invalid phase: {phase}'
         self.dataset = SingleTopKidsDataset(data_root, return_faces, return_evecs, num_evecs, return_dist)
         self.phase = phase
@@ -616,5 +618,9 @@ class PairTopKidsDataset(Dataset):
             corr = np.loadtxt(self.corr_files[index], dtype=np.int32) - 1  # minus 1 to start from 0
             item['first']['corr'] = torch.from_numpy(corr).long()
             item['second']['corr'] = torch.arange(0, len(corr)).long()
+        
+        # corr = np.loadtxt(self.corr_files[index], dtype=np.int32) - 1  # minus 1 to start from 0
+        # item['first']['corr'] = torch.from_numpy(corr).long()
+        # item['second']['corr'] = torch.arange(0, len(corr)).long()
 
         return item

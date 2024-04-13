@@ -17,7 +17,7 @@ datasets:
     name: SmalTrain
     type: PairSmalDataset
     phase: train
-    data_root: ../data/SMAL_r/
+    data_root: data/SMAL_r/
     category: True
     return_evecs: True
     return_faces: True
@@ -28,7 +28,7 @@ datasets:
     name: SmalVal
     type: PairSmalDataset
     phase: test
-    data_root: ../data/SMAL_r/
+    data_root: data/SMAL_r/
     category: True
     return_evecs: True
     return_faces: True
@@ -45,7 +45,7 @@ networks:
     type: DiffusionNet
     in_channels: 3
     out_channels: 256
-    cache_dir: ../data/SMAL_r/diffusion
+    cache_dir: data/SMAL_r/diffusion
     input_type: xyz
   fmap_net:
     type: RegularizedFMNet
