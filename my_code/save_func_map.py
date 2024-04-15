@@ -1,29 +1,3 @@
-###############################################
-# Import the libraries
-###############################################
-
-import sys
-sys.path.append('/home/s94zalek/shape_matching')
-
-from datasets import build_dataloader, build_dataset
-from utils.options import parse_options
-from train import create_train_val_dataloader
-import torch
-import numpy as np
-
-import os
-os.chdir('/home/s94zalek/shape_matching')
-# os.environ['DISPLAY'] = ':1'
-os.environ['PYOPENGL_PLATFORM'] = 'egl'
-
-import trimesh
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-import pyvirtualdisplay
-
-
-# Creates a virtual display for OpenAI gym
-pyvirtualdisplay.Display(visible=0, size=(500, 250)).start()
 
 
 
@@ -54,7 +28,7 @@ def plot_meshes_with_corr_before(data_x, data_y, Pyx, base_path):
 
     # add the first mesh
     mesh1 = trimesh.Trimesh(vertices=data_x['verts'][0].cpu().numpy(), faces=data_x['faces'][0].cpu().numpy())
-    mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)]
+    mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     scene.add_geometry(mesh1)
 
     mesh2 = trimesh.Trimesh(vertices=data_y['verts'][0].cpu().numpy() + np.array([1, 0, 0]), faces=data_y['faces'][0].cpu().numpy())
@@ -80,14 +54,14 @@ def plot_meshes_with_corr_after(data_x, data_y, Pyx_after, base_path):
 
     # add the first mesh
     mesh1 = trimesh.Trimesh(vertices=data_x['verts'][0].cpu().numpy(), faces=data_x['faces'][0].cpu().numpy())
-    mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)]
+    mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     scene.add_geometry(mesh1)
 
 
     mesh2 = trimesh.Trimesh(vertices=data_y['verts'][0].cpu().numpy() + np.array([1, 0, 0]), faces=data_y['faces'][0].cpu().numpy())
 
     cmap2 = Pyx_after @ (cmap.astype(np.float32) / 255)
-    cmap2 = (torch.abs(cmap2).numpy() * 255).astype(np.uint8)
+    cmap2 = (torch.abs(cmap2).numpy() * 255).clip(0, 255).astype(np.uint8)
     cmap2[:, 3] = 255
 
     # cmap2 = index_with_P(cmap, Pyx)[:len(mesh2.vertices)]
@@ -138,8 +112,20 @@ def process_data(data_x, data_y, base_path):
     phi_y_T = data_y['evecs_trans'][0]
 
     # calculate the functional maps
-    Cxy = phi_y_T @ index_with_P(phi_x, Pyx)
-    Cyx = phi_x_T @ index_with_P(phi_y, Pxy)
+    # Cxy = phi_y_T @ index_with_P(phi_x, Pyx)
+    # Cyx = phi_x_T @ index_with_P(phi_y, Pxy)
+    
+    # Cxy = (torch.pinverse(phi_y[data_y['corr']]) @ phi_x[data_x['corr']])[0]
+    # Cyx = (torch.pinverse(phi_x[data_x['corr']]) @ phi_y[data_y['corr']])[0]
+    
+    Cxy = torch.linalg.lstsq(phi_y[data_y['corr']], phi_x[data_x['corr']]).solution[0]
+    Cyx = torch.linalg.lstsq(phi_x[data_x['corr']], phi_y[data_y['corr']]).solution[0]
+
+    
+    # Cxy = (phi_y_T.transpose(0, 1)[data_y['corr']].transpose(1, 2) @ phi_x[data_x['corr']])[0]
+    # Cyx = (phi_x_T.transpose(0, 1)[data_x['corr']].transpose(1, 2) @ phi_y[data_y['corr']])[0]
+
+
     
     # save the functional maps
     fmap_path = f"{base_path}/fmap"
@@ -159,14 +145,14 @@ def process_data(data_x, data_y, base_path):
     # Cxy
     Cxy_plot = ax[0].imshow(Cxy.cpu().numpy(), cmap='bwr', vmin=-1, vmax=1)
     ax[0].axis('off')
-    ax[0].set_title('Cxy')
+    ax[0].set_title('Cxy (proper indexing)')
     cbar = plt.colorbar(Cxy_plot)
     cbar.set_label('Cxy')
 
     # Cyx
     Cyx_plot = ax[1].imshow(Cyx.cpu().numpy(), cmap='bwr', vmin=-1, vmax=1)
     ax[1].axis('off')
-    ax[1].set_title('Cyx')
+    ax[1].set_title('Cyx (proper indexing)')
     cbar = plt.colorbar(Cyx_plot)
     cbar.set_label('Cyx')
 
@@ -199,11 +185,40 @@ def process_data(data_x, data_y, base_path):
 if __name__ == '__main__':
     
     ###############################################
+    # Import the libraries
+    ###############################################
+
+    import sys
+    sys.path.append('/home/s94zalek/shape_matching')
+
+    from datasets_code import build_dataloader, build_dataset
+    from utils.options import parse_options
+    from train import create_train_val_dataloader
+    import torch
+    import numpy as np
+
+    import os
+    os.chdir('/home/s94zalek/shape_matching')
+    # os.environ['DISPLAY'] = ':1'
+    os.environ['PYOPENGL_PLATFORM'] = 'egl'
+
+    import trimesh
+    import matplotlib.pyplot as plt
+    from tqdm import tqdm
+    import pyvirtualdisplay
+
+
+    # Creates a virtual display
+    disp = pyvirtualdisplay.Display(visible=0, size=(500, 250))
+    disp.start()
+
+    
+    ###############################################
     # Load the datasets
     ###############################################
     
     # faust, scape, shrec16_cuts, topkids, smal
-    config_names = ['smal']
+    config_names = ['faust', 'scape', 'shrec16_cuts']
     
     for config_name in config_names:
     
@@ -256,6 +271,13 @@ if __name__ == '__main__':
             
             if i >= max_iter:
                 break
+            
+     
+    ###############################################
+    # Close the virtual display
+    ###############################################
+            
+    disp.stop()
         
 
 

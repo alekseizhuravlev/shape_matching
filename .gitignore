@@ -1,6 +1,10 @@
 data/*
 data_pt_geometric/*
 func_maps/*
+func_maps_old/*
+*.png
+*.tfevents.*
+*.safetensors
 *.npy
 # Byte-compiled / optimized / DLL files
 __pycache__/

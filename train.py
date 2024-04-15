@@ -6,8 +6,8 @@ from os import path as osp
 
 import torch.cuda
 
-from datasets import build_dataloader, build_dataset
-from datasets.data_sampler import EnlargedSampler
+from datasets_code import build_dataloader, build_dataset
+from datasets_code.data_sampler import EnlargedSampler
 
 from models import build_model
 from utils import (AvgTimer, MessageLogger, get_env_info, get_root_logger,

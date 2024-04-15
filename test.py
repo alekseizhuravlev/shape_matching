@@ -1,6 +1,6 @@
 from os import path as osp
 
-from datasets import build_dataloader, build_dataset
+from datasets_code import build_dataloader, build_dataset
 from models import build_model
 from utils import get_env_info, get_root_logger, get_time_str
 from utils.options import dict2str, parse_options
