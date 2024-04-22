@@ -11,6 +11,8 @@ from utils.shape_util import read_shape
 from utils.geometry_util import get_operators
 from utils.registry import DATASET_REGISTRY
 
+from tqdm import tqdm
+
 
 def sort_list(l):
     try:
@@ -267,6 +269,17 @@ class SingleTopKidsDataset(SingleShapeDataset):
                                                    return_evecs, num_evecs, False, return_dist)
 
 
+class DatasetFromListOfDicts(Dataset):
+    def __init__(self, data_list):
+        self.data_list = data_list
+
+    def __getitem__(self, index):
+        return self.data_list[index]
+
+    def __len__(self):
+        return len(self.data_list)
+
+
 class PairShapeDataset(Dataset):
     def __init__(self, dataset):
         """
@@ -276,8 +289,41 @@ class PairShapeDataset(Dataset):
             dataset (SingleShapeDataset): single shape dataset
         """
         assert isinstance(dataset, SingleShapeDataset), f'Invalid input data type of dataset: {type(dataset)}'
-        self.dataset = dataset
+        # self.dataset = dataset
+        
+        # construct a new dataset by iterating over all elements of the provided dataset and saving them in a list
+        self.dataset = DatasetFromListOfDicts(
+            [dataset[i] for i in tqdm(range(len(dataset)), desc="Constructing DatasetFromListOfDicts")]
+        )
+        
+        # make combinations of all pairs        
         self.combinations = list(product(range(len(dataset)), repeat=2))
+        
+        # iterate over all pairs, calculate the functional map for each pair
+        self.Cxy_list = []
+        self.Cyx_list = []
+        
+        for i in tqdm(range(len(self.combinations)), desc="Calculating functional maps"):
+            # get the pair
+            first_index, second_index = self.combinations[i]
+            data_x = self.dataset[first_index]
+            data_y = self.dataset[second_index]
+            
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        
+            # calculate the functional map in both directions
+            C_gt_xy_lstsq = torch.linalg.lstsq(
+                data_y['evecs'][data_y['corr']].to(device),
+                data_x['evecs'][data_x['corr']].to(device)
+                ).solution.to('cpu')
+            C_gt_yx_lstsq = torch.linalg.lstsq(
+                data_x['evecs'][data_x['corr']].to(device),
+                data_y['evecs'][data_y['corr']].to(device)
+                ).solution.to('cpu')
+            
+            # append the functional maps to the lists
+            self.Cxy_list.append(C_gt_xy_lstsq)
+            self.Cyx_list.append(C_gt_yx_lstsq)
 
     def __getitem__(self, index):
         # get index
@@ -286,6 +332,8 @@ class PairShapeDataset(Dataset):
         item = dict()
         item['first'] = self.dataset[first_index]
         item['second'] = self.dataset[second_index]
+        item['Cxy'] = self.Cxy_list[index]
+        item['Cyx'] = self.Cyx_list[index]
 
         return item
 

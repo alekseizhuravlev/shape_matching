@@ -17,7 +17,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_root', required=True, help='data root contains /off sub-folder.')
     parser.add_argument('--n_eig', type=int, default=200, help='number of eigenvectors/values to compute.')
     parser.add_argument('--no_eig', action='store_true', help='no laplacian eigen-decomposition')
-    parser.add_argument('--no_dist', action='store_true', help='no geodesic matrix.')
+    parser.add_argument('--dist', action='store_true', help='no geodesic matrix.')
     parser.add_argument('--no_normalize', action='store_true', help='no normalization of face area.')
     args = parser.parse_args()
 
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     data_root = args.data_root
     n_eig = args.n_eig
     no_eig = args.no_eig
-    no_dist = args.no_dist
+    no_dist = not args.dist
     no_normalize = args.no_normalize
     assert n_eig > 0, f'Invalid n_eig: {n_eig}'
     assert os.path.isdir(data_root), f'Invalid data root: {data_root}'
