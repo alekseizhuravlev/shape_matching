@@ -82,23 +82,41 @@ if __name__ == '__main__':
 
 
         # run the function on the train loader
-        if config_name not in ['topkids']:
-            os.makedirs(f'{save_path}/train', exist_ok=True)
-            pbar = tqdm(enumerate(train_loader), total=len(train_loader))
-            for i, data in pbar:
-                # data_x = data['first']
-                data_x = data['second']
+        # if config_name not in ['topkids']:
+        #     os.makedirs(f'{save_path}/train', exist_ok=True)
+        #     pbar = tqdm(enumerate(train_loader), total=len(train_loader))
+        #     for i, data in pbar:
+        #         # data_x = data['first']
+        #         data_x = data['second']
                 
-                if data_x['name'][0] in unique_names:
-                    continue
-                else:
-                    unique_names.add(data_x['name'][0])
+        #         if data_x['name'][0] in unique_names:
+        #             continue
+        #         else:
+        #             unique_names.add(data_x['name'][0])
                 
-                pbar.set_description(f'Train {config_name} {data_x["name"][0]}')
+        #         pbar.set_description(f'Train {config_name} {data_x["name"][0]}')
                 
-                process_data(data_x, base_path=f'{save_path}/train')
-
+        #         process_data(data_x, base_path=f'{save_path}/train')
+                
+                
+        # run the function on the test loader
+        
+        unique_names = set()
+        os.makedirs(f'{save_path}/test', exist_ok=True)
+        
+        pbar = tqdm(enumerate(test_loader))
+        for i, data in pbar:
+            # data_x = data['first']
+            data_x = data['second']
             
+            if data_x['name'][0] in unique_names:
+                continue
+            else:
+                unique_names.add(data_x['name'][0])
+            
+            pbar.set_description(f'Test {config_name} {data_x["name"][0]}')
+            
+            process_data(data_x, base_path=f'{save_path}/test')          
             
      
     ###############################################

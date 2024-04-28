@@ -37,7 +37,7 @@ datasets:
     return_dist: True
   # setting for train dataset
   batch_size: 1
-  num_worker: 16
+  num_worker: 2
 
 # network setting
 networks:

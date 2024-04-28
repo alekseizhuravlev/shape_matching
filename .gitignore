@@ -146,3 +146,9 @@ results/
 # pycharm
 .idea/
 disown
+scripts/error_logs/106442.err
+scripts/error_logs/106443.err
+scripts/error_logs/106444.err
+scripts/logs/106442.out
+scripts/logs/106443.out
+scripts/logs/106444.out
