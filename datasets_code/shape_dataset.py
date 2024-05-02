@@ -299,10 +299,14 @@ class PairShapeDataset(Dataset):
         # make combinations of all pairs        
         self.combinations = list(product(range(len(dataset)), repeat=2))
         
-        # iterate over all pairs, calculate the functional map for each pair
+        # lists for functional maps and difference operators
         self.Cxy_list = []
         self.Cyx_list = []
         
+        self.Vxy_list = []
+        self.Rxy_list = []
+        
+        # iterate over all pairs, calculate the functional map + differences for each pair
         for i in tqdm(range(len(self.combinations)), desc="Calculating functional maps"):
             # get the pair
             first_index, second_index = self.combinations[i]
@@ -311,19 +315,37 @@ class PairShapeDataset(Dataset):
             
             device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
-            # calculate the functional map in both directions
+            # functional map in both directions
+            # Fy @ Cxy = Fx
             C_gt_xy_lstsq = torch.linalg.lstsq(
                 data_y['evecs'][data_y['corr']].to(device),
                 data_x['evecs'][data_x['corr']].to(device)
-                ).solution.to('cpu')
+                ).solution
+            
+            # Fx @ Cyx = Fy
             C_gt_yx_lstsq = torch.linalg.lstsq(
                 data_x['evecs'][data_x['corr']].to(device),
                 data_y['evecs'][data_y['corr']].to(device)
-                ).solution.to('cpu')
+                ).solution
             
+            # area shape difference
+            V_xy = C_gt_xy_lstsq.T @ C_gt_xy_lstsq
+            
+            # conformal shape difference
+            R_xy = torch.diag(-1 / data_x['evals'].to(device)) @ \
+                C_gt_xy_lstsq.T @ \
+                torch.diag(- data_y['evals'].to(device)) @ \
+                C_gt_xy_lstsq
+
             # append the functional maps to the lists
-            self.Cxy_list.append(C_gt_xy_lstsq)
-            self.Cyx_list.append(C_gt_yx_lstsq)
+            self.Cxy_list.append(C_gt_xy_lstsq.to('cpu'))
+            self.Cyx_list.append(C_gt_yx_lstsq.to('cpu'))
+            
+            self.Vxy_list.append(V_xy.to('cpu'))
+            self.Rxy_list.append(R_xy.to('cpu'))
+            
+            
+            
 
     def __getitem__(self, index):
         # get index
@@ -332,8 +354,12 @@ class PairShapeDataset(Dataset):
         item = dict()
         item['first'] = self.dataset[first_index]
         item['second'] = self.dataset[second_index]
+        
         item['Cxy'] = self.Cxy_list[index]
         item['Cyx'] = self.Cyx_list[index]
+        
+        item['Vxy'] = self.Vxy_list[index]
+        item['Rxy'] = self.Rxy_list[index]
 
         return item
 

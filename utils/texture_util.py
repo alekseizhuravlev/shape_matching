@@ -1,6 +1,6 @@
 import os
 import numpy as np
-import open3d as o3d
+# import open3d as o3d
 
 
 def write_obj_pair(file_name1, file_name2, verts1, faces1, verts2, faces2, Pyx, texture_file):
@@ -146,19 +146,21 @@ def create_colormap(verts):
 
 
 def write_point_cloud_pair(file_name1, file_name2, verts1, verts2, p2p):
+    
+    raise NotImplementedError
     # create pcd for shape 1
-    pcd1 = o3d.geometry.PointCloud()
-    pcd1.points = o3d.utility.Vector3dVector(verts1)
-    colors = create_colormap(verts1)
-    pcd1.colors = o3d.utility.Vector3dVector(colors)
+    # pcd1 = o3d.geometry.PointCloud()
+    # pcd1.points = o3d.utility.Vector3dVector(verts1)
+    # colors = create_colormap(verts1)
+    # pcd1.colors = o3d.utility.Vector3dVector(colors)
 
-    # create pcd for shape 2
-    pcd2 = o3d.geometry.PointCloud()
-    pcd2.points = o3d.utility.Vector3dVector(verts2)
-    colors = colors[p2p]
-    pcd2.colors = o3d.utility.Vector3dVector(colors)
+    # # create pcd for shape 2
+    # pcd2 = o3d.geometry.PointCloud()
+    # pcd2.points = o3d.utility.Vector3dVector(verts2)
+    # colors = colors[p2p]
+    # pcd2.colors = o3d.utility.Vector3dVector(colors)
 
-    # save results
-    if not os.path.exists(file_name1):
-        o3d.io.write_point_cloud(file_name1, pcd1)
-    o3d.io.write_point_cloud(file_name2, pcd2)
+    # # save results
+    # if not os.path.exists(file_name1):
+    #     o3d.io.write_point_cloud(file_name1, pcd1)
+    # o3d.io.write_point_cloud(file_name2, pcd2)

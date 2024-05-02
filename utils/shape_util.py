@@ -3,6 +3,7 @@ import numpy as np
 import trimesh
 import networkx as nx
 import open3d as o3d
+import trimesh
 
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import shortest_path
@@ -53,11 +54,25 @@ def read_shape(file, as_cloud=False):
         faces (np.ndarray): faces [F, 3] or None
     """
     if as_cloud:
-        verts = np.asarray(o3d.io.read_point_cloud(file).points)
+        raise NotImplementedError
+        # verts = np.asarray(o3d.io.read_point_cloud(file).points)
         faces = None
     else:
         mesh = o3d.io.read_triangle_mesh(file)
         verts, faces = np.asarray(mesh.vertices), np.asarray(mesh.triangles)
+        
+        # mesh_tri = trimesh.load(file)
+        # verts_tri, faces_tri = np.asarray(mesh_tri.vertices), np.asarray(mesh_tri.faces)
+        
+        # if not np.allclose(verts, verts_tri):
+        #     print('Warning: vertices are not the same')
+        #     # print which vertices are different
+        #     print(np.where(np.abs(verts - verts_tri) > 1e-6))
+            
+        # if not np.allclose(faces, faces_tri):
+        #     print('Warning: faces are not the same')
+        #     print(np.where(np.abs(faces - faces_tri) > 1e-6))
+        
 
     return verts, faces
 
