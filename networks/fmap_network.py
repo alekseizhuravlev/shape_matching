@@ -5,8 +5,14 @@ from utils.registry import NETWORK_REGISTRY
 
 
 def _get_mask(evals1, evals2, resolvant_gamma):
+    
+    # get max eigenvalue across both shapes
     scaling_factor = max(torch.max(evals1), torch.max(evals2))
+    
+    # normalize both sets of eigenvalues
     evals1, evals2 = evals1 / scaling_factor, evals2 / scaling_factor
+    
+    # evals = evals ** resolvant_gamma
     evals_gamma1 = (evals1 ** resolvant_gamma)[None, :]
     evals_gamma2 = (evals2 ** resolvant_gamma)[:, None]
 
@@ -49,9 +55,9 @@ class RegularizedFMNet(nn.Module):
 
         Cxy = torch.cat(C_i, dim=1)
         
-        print('Cxy.shape', Cxy.shape)
-        print('Cxy', Cxy)
-        exit(0)
+        # print('Cxy.shape', Cxy.shape)
+        # print('Cxy', Cxy)
+        # exit(0)
         
         return Cxy
 
