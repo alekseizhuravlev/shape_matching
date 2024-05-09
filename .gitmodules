@@ -1,0 +1,6 @@
+[submodule "pyFM_fork"]
+	path = pyFM_fork
+	url = https://github.com/AlekseiZhuravlev/pyFM_fork.git
+[submodule "meshplot_fork"]
+	path = meshplot_fork
+	url = https://github.com/AlekseiZhuravlev/meshplot_fork.git
