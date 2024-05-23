@@ -22,7 +22,10 @@ def hash_arrays(arrs):
     running_hash = hashlib.sha1()
     for arr in arrs:
         if arr is not None:
-            binarr = arr.view(np.uint8)
+            # print(arr.shape, arr.dtype)
+            # print(arr)
+            contigarr = np.ascontiguousarray(arr)
+            binarr = contigarr.view(np.uint8)
             running_hash.update(binarr)
     return running_hash.hexdigest()
 
