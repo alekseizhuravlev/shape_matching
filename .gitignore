@@ -152,3 +152,11 @@ scripts/error_logs/106444.err
 scripts/logs/106442.out
 scripts/logs/106443.out
 scripts/logs/106444.out
+mnist/MNIST/raw/t10k-images-idx3-ubyte
+mnist/MNIST/raw/t10k-images-idx3-ubyte.gz
+mnist/MNIST/raw/t10k-labels-idx1-ubyte
+mnist/MNIST/raw/t10k-labels-idx1-ubyte.gz
+mnist/MNIST/raw/train-images-idx3-ubyte
+mnist/MNIST/raw/train-images-idx3-ubyte.gz
+mnist/MNIST/raw/train-labels-idx1-ubyte
+mnist/MNIST/raw/train-labels-idx1-ubyte.gz
