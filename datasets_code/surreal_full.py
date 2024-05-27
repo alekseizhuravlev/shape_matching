@@ -146,24 +146,44 @@ class SingleSurrealDataset(Dataset):
 
 
 if __name__ == '__main__':
+    
+    n_body_types_male = 160
+    n_body_types_female = 160
+    n_poses_straight = 320
+    n_poses_bent = 0
+    num_evecs = 32
+    
     dataset = SingleSurrealDataset(
-        n_body_types_male=50, n_body_types_female=50, n_poses_straight=88, n_poses_bent=12,
-        num_evecs=50
+        n_body_types_male=n_body_types_male,
+        n_body_types_female=n_body_types_female,
+        n_poses_straight=n_poses_straight,
+        n_poses_bent=n_poses_bent,
+        num_evecs=num_evecs
     )
-    fmap_path = '/home/s94zalek/shape_matching/data/SURREAL_full/functional_maps/train'
-    evals_path = '/home/s94zalek/shape_matching/data/SURREAL_full/eigenvalues/train'
-    evecs_path = '/home/s94zalek/shape_matching/data/SURREAL_full/eigenvectors/train'
-    
-    shutil.rmtree(fmap_path, ignore_errors=True)
-    shutil.rmtree(evals_path, ignore_errors=True)
-    shutil.rmtree(evecs_path, ignore_errors=True)
-    
+    fmap_path = '/home/s94zalek/shape_matching/data/SURREAL_full/fmaps'
+    evals_path = '/home/s94zalek/shape_matching/data/SURREAL_full/evals'
+    # evecs_path = '/home/s94zalek/shape_matching/data/SURREAL_full/eigenvectors/train'
+
     os.makedirs(fmap_path, exist_ok=True)
     os.makedirs(evals_path, exist_ok=True)
-    os.makedirs(evecs_path, exist_ok=True)
+    # os.makedirs(evecs_path, exist_ok=True)
 
-    evals_file =os.path.join(evals_path, 'eigenvalues.txt')
-    fmaps_file =os.path.join(fmap_path, 'functional_maps.txt')
+    evals_file =os.path.join(
+        evals_path,
+        f'evals_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}.txt'
+    )
+    fmaps_file =os.path.join(
+        fmap_path,
+        f'fmaps_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}.txt'
+    )
+    
+    # remove files if they exist
+    if os.path.exists(evals_file):
+        os.remove(evals_file)
+    if os.path.exists(fmaps_file):
+        os.remove(fmaps_file)
+        
+    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}')
     
     for i in tqdm(range(len(dataset))):
         data = dataset[i]
