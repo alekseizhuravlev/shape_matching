@@ -23,7 +23,7 @@ Modules included:
 __all__ = ['load_model', 'save_model']
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching/datasets_code/smpl_webuser')
+sys.path.append('/home/s94zalek/shape_matching/my_code/datasets/smpl_webuser')
 
 import numpy as np
 import pickle

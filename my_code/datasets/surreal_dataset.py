@@ -15,7 +15,7 @@ import sys
 sys.path.append('/home/s94zalek/shape_matching')
 
 from utils.geometry_util import get_operators
-from datasets_code.generate_surreal_shapes import generate_shapes
+from my_code.datasets.generate_surreal_shapes import generate_shapes
 
 
 def get_spectral_ops(item, num_evecs, cache_dir=None):

@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append('/home/s94zalek/shape_matching/datasets_code')
+sys.path.append('/home/s94zalek/shape_matching/my_code/datasets')
 
 import numpy as np
 # import smplx

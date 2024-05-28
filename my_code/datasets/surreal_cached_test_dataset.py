@@ -1,7 +1,7 @@
 import os
 import numpy as np
 
-class CachedSurrealDataset:
+class SurrealTestDataset:
     def __init__(self, base_folder):
         
         self.first_shape = dict()
@@ -19,7 +19,7 @@ class CachedSurrealDataset:
                 self.second_shapes[key] = np.load(base_folder + '/second/' + file)
                 
     def __len__(self):
-        return len(self.second_shape)
+        return len(self.second_shapes['name'])
     
     def __getitem__(self, index):
         
@@ -41,19 +41,19 @@ class CachedSurrealDataset:
         
         
 if __name__ == '__main__':
-    base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/dataset_16_16_32_0_32'
+    base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/dataset_2_2_4_0_32_0.8/test'
     
-    dataset = CachedSurrealDataset(base_folder)
+    dataset = SurrealTestDataset(base_folder)
 
     print('---- First shape')
-    print(dataset[10]['first']['name'])
-    for key in dataset[10]['first'].keys():
-        print(key, dataset[10]['first'][key].shape)
+    print(dataset[2]['first']['name'])
+    for key in dataset[2]['first'].keys():
+        print(key, dataset[2]['first'][key].shape)
 
         
     print('---- Second')
-    print(dataset[10]['second']['name'])
-    for key in dataset[40]['second'].keys():
-        print(key, dataset[40]['second'][key].shape)
+    print(dataset[2]['second']['name'])
+    for key in dataset[2]['second'].keys():
+        print(key, dataset[2]['second'][key].shape)
 
     

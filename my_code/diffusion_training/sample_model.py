@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 def sample(model, n_samples, noise_shape, conditioning, noise_scheduler, plot_last_steps):
 
-    device = model.device
+    # device = model.device
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Prepare random x to start from, plus some desired labels y
     x = torch.randn(n_samples, 1, noise_shape, noise_shape).to(device)      
@@ -19,7 +20,7 @@ def sample(model, n_samples, noise_shape, conditioning, noise_scheduler, plot_la
                 residual = model(x, t).sample
             else:
                 residual = model(x, t,
-                                 encoder_hidden_states=conditioning.to(device)
+                                 conditioning=conditioning.to(device)
                                  ).sample
 
         # Update sample with step
