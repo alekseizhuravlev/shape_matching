@@ -1,3 +1,4 @@
+import json
 import os, re
 import numpy as np
 import scipy.io as sio
@@ -136,7 +137,8 @@ class SingleSurrealDataset(Dataset):
             'first': self.template,
             'second': item,
         }
-        payload['C_gt_xy'], payload['C_gt_yx'] = self.get_functional_map(payload['first'], payload['second'])
+        payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
+            self.get_functional_map(payload['first'], payload['second'])
         
         return payload
 
@@ -145,59 +147,10 @@ class SingleSurrealDataset(Dataset):
         return len(self.shapes['verts'])
 
 
-if __name__ == '__main__':
-    
-    n_body_types_male = 160
-    n_body_types_female = 160
-    n_poses_straight = 320
-    n_poses_bent = 0
-    num_evecs = 32
-    
-    dataset = SingleSurrealDataset(
-        n_body_types_male=n_body_types_male,
-        n_body_types_female=n_body_types_female,
-        n_poses_straight=n_poses_straight,
-        n_poses_bent=n_poses_bent,
-        num_evecs=num_evecs
-    )
-    fmap_path = '/home/s94zalek/shape_matching/data/SURREAL_full/fmaps'
-    evals_path = '/home/s94zalek/shape_matching/data/SURREAL_full/evals'
-    # evecs_path = '/home/s94zalek/shape_matching/data/SURREAL_full/eigenvectors/train'
 
-    os.makedirs(fmap_path, exist_ok=True)
-    os.makedirs(evals_path, exist_ok=True)
-    # os.makedirs(evecs_path, exist_ok=True)
+        
+            
 
-    evals_file =os.path.join(
-        evals_path,
-        f'evals_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}.txt'
-    )
-    fmaps_file =os.path.join(
-        fmap_path,
-        f'fmaps_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}.txt'
-    )
-    
-    # remove files if they exist
-    if os.path.exists(evals_file):
-        os.remove(evals_file)
-    if os.path.exists(fmaps_file):
-        os.remove(fmaps_file)
-        
-    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}')
-    
-    for i in tqdm(range(len(dataset))):
-        data = dataset[i]
-        
-        with open(fmaps_file, 'ab') as f:
-            np.savetxt(f, data['C_gt_xy'].numpy().flatten().astype(np.float32), newline=" ")
-            f.write(b'\n')
-            
-        with open(evals_file, 'ab') as f:
-            np.savetxt(f, data['second']['evals'].numpy().astype(np.float32), newline=" ")
-            f.write(b'\n')
-            
-        # with open(os.path.join(evecs_path, f'{int(data["second"]["name"]):05d}.txt'), 'wb') as f:
-        #     np.savetxt(f, data['second']['evecs'].numpy())
             
         
         
