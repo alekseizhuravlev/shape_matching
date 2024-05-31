@@ -24,7 +24,7 @@ def create_train_test_loader(dataset_folder, batch_size):
 
 
 if __name__ == '__main__':
-    dataset_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/dataset_16_16_32_0_32_80'
+    dataset_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/dataset_158_158_316_0_32_93'
     batch_size = 32
     
     create_train_test_loader(dataset_folder, batch_size)

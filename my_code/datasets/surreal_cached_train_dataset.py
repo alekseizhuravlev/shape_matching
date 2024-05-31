@@ -2,12 +2,14 @@ import torch
 import numpy as np
 
 
-class SurrealTrainDataset:
+class SurrealTrainDataset(torch.utils.data.Dataset):
     def __init__(self, base_folder):
+        super(SurrealTrainDataset, self).__init__()
+        
         self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt')       
         
         fmap_dim = int(np.sqrt(self.fmaps.shape[1]))
-        print('Fmap dim:', fmap_dim)
+        print('Train dataset, functional map dimension:', fmap_dim)
         self.fmaps = torch.tensor(self.fmaps, dtype=torch.float32).reshape(len(self.fmaps), fmap_dim, fmap_dim)
         self.fmaps = self.fmaps.abs()
         

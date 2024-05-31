@@ -52,6 +52,7 @@ def save_first_second_shape_full(dataset, shape_name, indices, base_folder):
                 if isinstance(data[key], torch.Tensor):
                     data_dict[key].append(data[key].numpy())
                 else:
+                    raise ValueError(f'Unknown data type for key {key}: {type(data[key])}')
                     data_dict[key].append(data[key])
             
     # create the folder to store the data        
@@ -93,13 +94,13 @@ def save_test_dataset(
          
 if __name__ == '__main__':
 
-    n_body_types_male=125
-    n_body_types_female=125
-    n_poses_straight=250
+    n_body_types_male=158
+    n_body_types_female=158
+    n_poses_straight=316
     n_poses_bent=0
     num_evecs=32
     
-    train_fraction = 0.9
+    train_fraction = 0.93
     
     # create the dataset
     dataset = SingleSurrealDataset(

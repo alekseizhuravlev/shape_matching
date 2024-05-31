@@ -43,7 +43,7 @@ class SingleSurrealDataset(Dataset):
                  num_evecs=200
                  ):
 
-        self.data_root = '/home/s94zalek/shape_matching/data/SURREAL'
+        self.data_root = '/home/s94zalek/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
         
         # generate male and female unbent shapes
@@ -91,10 +91,10 @@ class SingleSurrealDataset(Dataset):
         
         # make the template object
         self.template = {
-            'name': 'template',
+            'id': torch.tensor(-1),
             'verts': torch.tensor(self.template_mesh.vertices).float(),
             'faces': torch.tensor(self.template_mesh.faces).long(),
-            'corr': list(range(len(self.template_mesh.vertices))),
+            'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
         }
         self.template = get_spectral_ops(self.template, num_evecs=self.num_evecs)
      
@@ -120,7 +120,7 @@ class SingleSurrealDataset(Dataset):
     def __getitem__(self, index):
         
         item = dict()
-        item['name'] = str(index)
+        item['id'] = torch.tensor(index)
         
         item['verts'] = self.shapes['verts'][index]
         item['faces'] = self.shapes['faces'][index]
@@ -128,10 +128,10 @@ class SingleSurrealDataset(Dataset):
         item['betas'] = self.shapes['betas'][index]
         
         # get eigenfunctions/eigenvalues
-        item = get_spectral_ops(item, num_evecs=self.num_evecs,) #cache_dir=os.path.join(self.data_root, 'diffusion'))
+        item = get_spectral_ops(item, num_evecs=self.num_evecs,)
         
         # 1 to 1 correspondence
-        item['corr'] = list(range(len(item['verts'])))        
+        item['corr'] = torch.tensor(list(range(len(item['verts']))))        
         
         payload =  {
             'first': self.template,
