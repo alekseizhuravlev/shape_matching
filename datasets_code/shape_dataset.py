@@ -355,11 +355,12 @@ class PairShapeDataset(Dataset):
         item['first'] = self.dataset[first_index]
         item['second'] = self.dataset[second_index]
         
-        item['Cxy'] = self.Cxy_list[index]
-        item['Cyx'] = self.Cyx_list[index]
         
-        item['Vxy'] = self.Vxy_list[index]
-        item['Rxy'] = self.Rxy_list[index]
+        item['second']['C_gt_xy'] = self.Cxy_list[index]
+        item['second']['C_gt_yx'] = self.Cyx_list[index]
+        
+        item['second']['Vxy'] = self.Vxy_list[index]
+        item['second']['Rxy'] = self.Rxy_list[index]
 
         return item
 

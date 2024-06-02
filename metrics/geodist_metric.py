@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from utils.registry import METRIC_REGISTRY
+# from utils.registry import METRIC_REGISTRY
 
 counter = 0
 
-@METRIC_REGISTRY.register()
+# @METRIC_REGISTRY.register()
 def calculate_geodesic_error(dist_x, corr_x, corr_y, p2p, return_mean=True):
     """
     Calculate the geodesic error between predicted correspondence and gt correspondence
@@ -71,8 +71,8 @@ def calculate_geodesic_error(dist_x, corr_x, corr_y, p2p, return_mean=True):
         return geo_err
 
 
-@METRIC_REGISTRY.register()
-def plot_pck(geo_err, threshold=0.10, steps=40):
+# @METRIC_REGISTRY.register()
+def plot_pck(geo_err, threshold=0.10, steps=40, show_figure=False):
     """
     plot pck curve and compute auc.
     Args:
@@ -97,8 +97,11 @@ def plot_pck(geo_err, threshold=0.10, steps=40):
     auc = np.trapz(pcks, np.linspace(0., 1., steps))
 
     # display figure
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1)
-    ax.plot(thresholds, pcks, 'r-')
-    ax.set_xlim(0., threshold)
-    return auc, fig, pcks
+    if show_figure:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1)
+        ax.plot(thresholds, pcks, 'r-')
+        ax.set_xlim(0., threshold)
+        return auc, fig, pcks
+    else:
+        return auc, pcks, thresholds

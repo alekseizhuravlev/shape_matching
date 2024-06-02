@@ -47,7 +47,7 @@ from my_code.diffusion_training.train_model import train_epoch
 if __name__ == '__main__':
     
     # configuration
-    config = OrderedDict({
+    config = {
         'experiment_name': 'test_32',
         'dataset_name': 'dataset_158_158_316_0_32_93',
         
@@ -73,16 +73,17 @@ if __name__ == '__main__':
                 "UpBlock2D",
             ),
         }
-    })    
+    }   
     
     # experiment setup
     experiment_folder = f'/home/s94zalek/shape_matching/my_code/experiments/{config["experiment_name"]}'
     shutil.rmtree(experiment_folder, ignore_errors=True)
     os.makedirs(experiment_folder, exist_ok=True)
+    os.makedirs(f'{experiment_folder}/checkpoints', exist_ok=True)
     
     # save the config file
     with open(f'{experiment_folder}/config.yaml', 'w') as f:
-        yaml.dump(config, f)
+        yaml.dump(config, f, sort_keys=False)
     
     
     ### Train and test datasets with dataloaders
@@ -130,7 +131,7 @@ if __name__ == '__main__':
         
         # save the model checkpoint
         if epoch > 0 and (epoch % config["checkpoint_every"] == 0 or epoch == config["n_epochs"] - 1):
-            torch.save(model.state_dict(), f'{experiment_folder}/checkpoint_{epoch}.pt')
+            torch.save(model.state_dict(), f'{experiment_folder}/checkpoints/checkpoint_{epoch}.pt')
         
         
         

@@ -1,33 +1,82 @@
 import torch
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 
-def sample(model, n_samples, noise_shape, conditioning, noise_scheduler, plot_last_steps):
+def sample(model, test_loader, noise_scheduler):
 
-    # device = model.device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Prepare random x to start from, plus some desired labels y
-    x = torch.randn(n_samples, 1, noise_shape, noise_shape).to(device)      
+    device = model.device()
+    
+    x_sampled_list = []
+    for batch in tqdm(test_loader, total=len(test_loader), desc='Sampling test_loader...'):
         
-    # Sampling loop
-    for i, t in tqdm(enumerate(noise_scheduler.timesteps), total=noise_scheduler.config.num_train_timesteps):
+        # print(batch)
+        x_gt, y = batch['second']['C_gt_xy'], batch['second']['evals']  
 
-        # Get model pred
-        with torch.no_grad():
-            if conditioning is None:
-                residual = model(x, t).sample
-            else:
-                residual = model(x, t,
-                                 conditioning=conditioning.to(device)
-                                 ).sample
+        # Prepare random x to start from, plus some desired labels y
+        x_sampled = torch.rand_like(x_gt).to(device)  
+        y = y.to(device)    
+            
+        # Sampling loop
+        for i, t in tqdm(enumerate(noise_scheduler.timesteps), total=noise_scheduler.config.num_train_timesteps,
+                         desc='Denoising...'):
 
-        # Update sample with step
-        x = noise_scheduler.step(residual, t, x).prev_sample
+            # Get model pred
+            with torch.no_grad():
+                residual = model(x_sampled, t,
+                                    conditioning=y
+                                    ).sample
+
+            # Update sample with step
+            x_sampled = noise_scheduler.step(residual, t, x_sampled).prev_sample
+
+        x_sampled_list.append(x_sampled.cpu())     
         
-        if plot_last_steps and i > 900 and i % 10 == 0:
-            plt.imshow(x[0][0].cpu().numpy())
-            plt.show()
+    x_sampled_list = torch.cat(x_sampled_list, dim=0)
         
-    return x
+    return x_sampled_list
+        
+        
+        
+if __name__ == '__main__':
+    
+    import sys
+    sys.path.append('/home/s94zalek/shape_matching')
+
+    # datasets
+    from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
+    from my_code.datasets.surreal_cached_test_dataset import SurrealTestDataset
+
+    # models
+    from my_code.models.diag_conditional import DiagConditionedUnet
+    from diffusers import DDPMScheduler
+    
+    import yaml
+    import torch
+    
+    from diffusers import DDPMScheduler
+
+    exp_dir = '/home/s94zalek/shape_matching/my_code/experiments/test_32'
+
+    with open(exp_dir + '/config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+
+    dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
+    test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
+
+    model = DiagConditionedUnet(config["model_params"]).to('cuda')
+
+    # load checkpoint_29.pt
+    model.load_state_dict(torch.load(exp_dir + '/checkpoint_29.pt'))
+    model = model.to('cuda')
+    
+
+    batch_size = len(test_dataset)
+    test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+    noise_scheduler = DDPMScheduler(num_train_timesteps=1000, beta_schedule='squaredcos_cap_v2',
+                                    clip_sample=True)
+
+    x_sampled = sample(model, test_loader, noise_scheduler)
+
+    with open(exp_dir + '/x_sampled_29.pt', 'wb') as f:
+        torch.save(x_sampled, f)

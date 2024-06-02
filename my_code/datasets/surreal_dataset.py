@@ -120,7 +120,10 @@ class SingleSurrealDataset(Dataset):
     def __getitem__(self, index):
         
         item = dict()
+        
+        # print(index, type(index))
         item['id'] = torch.tensor(index)
+        
         
         item['verts'] = self.shapes['verts'][index]
         item['faces'] = self.shapes['faces'][index]
