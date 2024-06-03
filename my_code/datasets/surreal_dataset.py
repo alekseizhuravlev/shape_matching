@@ -45,42 +45,9 @@ class SingleSurrealDataset(Dataset):
 
         self.data_root = '/home/s94zalek/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
-        
-        # generate male and female unbent shapes
-        # male_shapes = generate_shapes(n_body_types=n_body_types, n_poses=n_poses, male=True, bent=False)
-        # female_shapes = generate_shapes(n_body_types=n_body_types, n_poses=n_poses, male=False, bent=False)
-        
-        # # concatenate them
-        # self.shapes = {
-        #     'verts': torch.cat([male_shapes['verts'], female_shapes['verts']], axis=0),
-        #     'faces': torch.cat([male_shapes['faces'], female_shapes['faces']], axis=0),
-        #     'poses': torch.cat([male_shapes['poses'], female_shapes['poses']], axis=0),
-        #     'betas': torch.cat([male_shapes['betas'], female_shapes['betas']], axis=0),
-        # }
-        
-        # if include_bent:
-        #     # bent shapes are 1/6 of the total number of shapes, but at least one
-        #     n_body_types_bent = max(n_body_types // 6, 1)
-        #     n_poses_bent = max(n_poses // 6, 1)
-            
-        #     # generate male and female bent shapes
-        #     male_bent = generate_shapes(
-        #         n_body_types=n_body_types_bent, n_poses=n_poses_bent,
-        #         male=True, bent=True)
-        #     female_bent = generate_shapes(
-        #         n_body_types=n_body_types_bent, n_poses=n_poses_bent,
-        #         male=False, bent=True)
-            
-        #     # concatenate them
-        #     self.shapes = {
-        #         'verts': torch.cat([self.shapes['verts'], male_bent['verts'], female_bent['verts']], axis=0),
-        #         'faces': torch.cat([self.shapes['faces'], male_bent['faces'], female_bent['faces']], axis=0),
-        #         'poses': torch.cat([self.shapes['poses'], male_bent['poses'], female_bent['poses']], axis=0),
-        #         'betas': torch.cat([self.shapes['betas'], male_bent['betas'], female_bent['betas']], axis=0),
-        #     }
-        
+
+        # generate male-female, straight-bent shapes
         self.shapes = generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_poses_bent)
-            
         
         # load template mesh
         self.template_mesh = trimesh.load('/home/s94zalek/shape_matching/data/SURREAL_full/template/template.ply')
