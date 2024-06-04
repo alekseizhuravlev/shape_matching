@@ -72,7 +72,7 @@ if __name__ == '__main__':
     experiment_name = 'test_32'
     checkpoint_name = 'checkpoint_29'
     subset_fraction = 100
-    dataset_name = 'surreal'
+    dataset_name = 'faust'
 
     
     ### config
@@ -88,8 +88,38 @@ if __name__ == '__main__':
     
     
     ### dataset
-    dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
-    test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
+    # dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
+    # test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
+    
+    
+
+    
+    import my_code.datasets.template_dataset as template_dataset
+    import datasets_code.shape_dataset as shape_dataset
+    
+    dataset_faust_single = shape_dataset.SingleFaustDataset(
+        data_root='data/FAUST_original',
+        phase='train',
+        return_faces=True,
+        return_evecs=True, num_evecs=32,
+        return_corr=True, return_dist=False
+    )
+    
+    test_dataset = template_dataset.TemplateDataset(
+        base_dataset=dataset_faust_single,
+        num_evecs=32
+    )
+    
+    # print(test_dataset[10]['second']['C_gt_xy'].shape, test_dataset[10]['second']['evals'].shape, test_dataset[10]['first']['evals'].shape)
+    # exit(0)
+    
+    
+    
+    
+    
+    
+    
+    
     
     # optionally get a subset of the dataset
     if subset_fraction != 100:

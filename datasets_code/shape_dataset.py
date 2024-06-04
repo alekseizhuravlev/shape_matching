@@ -27,6 +27,9 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     _, mass, L, evals, evecs, _, _ = get_operators(item['verts'], item.get('faces'),
                                                    k=num_evecs,
                                                    cache_dir=cache_dir)
+    
+    evals = evals.unsqueeze(0)
+    
     evecs_trans = evecs.T * mass[None]
     item['evecs'] = evecs[:, :num_evecs]
     item['evecs_trans'] = evecs_trans[:num_evecs]
@@ -328,21 +331,21 @@ class PairShapeDataset(Dataset):
                 data_y['evecs'][data_y['corr']].to(device)
                 ).solution
             
-            # area shape difference
-            V_xy = C_gt_xy_lstsq.T @ C_gt_xy_lstsq
+            # # area shape difference
+            # V_xy = C_gt_xy_lstsq.T @ C_gt_xy_lstsq
             
-            # conformal shape difference
-            R_xy = torch.diag(-1 / data_x['evals'].to(device)) @ \
-                C_gt_xy_lstsq.T @ \
-                torch.diag(- data_y['evals'].to(device)) @ \
-                C_gt_xy_lstsq
+            # # conformal shape difference
+            # R_xy = torch.diag(-1 / data_x['evals'].to(device)) @ \
+            #     C_gt_xy_lstsq.T @ \
+            #     torch.diag(- data_y['evals'].to(device)) @ \
+            #     C_gt_xy_lstsq
 
             # append the functional maps to the lists
             self.Cxy_list.append(C_gt_xy_lstsq.to('cpu'))
             self.Cyx_list.append(C_gt_yx_lstsq.to('cpu'))
             
-            self.Vxy_list.append(V_xy.to('cpu'))
-            self.Rxy_list.append(R_xy.to('cpu'))
+            # self.Vxy_list.append(V_xy.to('cpu'))
+            # self.Rxy_list.append(R_xy.to('cpu'))
             
             
             
