@@ -4,6 +4,7 @@ import shutil
 
 import torch
 from tqdm import tqdm
+import argparse
 
 import sys
 sys.path.append('/home/s94zalek/shape_matching')
@@ -15,13 +16,15 @@ def save_train_dataset(
         dataset,
         train_indices,
         dataset_folder,
+        start_idx,
+        end_idx,
     ):
     
     train_folder = f'{dataset_folder}/train'
     os.makedirs(train_folder, exist_ok=True)
 
-    evals_file = os.path.join(train_folder, f'evals.txt')
-    fmaps_file = os.path.join(train_folder, f'C_gt_xy.txt')
+    evals_file = os.path.join(train_folder, f'evals_{start_idx}_{end_idx}.txt')
+    fmaps_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
     
     print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}')
     
@@ -90,17 +93,48 @@ def save_test_dataset(
         indices=test_indices,
         base_folder=test_folder
     )
+    
+    
+def parse_args():
+    
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--n_workers', type=int, default=4)
+    parser.add_argument('--current_worker', type=int, default=0)
+    parser.add_argument('--save_test_set', action='store_true', default=False)
+    
+    
+    parser.add_argument('--n_body_types_male', type=int, default=256)
+    parser.add_argument('--n_body_types_female', type=int, default=256)
+    parser.add_argument('--n_poses_straight', type=int, default=462)
+    parser.add_argument('--n_poses_bent', type=int, default=50)
+    parser.add_argument('--num_evecs', type=int, default=32)
+    parser.add_argument('--use_same_poses_male_female', action='store_true', default=False)
+    parser.add_argument('--train_fraction', type=float, default=0.93)
+    
+    args = parser.parse_args()
+    return args
          
          
 if __name__ == '__main__':
-
-    n_body_types_male=158
-    n_body_types_female=158
-    n_poses_straight=316
-    n_poses_bent=0
-    num_evecs=32
     
-    train_fraction = 0.93
+    args = parse_args()
+
+    n_body_types_male=args.n_body_types_male
+    n_body_types_female=args.n_body_types_female
+    n_poses_straight=args.n_poses_straight
+    n_poses_bent=args.n_poses_bent
+    num_evecs=args.num_evecs
+    use_same_poses_male_female=args.use_same_poses_male_female
+    
+    train_fraction = args.train_fraction
+    
+    np.random.seed(120)
+    
+    
+    ####################################################
+    # Dataset
+    ####################################################
     
     # create the dataset
     dataset = SingleSurrealDataset(
@@ -108,8 +142,10 @@ if __name__ == '__main__':
         n_body_types_female=n_body_types_female,
         n_poses_straight=n_poses_straight,
         n_poses_bent=n_poses_bent,
-        num_evecs=num_evecs
-    )
+        num_evecs=num_evecs,
+        use_same_poses_male_female=use_same_poses_male_female,
+        use_cuda=False
+    )    
     
     # sample train/test indices
     train_indices = np.random.choice(len(dataset), int(train_fraction * len(dataset)), replace=False)
@@ -117,41 +153,44 @@ if __name__ == '__main__':
     print(f'Number of training samples: {len(train_indices)}, number of test samples: {len(test_indices)}')
     
     # folder to store the dataset
-    dataset_name = f'dataset_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}_{int(train_fraction*100)}'
+    dataset_name = f'dataset_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}_{int(train_fraction*100)}_samePoses_{int(use_same_poses_male_female)}'
     dataset_folder = f'/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
-    shutil.rmtree(dataset_folder, ignore_errors=True)
+    # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)
     
     
-    print(f"Saving test dataset...")    
-    save_test_dataset(
-        dataset=dataset,
-        test_indices=test_indices,
-        dataset_folder=dataset_folder,
-    )
-    
-    print(f"Saving train dataset...")
-    save_train_dataset(
-        dataset=dataset,
-        train_indices=train_indices,
-        dataset_folder=dataset_folder,
-    )
-    
-    # 4096 shapes
-    # save_full_dataset(
-    #     n_body_types_male=32,
-    #     n_body_types_female=32,
-    #     n_poses_straight=64,
-    #     n_poses_bent=0,
-    #     num_evecs=32,
-    # )
-    
-    # 1024 shapes
-    # save_full_dataset(
-    #     n_body_types_male=16,
-    #     n_body_types_female=16,
-    #     n_poses_straight=32,
-    #     n_poses_bent=0,
-    #     num_evecs=32,
-    # )
+    ####################################################
+    # Saving
+    ####################################################
+
+
+    if args.save_test_set:
+        print(f"Saving test dataset...")    
+        save_test_dataset(
+            dataset=dataset,
+            test_indices=test_indices,
+            dataset_folder=dataset_folder,
+        )
+    else:
+        n_workers = args.n_workers
+        current_worker = args.current_worker
         
+        n_samples = len(dataset)
+        samples_per_worker = n_samples // n_workers
+        start = current_worker * samples_per_worker
+        end = (current_worker + 1) * samples_per_worker
+        if current_worker == n_workers - 1:
+            end = n_samples
+            
+        print(f'Worker {current_worker} processing samples from {start} to {end}')
+        train_indices = train_indices[start:end]
+            
+    
+        print(f"Saving train dataset...")
+        save_train_dataset(
+            dataset=dataset,
+            train_indices=train_indices,
+            dataset_folder=dataset_folder,
+            start_idx=start,
+            end_idx=end
+        )

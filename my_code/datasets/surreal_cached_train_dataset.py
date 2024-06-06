@@ -20,13 +20,15 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
         return len(self.evals)
     
     def __getitem__(self, idx):
-        fmap = self.fmaps[idx].unsqueeze(0)
+        # fmap = self.fmaps[idx].unsqueeze(0)
+        fmap = self.fmaps[idx]
         
         # normalize to [0, 1] and to [-1, 1]
         fmap = fmap / fmap.max()
         fmap = fmap * 2 - 1 
         
-        eval = self.evals[idx].unsqueeze(0)
+        # eval = self.evals[idx].unsqueeze(0)
+        eval = self.evals[idx]
         
         # pad with 2 zeros
         # fmap = F.pad(fmap, (0, 2, 0, 2))

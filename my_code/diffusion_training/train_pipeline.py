@@ -21,6 +21,8 @@ from diffusers import DDPMScheduler
 from torch.utils.tensorboard import SummaryWriter
 from my_code.diffusion_training.train_model import train_epoch
 
+from my_code.datasets.surreal_dataset import SingleSurrealDataset
+
 
 # load config file
 
@@ -48,7 +50,7 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_32',
+        'experiment_name': 'test_noCache',
         'dataset_name': 'dataset_158_158_316_0_32_93',
         
         'n_epochs': 30,
@@ -87,9 +89,26 @@ if __name__ == '__main__':
     
     
     ### Train and test datasets with dataloaders
-    dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
-    train_dataset = SurrealTrainDataset(f'{dataset_base_folder}/{config["dataset_name"]}/train')
-    test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
+    # dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
+    # train_dataset = SurrealTrainDataset(f'{dataset_base_folder}/{config["dataset_name"]}/train')
+    # test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
+    
+    train_dataset = SingleSurrealDataset(
+        n_body_types_male=256,
+        n_body_types_female=256,
+        n_poses_straight=512 - 32,
+        n_poses_bent=32,
+        num_evecs=32,
+        use_same_poses_male_female=False
+    )
+    test_dataset = SingleSurrealDataset(
+        n_body_types_male=64,
+        n_body_types_female=64,
+        n_poses_straight=100,
+        n_poses_bent=28,
+        num_evecs=32,
+        use_same_poses_male_female=False
+    )
     
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config["batch_size"], shuffle=True)
     test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=config["batch_size"], shuffle=False)

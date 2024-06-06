@@ -41,12 +41,24 @@ def get_random(database, poses, betas):
     return pose, beta
 
 
-def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_poses_bent):
+def generate_shapes(
+    n_body_types_male,
+    n_body_types_female,
+    n_poses_straight,
+    n_poses_bent,
+    use_same_poses_male_female
+    ):
     
     database = np.load("/home/s94zalek/shape_matching/data/SURREAL_full/smpl_data.npz")
     
     # fix numpy random seed
     np.random.seed(120)
+    
+    
+    ####################################################
+    # Generate betas
+    ####################################################
+    
     
     # generate random male betas
     random_beta_indices_male = np.random.choice(len(database['maleshapes']), n_body_types_male, replace=False)
@@ -58,6 +70,10 @@ def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_
     random_betas_female = database['femaleshapes'][random_beta_indices_female]
     m_female = load_model("/home/s94zalek/shape_matching/data/SURREAL_full/smpl/models/basicModel_f_lbs_10_207_0_v1.0.0.pkl")
     
+    
+    ####################################################
+    # Build pose database
+    ####################################################
     
     # get pose sequences
     pose_sequences = [i for i in database.keys() if "pose" in i]
@@ -78,6 +94,11 @@ def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_
     for i in pose_sequences:
         num_poses = num_poses + np.shape(database[i])[0]
     assert len(pose_database) == num_poses, f"Number of poses in the database is {len(pose_database)} but should be {num_poses}"    
+    
+    
+    ####################################################
+    # Generate random poses
+    ####################################################
     
         
     # generate random poses without replacement
@@ -124,7 +145,11 @@ def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_
         
         random_poses.append(pose)
         
-
+        
+    ####################################################
+    # Output the data
+    ####################################################
+    
     # generate the data
     output = {
         'verts': [],
@@ -133,8 +158,37 @@ def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_
         'betas': []
     }
     
-    for beta in tqdm(random_betas_male, desc="Generating male shapes"):
-        for pose in random_poses:
+    if use_same_poses_male_female:
+
+        for beta in tqdm(random_betas_male, desc="Generating male shapes"):
+            for pose in random_poses:
+                verts, faces = generate_surreal(m_male, pose, beta)
+                
+                output['verts'].append(verts)
+                output['faces'].append(faces)
+                output['poses'].append(pose)
+                output['betas'].append(beta)
+                
+        for beta in tqdm(random_betas_female, desc="Generating female shapes"):
+            for pose in random_poses:
+                verts, faces = generate_surreal(m_female, pose, beta)
+                
+                output['verts'].append(verts)
+                output['faces'].append(faces)
+                output['poses'].append(pose)
+                output['betas'].append(beta)    
+            
+    else:
+
+        # shuffle the poses
+        np.random.shuffle(random_poses)
+                
+        assert len(random_poses) == len(random_betas_male) + len(random_betas_female), f"Number of poses and shapes should be equal"
+        
+        for i in range(len(random_betas_male)):
+            pose = random_poses[i]
+            beta = random_betas_male[i]
+            
             verts, faces = generate_surreal(m_male, pose, beta)
             
             output['verts'].append(verts)
@@ -142,8 +196,10 @@ def generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_
             output['poses'].append(pose)
             output['betas'].append(beta)
             
-    for beta in tqdm(random_betas_female, desc="Generating female shapes"):
-        for pose in random_poses:
+        for i in range(len(random_betas_female)):
+            pose = random_poses[len(random_betas_male) + i]
+            beta = random_betas_female[i]
+            
             verts, faces = generate_surreal(m_female, pose, beta)
             
             output['verts'].append(verts)

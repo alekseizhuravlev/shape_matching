@@ -16,6 +16,7 @@ sys.path.append('/home/s94zalek/shape_matching')
 
 from utils.geometry_util import get_operators
 from my_code.datasets.generate_surreal_shapes import generate_shapes
+import my_code.datasets.preprocessing as preprocessing
 
 
 def get_spectral_ops(item, num_evecs, cache_dir=None):
@@ -41,14 +42,23 @@ class SingleSurrealDataset(Dataset):
                  n_body_types_female,
                  n_poses_straight,
                  n_poses_bent,
-                 num_evecs=200
+                 use_same_poses_male_female,
+                 num_evecs=200,
+                 use_cuda=True
                  ):
 
         self.data_root = '/home/s94zalek/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
+        self.use_cuda = use_cuda
 
         # generate male-female, straight-bent shapes
-        self.shapes = generate_shapes(n_body_types_male, n_body_types_female, n_poses_straight, n_poses_bent)
+        self.shapes = generate_shapes(
+            n_body_types_male,
+            n_body_types_female,
+            n_poses_straight,
+            n_poses_bent,
+            use_same_poses_male_female
+            )
         
         # load template mesh
         self.template_mesh = trimesh.load('/home/s94zalek/shape_matching/data/SURREAL_full/template/template.ply')
@@ -64,13 +74,16 @@ class SingleSurrealDataset(Dataset):
             'faces': torch.tensor(self.template_mesh.faces).long(),
             'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
         }
+        # center the template
+        self.template['verts'] = preprocessing.center(self.template['verts'])[0]
+        
         self.template = get_spectral_ops(self.template, num_evecs=self.num_evecs)
      
     
     def get_functional_map(self, data_x, data_y):
 
         # calculate the map
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = 'cuda' if self.use_cuda and torch.cuda.is_available() else 'cpu'
         
         C_gt_xy = torch.linalg.lstsq(
             data_y['evecs'][data_y['corr']].to(device),
@@ -97,6 +110,15 @@ class SingleSurrealDataset(Dataset):
         item['faces'] = self.shapes['faces'][index]
         item['poses'] = self.shapes['poses'][index]
         item['betas'] = self.shapes['betas'][index]
+        
+        # preprocess the shape
+        item['verts'] = preprocessing.center(item['verts'])[0]
+        item['verts'] = preprocessing.scale(
+            input_verts=item['verts'],
+            input_faces=item['faces'],
+            ref_verts=self.template['verts'],
+            ref_faces=self.template['faces']
+        )[0]
         
         # get eigenfunctions/eigenvalues
         item = get_spectral_ops(item, num_evecs=self.num_evecs,)

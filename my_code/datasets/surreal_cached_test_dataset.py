@@ -7,8 +7,8 @@ def preprocess_cached_shape_data(key, cached_data):
     
     cached_data = torch.tensor(cached_data)
         
-    if key in ['C_gt_xy', 'C_gt_yx', 'evals']:
-        cached_data = cached_data.unsqueeze(1)
+    # if key in ['C_gt_xy', 'C_gt_yx', 'evals']:
+    #     cached_data = cached_data.unsqueeze(1)
     
     return cached_data
 
