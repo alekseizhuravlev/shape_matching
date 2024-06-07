@@ -1,0 +1,27 @@
+import torch
+
+import my_code.diffusion_training.sample_model as sample_model
+import my_code.diffusion_training.evaluate_samples as evaluate_samples
+
+
+def validate_epoch(model, noise_scheduler, test_dataset, test_dataloader):
+    model.eval()
+                
+    x_sampled = sample_model.sample(model, test_dataloader, noise_scheduler)  
+
+    ### assign gt signs and unnormalize the samples 
+    x_gt = torch.stack([test_dataset[i]['second']['C_gt_xy'] for i in range(len(test_dataset))])
+    fmap_sampled = torch.sign(x_gt) * (x_sampled + 1) / 2
+    
+    
+    ### calculate metrics and pck
+    metrics = evaluate_samples.calculate_metrics(
+        fmap_sampled,
+        test_dataset
+    )
+    metrics_payload = evaluate_samples.preprocess_metrics(metrics)
+    fig_pck = evaluate_samples.plot_pck(metrics, title=f"PCK")
+    
+    model.train()
+    
+    return model, metrics_payload, {'pck': fig_pck}

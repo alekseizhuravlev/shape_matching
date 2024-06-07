@@ -12,7 +12,13 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching')
 
 from utils.geometry_util import get_operators
 from my_code.datasets.generate_surreal_shapes import generate_shapes
@@ -36,7 +42,7 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     return item
 
 
-class SingleSurrealDataset(Dataset):
+class TemplateSurrealDataset(Dataset):
     def __init__(self,
                  n_body_types_male,
                  n_body_types_female,
@@ -47,7 +53,7 @@ class SingleSurrealDataset(Dataset):
                  use_cuda=True
                  ):
 
-        self.data_root = '/home/s94zalek/shape_matching/data/SURREAL_full'
+        self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
         self.use_cuda = use_cuda
 
@@ -61,7 +67,7 @@ class SingleSurrealDataset(Dataset):
             )
         
         # load template mesh
-        self.template_mesh = trimesh.load('/home/s94zalek/shape_matching/data/SURREAL_full/template/template.ply')
+        self.template_mesh = trimesh.load(f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply')
 
         # sanity check
         assert len(self.shapes) > 0, f'No shapes found'
@@ -88,12 +94,12 @@ class SingleSurrealDataset(Dataset):
         C_gt_xy = torch.linalg.lstsq(
             data_y['evecs'][data_y['corr']].to(device),
             data_x['evecs'][data_x['corr']].to(device)
-            ).solution.to('cpu')
+            ).solution.to('cpu').unsqueeze(0)
         
         C_gt_yx = torch.linalg.lstsq(
             data_x['evecs'][data_x['corr']].to(device),
             data_y['evecs'][data_y['corr']].to(device)
-            ).solution.to('cpu')
+            ).solution.to('cpu').unsqueeze(0)
 
         return C_gt_xy, C_gt_yx
         

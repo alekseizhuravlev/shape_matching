@@ -1,6 +1,11 @@
 import os
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching')
 
 # datasets
 from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
@@ -67,6 +72,7 @@ def preprocess_metrics(metrics):
 
 
 
+
 if __name__ == '__main__':
 
     experiment_name = 'test_32'
@@ -110,17 +116,6 @@ if __name__ == '__main__':
         num_evecs=32
     )
     
-    # print(test_dataset[10]['second']['C_gt_xy'].shape, test_dataset[10]['second']['evals'].shape, test_dataset[10]['first']['evals'].shape)
-    # exit(0)
-    
-    
-    
-    
-    
-    
-    
-    
-    
     # optionally get a subset of the dataset
     if subset_fraction != 100:
         test_dataset = get_subset(test_dataset, subset_fraction / 100)[0]
@@ -138,18 +133,9 @@ if __name__ == '__main__':
     x_sampled = sample_model.sample(model, test_loader, noise_scheduler)    
 
     
-    ### unnormalize the samples and assign gt signs
+    ### assign gt signs and unnormalize the samples 
     x_gt = torch.stack([test_dataset[i]['second']['C_gt_xy'] for i in range(len(test_dataset))])
-    
-    fmap_sampled = []
-    for i in range(len(x_sampled)):
-        fmap_i = x_sampled[i].cpu()
-
-        fmap_i = (fmap_i + 1) / 2
-        fmap_i = fmap_i * torch.sign(x_gt[i])
-
-        fmap_sampled.append(fmap_i)
-    fmap_sampled = torch.stack(fmap_sampled)
+    fmap_sampled = torch.sign(x_gt) * (x_sampled + 1) / 2
     
     
     ### calculate metrics

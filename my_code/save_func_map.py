@@ -189,7 +189,12 @@ if __name__ == '__main__':
     ###############################################
 
     import sys
-    sys.path.append('/home/s94zalek/shape_matching')
+    import os
+    curr_dir = os.getcwd()
+    if 's94zalek_hpc' in curr_dir:
+        sys.path.append('/home/s94zalek_hpc/shape_matching')
+    else:
+        sys.path.append('/home/s94zalek/shape_matching')
 
     from datasets_code import build_dataloader, build_dataset
     from utils.options import parse_options

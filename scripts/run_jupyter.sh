@@ -1,19 +1,24 @@
 #!/bin/bash
-#SBATCH --partition=A40short
-#SBATCH --time=8:00:00
+#SBATCH --partition=mlgpu_medium
+#SBATCH --time=24:00:00
 #SBATCH --gpus=1
 #SBATCH --ntasks=1
-#SBATCH --output=/home/s94zalek/shape_matching/scripts/logs/%j.out     # where to store the output (%j is the JOBID), subdirectory "log" must exist
-#SBATCH --error=/home/s94zalek/shape_matching/scripts/error_logs/%j.err  # where to store error messages
+#SBATCH --account=ag_ifi_laehner
+#SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/%j.out     # where to store the output (%j is the JOBID), subdirectory "log" must exist
+#SBATCH --error=/home/s94zalek_hpc/shape_matching/SLURM_logs/%j.err  # where to store error messages
 
 # Exit on errors
 set -o errexit
 
-module load Anaconda3 libGLU Xvfb
+source /home/s94zalek_hpc/.bashrc
 
-# conda init bash
-activate fmnet
-cd /home/s94zalek/shape_matching
+conda activate fmnet
+cd /home/s94zalek_hpc/shape_matching
+
+# load module
+module load libGLU Xvfb
+
 nvidia-smi
 
 jupyter notebook --no-browser --port 5998 --ip $(hostname -f)
+

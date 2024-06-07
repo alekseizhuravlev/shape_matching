@@ -7,9 +7,16 @@ from tqdm import tqdm
 import argparse
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching/')
 
-from my_code.datasets.surreal_dataset import SingleSurrealDataset
+    
+from my_code.datasets.surreal_dataset import TemplateSurrealDataset
 
 
 def save_train_dataset(
@@ -113,6 +120,9 @@ def parse_args():
     parser.add_argument('--train_fraction', type=float, default=0.93)
     
     args = parser.parse_args()
+    
+    # python my_code/datasets/cache_surreal.py --n_workers 4 --current_worker 0 --n_body_types_male 256 --n_body_types_female 256 --n_poses_straight 462 --n_poses_bent 50 --num_evecs 32
+    
     return args
          
          
@@ -137,7 +147,7 @@ if __name__ == '__main__':
     ####################################################
     
     # create the dataset
-    dataset = SingleSurrealDataset(
+    dataset = TemplateSurrealDataset(
         n_body_types_male=n_body_types_male,
         n_body_types_female=n_body_types_female,
         n_poses_straight=n_poses_straight,
@@ -154,7 +164,7 @@ if __name__ == '__main__':
     
     # folder to store the dataset
     dataset_name = f'dataset_{n_body_types_male}_{n_body_types_female}_{n_poses_straight}_{n_poses_bent}_{num_evecs}_{int(train_fraction*100)}_samePoses_{int(use_same_poses_male_female)}'
-    dataset_folder = f'/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
+    dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
     # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)
     

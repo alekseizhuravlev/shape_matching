@@ -23,7 +23,12 @@ Modules included:
 __all__ = ['load_model', 'save_model']
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching/my_code/datasets/smpl_webuser')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    sys.path.append('/home/s94zalek_hpc/shape_matching/my_code/datasets/smpl_webuser')
+else:
+    sys.path.append('/home/s94zalek/shape_matching/my_code/datasets/smpl_webuser')
 
 import numpy as np
 import pickle

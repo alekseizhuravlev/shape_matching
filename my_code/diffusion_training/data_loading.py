@@ -1,8 +1,15 @@
 import torch
 import numpy as np
 
+import os
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching')
+
 
 from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
 from my_code.datasets.surreal_cached_test_dataset import SurrealTestDataset

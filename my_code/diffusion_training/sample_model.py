@@ -1,5 +1,5 @@
 import torch
-from tqdm.auto import tqdm
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
@@ -8,7 +8,9 @@ def sample(model, test_loader, noise_scheduler):
     device = model.device()
     
     x_sampled_list = []
-    for batch in tqdm(test_loader, total=len(test_loader), desc='Sampling test_loader...'):
+    
+    print('Sampling test loader, device =', device)
+    for batch in test_loader:
         
         # print(batch)
         x_gt, y = batch['second']['C_gt_xy'], batch['second']['evals']  
@@ -18,7 +20,7 @@ def sample(model, test_loader, noise_scheduler):
         y = y.to(device)    
             
         # Sampling loop
-        for i, t in tqdm(enumerate(noise_scheduler.timesteps), total=noise_scheduler.config.num_train_timesteps,
+        for i, t in tqdm(list(enumerate(noise_scheduler.timesteps)), total=noise_scheduler.config.num_train_timesteps,
                          desc='Denoising...'):
 
             # Get model pred

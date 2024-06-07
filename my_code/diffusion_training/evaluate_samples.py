@@ -4,7 +4,13 @@ from tqdm.auto import tqdm
 import matplotlib.pyplot as plt
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching')
 
 import utils.fmap_util as fmap_util
 import metrics.geodist_metric as geodist_metric
@@ -116,3 +122,38 @@ def calculate_metrics(x_sampled, test_dataset):
         metrics[k] = torch.tensor(metrics[k])
         
     return metrics
+
+
+def plot_pck(metrics, title):
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
+
+    thresholds = np.linspace(0., 0.1, 40)
+    ax.plot(thresholds, torch.mean(metrics['pcks'], axis=0), 'r-',
+            label=f'auc: {torch.mean(metrics["auc"]):.2f}')
+    ax.set_xlim(0., 0.1)
+    ax.set_ylim(0, 1)
+    ax.set_xscale('linear')
+    ax.set_xticks([0.025, 0.05, 0.075, 0.1])
+    ax.grid()
+    ax.legend()
+    ax.set_title(title)
+    return fig
+
+
+def preprocess_metrics(metrics):
+    metrics_payload = {}
+    
+    metrics_payload['auc'] = round(metrics['auc'].mean(dim=0).item(), 2)
+    
+    metrics_payload['geo_err_mean'] = round(metrics['geo_err_est'].mean().item() * 100, 1)
+    metrics_payload['geo_err_ratio_mean'] = round(metrics['geo_err_ratio'].mean().item(), 2)
+    metrics_payload['geo_err_ratio_median'] = round(metrics['geo_err_ratio'].median().item(), 2)
+    metrics_payload['geo_err_ratio_max'] = round(metrics['geo_err_ratio'].max().item(), 2)
+    metrics_payload['geo_err_ratio_min'] = round(metrics['geo_err_ratio'].min().item(), 2)
+    
+    metrics_payload['mse_mean'] = round(metrics['mse_abs'].mean().item(), 2)
+    metrics_payload['mse_median'] = round(metrics['mse_abs'].median().item(), 2)
+    metrics_payload['mse_max'] = round(metrics['mse_abs'].max().item(), 2)
+    metrics_payload['mse_min'] = round(metrics['mse_abs'].min().item(), 2)
+    
+    return metrics_payload

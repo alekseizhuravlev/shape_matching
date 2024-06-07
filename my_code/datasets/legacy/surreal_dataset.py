@@ -32,7 +32,7 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     return item
 
 
-class SingleSurrealDataset(Dataset):
+class TemplateSurrealDataset(Dataset):
     def __init__(self,
                  phase,
                  num_evecs=200
@@ -114,7 +114,7 @@ class SingleSurrealDataset(Dataset):
 
 
 if __name__ == '__main__':
-    dataset = SingleSurrealDataset(phase='train', num_evecs=50)
+    dataset = TemplateSurrealDataset(phase='train', num_evecs=50)
     
     fmap_path = '/home/s94zalek/shape_matching/data/SURREAL/functional_maps/train'
     evals_path = '/home/s94zalek/shape_matching/data/SURREAL/eigenvalues/train'

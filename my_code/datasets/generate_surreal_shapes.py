@@ -1,6 +1,11 @@
 import sys
-
-sys.path.append('/home/s94zalek/shape_matching/my_code/datasets')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching/my_code/datasets')
 
 import numpy as np
 # import smplx
@@ -49,7 +54,8 @@ def generate_shapes(
     use_same_poses_male_female
     ):
     
-    database = np.load("/home/s94zalek/shape_matching/data/SURREAL_full/smpl_data.npz")
+    database = np.load(f"/home/{user_name}/shape_matching/data/SURREAL_full/smpl_data.npz")
+    
     
     # fix numpy random seed
     np.random.seed(120)
@@ -61,14 +67,20 @@ def generate_shapes(
     
     
     # generate random male betas
-    random_beta_indices_male = np.random.choice(len(database['maleshapes']), n_body_types_male, replace=False)
+    replace = n_body_types_male > len(database['maleshapes'])
+    print(f"N body types male: {n_body_types_male}, len database: {len(database['maleshapes'])}, replacement: {replace}")
+
+    random_beta_indices_male = np.random.choice(len(database['maleshapes']), n_body_types_male, replace=replace)
     random_betas_male = database['maleshapes'][random_beta_indices_male]
-    m_male = load_model("/home/s94zalek/shape_matching/data/SURREAL_full/smpl/models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl")
+    m_male = load_model(f"/home/{user_name}/shape_matching/data/SURREAL_full/smpl/models/basicmodel_m_lbs_10_207_0_v1.0.0.pkl")
     
     # generate random female betas
-    random_beta_indices_female = np.random.choice(len(database['femaleshapes']), n_body_types_female, replace=False)
+    replace = n_body_types_female > len(database['femaleshapes'])
+    print(f"N body types female: {n_body_types_female}, len database: {len(database['femaleshapes'])}, replacement: {replace}")
+
+    random_beta_indices_female = np.random.choice(len(database['femaleshapes']), n_body_types_female, replace=replace)
     random_betas_female = database['femaleshapes'][random_beta_indices_female]
-    m_female = load_model("/home/s94zalek/shape_matching/data/SURREAL_full/smpl/models/basicModel_f_lbs_10_207_0_v1.0.0.pkl")
+    m_female = load_model(f"/home/{user_name}/shape_matching/data/SURREAL_full/smpl/models/basicModel_f_lbs_10_207_0_v1.0.0.pkl")
     
     
     ####################################################
@@ -100,9 +112,11 @@ def generate_shapes(
     # Generate random poses
     ####################################################
     
+    replace_poses = n_poses_straight + n_poses_bent > len(pose_database)
+    print(f"N poses straight: {n_poses_straight}, N poses bent: {n_poses_bent}, len database: {len(pose_database)}, replacement: {replace_poses}")
         
     # generate random poses without replacement
-    random_pose_indices = np.random.choice(len(pose_database), n_poses_straight + n_poses_bent, replace=False)
+    random_pose_indices = np.random.choice(len(pose_database), n_poses_straight + n_poses_bent, replace=replace_poses)
     random_poses = []
     
     # generate straight poses
@@ -185,7 +199,7 @@ def generate_shapes(
                 
         assert len(random_poses) == len(random_betas_male) + len(random_betas_female), f"Number of poses and shapes should be equal"
         
-        for i in range(len(random_betas_male)):
+        for i in tqdm(range(len(random_betas_male)), desc="Generating male shapes, random poses"):
             pose = random_poses[i]
             beta = random_betas_male[i]
             
@@ -196,7 +210,7 @@ def generate_shapes(
             output['poses'].append(pose)
             output['betas'].append(beta)
             
-        for i in range(len(random_betas_female)):
+        for i in tqdm(range(len(random_betas_female)), desc="Generating female shapes, random poses"):
             pose = random_poses[len(random_betas_male) + i]
             beta = random_betas_female[i]
             
@@ -218,4 +232,10 @@ def generate_shapes(
 
 if __name__ == '__main__':
 
-    print(generate_shapes(n_body_types=5, n_poses=5, male=True, bent=False))
+    print(generate_shapes(
+        n_body_types_female=50000,
+        n_body_types_male=50000,
+        n_poses_straight=90000,
+        n_poses_bent=10000,
+        use_same_poses_male_female=False
+    ))

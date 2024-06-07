@@ -7,7 +7,13 @@ import yaml
 from collections import OrderedDict
 
 import sys
-sys.path.append('/home/s94zalek/shape_matching')
+import os
+curr_dir = os.getcwd()
+if 's94zalek_hpc' in curr_dir:
+    user_name = 's94zalek_hpc'
+else:
+    user_name = 's94zalek'
+sys.path.append(f'/home/{user_name}/shape_matching')
 
 # datasets
 from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
@@ -20,8 +26,14 @@ from diffusers import DDPMScheduler
 # training / evaluation
 from torch.utils.tensorboard import SummaryWriter
 from my_code.diffusion_training.train_model import train_epoch
+from my_code.diffusion_training.validate_model import validate_epoch
 
-from my_code.datasets.surreal_dataset import SingleSurrealDataset
+from my_code.datasets.surreal_dataset import TemplateSurrealDataset
+from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
+
+import my_code.datasets.template_dataset as template_dataset
+import datasets_code.shape_dataset as shape_dataset
+
 
 
 # load config file
@@ -46,16 +58,71 @@ from my_code.datasets.surreal_dataset import SingleSurrealDataset
 # final save of the model
 
 
+def get_datasets(config):
+    
+    experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/{config["experiment_name"]}'
+    
+    # train dataset (SURREAL)
+    dataset_base_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets'
+    train_dataset = SurrealTrainDataset(f'{dataset_base_folder}/{config["dataset_name"]}/train')
+
+    # val dataset (SURREAL)
+    val_dataset = TemplateSurrealDataset3DC(
+        shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_test.pth',
+        num_evecs=config["model_params"]["sample_size"],
+        use_cuda=False,
+        cache_lb_dir=f'{experiment_folder}/cache_lb'
+    )  
+    # select 100 random samples as a subset
+    # val_dataset = torch.utils.data.Subset(val_dataset, np.random.choice(len(val_dataset), 100, replace=False))
+    
+    
+    # test dataset (FAUST)    
+    dataset_faust_single = shape_dataset.SingleFaustDataset(
+        data_root='data/FAUST_original',
+        phase='train',
+        return_faces=True,
+        return_evecs=True, num_evecs=32,
+        return_corr=True, return_dist=False,
+    )
+    test_dataset = template_dataset.TemplateDataset(
+        base_dataset=dataset_faust_single,
+        num_evecs=32,
+    ) 
+    
+    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config["batch_size"], shuffle=True)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
+    
+    return {
+        'train': {
+            'name': 'train-SURREAL',
+            'dataset': train_dataset,
+            'dataloader': train_dataloader,
+        },
+        'val': [{
+            'name': 'val-SURREAL',
+            'dataset': val_dataset,
+            'dataloader': val_dataloader,
+        },{
+            'name': 'test-FAUST',
+            'dataset': test_dataset,
+            'dataloader': test_dataloader,
+        }]
+    }
+
+
+
 if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_noCache',
-        'dataset_name': 'dataset_158_158_316_0_32_93',
+        'experiment_name': 'test_3DCoded_100',
+        'dataset_name': 'dataset_3dc_32',
         
-        'n_epochs': 30,
-        'validate_every': 10,
-        'checkpoint_every': 10,
+        'n_epochs': 100,
+        'validate_every': 5,
+        'checkpoint_every': 5,
         'batch_size': 128,
         
         'model_params': {
@@ -78,10 +145,11 @@ if __name__ == '__main__':
     }   
     
     # experiment setup
-    experiment_folder = f'/home/s94zalek/shape_matching/my_code/experiments/{config["experiment_name"]}'
+    experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/{config["experiment_name"]}'
     shutil.rmtree(experiment_folder, ignore_errors=True)
     os.makedirs(experiment_folder, exist_ok=True)
     os.makedirs(f'{experiment_folder}/checkpoints', exist_ok=True)
+    os.makedirs(f'{experiment_folder}/cache_lb', exist_ok=True)
     
     # save the config file
     with open(f'{experiment_folder}/config.yaml', 'w') as f:
@@ -89,36 +157,17 @@ if __name__ == '__main__':
     
     
     ### Train and test datasets with dataloaders
-    # dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
-    # train_dataset = SurrealTrainDataset(f'{dataset_base_folder}/{config["dataset_name"]}/train')
-    # test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
-    
-    train_dataset = SingleSurrealDataset(
-        n_body_types_male=256,
-        n_body_types_female=256,
-        n_poses_straight=512 - 32,
-        n_poses_bent=32,
-        num_evecs=32,
-        use_same_poses_male_female=False
-    )
-    test_dataset = SingleSurrealDataset(
-        n_body_types_male=64,
-        n_body_types_female=64,
-        n_poses_straight=100,
-        n_poses_bent=28,
-        num_evecs=32,
-        use_same_poses_male_female=False
-    )
-    
-    train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config["batch_size"], shuffle=True)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=config["batch_size"], shuffle=False)
-    
-    print(f'Number of training samples: {len(train_dataset)}, number of test samples: {len(test_dataset)}')
-    print(f'Fmap shape: {train_dataset[10][0].shape}, eval shape: {train_dataset[10][1].shape}')
+    datasets_payload = get_datasets(config)
+
+    print(f'Number of training samples: {len(datasets_payload["train"]["dataset"])}')
+    for val_dataset in datasets_payload["val"]:
+        print(f'Number of {val_dataset["name"]} samples: {len(val_dataset["dataset"])}')
+        
+    print(f'Fmap shape: {datasets_payload["train"]["dataset"][10][0].shape}, ', 
+          f'eval shape: {datasets_payload["train"]["dataset"][10][1].shape}')
         
         
     ### Model
-    # pass config["model_params"] to the model
     model = DiagConditionedUnet(config["model_params"]).to('cuda')
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000, beta_schedule='squaredcos_cap_v2',
                                 clip_sample=True)
@@ -133,21 +182,38 @@ if __name__ == '__main__':
         
         # training step
         model, losses = train_epoch(model, is_unconditional=False,
-                                    train_dataloader=train_dataloader, noise_scheduler=noise_scheduler,
+                                    train_dataloader=datasets_payload["train"]["dataloader"],
+                                    noise_scheduler=noise_scheduler,
                                     opt=opt, loss_fn=loss_fn)
+        
         # save the losses to tensorboard
         for i, loss_value in enumerate(losses):
-            tb_writer.add_scalar(f'loss/train', loss_value, epoch * len(train_dataloader) + i)
+            tb_writer.add_scalar(f'loss/train',
+                                 loss_value, epoch * len(datasets_payload["train"]["dataloader"]) + i
+                                 )
             
         train_iterator.set_description(f'Epoch {epoch}, loss: {sum(losses[-100:])/100:.4f}')
             
             
-            
-            
         # validation step
-        ## TODO
-        
-        
+        if epoch > 0 and (epoch % config["validate_every"] == 0 or epoch == config["n_epochs"] - 1):
+            with torch.no_grad():
+                # iterate over the validation datasets
+                for val_payload in datasets_payload["val"]:
+                    model, metrics_payload, figures_payload = validate_epoch(
+                        model=model,
+                        noise_scheduler=noise_scheduler,
+                        test_dataset=val_payload["dataset"],
+                        test_dataloader=val_payload["dataloader"]
+                    ) 
+                    
+                    # save the metrics to tensorboard                
+                    for k, v in metrics_payload.items():
+                        tb_writer.add_scalar(f'{k}/{val_payload["name"]}', v, epoch)
+                    for k, figure in figures_payload.items():
+                        tb_writer.add_figure(f'{k}/{val_payload["name"]}', figure, epoch)
+                    
+                    
         # save the model checkpoint
         if epoch > 0 and (epoch % config["checkpoint_every"] == 0 or epoch == config["n_epochs"] - 1):
             torch.save(model.state_dict(), f'{experiment_folder}/checkpoints/checkpoint_{epoch}.pt')

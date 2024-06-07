@@ -1,0 +1,48 @@
+import numpy as np
+import os
+
+
+def gather_files(data_dir, prefix):
+    
+    # get all files in dir in alphabetical order
+    files = os.listdir(data_dir)
+    files = sorted(files)
+    
+    files_with_start_end = []
+    for file in files:
+        if prefix in file:
+            file_no_prefix = file.replace(f'{prefix}_', '')
+            # remove extension
+            file_no_prefix = file_no_prefix.split('.')[0]
+            
+            # get the start and end indices
+            start_idx, end_idx = file_no_prefix.split('_')
+            
+            files_with_start_end.append({
+                    'file': file,
+                    'start_idx': int(start_idx),
+                    'end_idx': int(end_idx)
+            })
+            
+    sorted_files = sorted(files_with_start_end, key=lambda x: x['start_idx'])
+    
+    # make a file prefix.txt
+    with open(f'{data_dir}/{prefix}.txt', 'w') as f:
+        for file in sorted_files:
+            print('Appending', file['file'])
+            
+            with open(f'{data_dir}/{file["file"]}', 'r') as file_f:
+                lines = file_f.readlines()
+                for line in lines:
+                    f.write(line)
+            
+    
+
+if __name__ == '__main__':
+    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/dataset_3dc_32/train'
+    # gather_files(data_dir, 'evals')
+    
+    gather_files(data_dir, 'C_gt_xy')
+
+    
+    

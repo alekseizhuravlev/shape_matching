@@ -160,3 +160,5 @@ mnist/MNIST/raw/train-images-idx3-ubyte
 mnist/MNIST/raw/train-images-idx3-ubyte.gz
 mnist/MNIST/raw/train-labels-idx1-ubyte
 mnist/MNIST/raw/train-labels-idx1-ubyte.gz
+
+SLURM_logs/*
