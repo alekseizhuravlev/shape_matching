@@ -4,7 +4,6 @@ import os
 import shutil
 from tqdm import tqdm
 import yaml
-from collections import OrderedDict
 
 import sys
 import os
@@ -71,7 +70,7 @@ def get_datasets(config):
         shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_test.pth',
         num_evecs=config["model_params"]["sample_size"],
         use_cuda=False,
-        cache_lb_dir=f'{experiment_folder}/cache_lb'
+        cache_lb_dir=f'{dataset_base_folder}/{config["dataset_name"]}/test'
     )  
     # select 100 random samples as a subset
     # val_dataset = torch.utils.data.Subset(val_dataset, np.random.choice(len(val_dataset), 100, replace=False))
@@ -88,11 +87,12 @@ def get_datasets(config):
     test_dataset = template_dataset.TemplateDataset(
         base_dataset=dataset_faust_single,
         num_evecs=32,
+        cache_lb_dir='/home/s94zalek_hpc/shape_matching/data/FAUST_scaled/original_32'
     ) 
     
     train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=config["batch_size"], shuffle=True)
-    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=len(val_dataset), shuffle=False)
-    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
+    val_dataloader = torch.utils.data.DataLoader(val_dataset, batch_size=config["eval_batch_size"], shuffle=False)
+    test_dataloader = torch.utils.data.DataLoader(test_dataset, batch_size=config["eval_batch_size"], shuffle=False)
     
     return {
         'train': {
@@ -117,13 +117,15 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_3DCoded_100',
+        'experiment_name': 'test_3DCoded_100_scaledFaust',
         'dataset_name': 'dataset_3dc_32',
         
         'n_epochs': 100,
         'validate_every': 5,
         'checkpoint_every': 5,
+        
         'batch_size': 128,
+        'eval_batch_size': 64,
         
         'model_params': {
             'sample_size': 32,
@@ -149,7 +151,7 @@ if __name__ == '__main__':
     shutil.rmtree(experiment_folder, ignore_errors=True)
     os.makedirs(experiment_folder, exist_ok=True)
     os.makedirs(f'{experiment_folder}/checkpoints', exist_ok=True)
-    os.makedirs(f'{experiment_folder}/cache_lb', exist_ok=True)
+    # os.makedirs(f'{experiment_folder}/cache_lb', exist_ok=True)
     
     # save the config file
     with open(f'{experiment_folder}/config.yaml', 'w') as f:
@@ -196,7 +198,7 @@ if __name__ == '__main__':
             
             
         # validation step
-        if epoch > 0 and (epoch % config["validate_every"] == 0 or epoch == config["n_epochs"] - 1):
+        if epoch > -1 and (epoch % config["validate_every"] == 0 or epoch == config["n_epochs"] - 1 or epoch == 0):
             with torch.no_grad():
                 # iterate over the validation datasets
                 for val_payload in datasets_payload["val"]:

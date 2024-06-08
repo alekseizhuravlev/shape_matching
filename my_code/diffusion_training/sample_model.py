@@ -10,7 +10,7 @@ def sample(model, test_loader, noise_scheduler):
     x_sampled_list = []
     
     print('Sampling test loader, device =', device)
-    for batch in test_loader:
+    for batch in tqdm(test_loader, desc='Sampling test loader...'):
         
         # print(batch)
         x_gt, y = batch['second']['C_gt_xy'], batch['second']['evals']  

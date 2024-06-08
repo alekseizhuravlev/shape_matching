@@ -23,11 +23,15 @@ import my_code.datasets.preprocessing as preprocessing
 class TemplateDataset(Dataset):
     def __init__(self,
                  base_dataset,
-                 num_evecs
+                 num_evecs,
+                 cache_lb_dir,
+                 return_Cxy
                  ):
 
         self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
+        self.cache_lb_dir = cache_lb_dir
+        self.return_Cxy = return_Cxy
 
         # cache the base dataset
         self.base_dataset = []
@@ -74,13 +78,38 @@ class TemplateDataset(Dataset):
         
     def __getitem__(self, index):
         
+        base_item = self.base_dataset[index]
+        
+        item = dict()
+        
+        item['id'] = torch.tensor(index)        
+        item['verts'] = base_item['verts']
+        item['faces'] = base_item['faces']
+        
+        # preprocess the shape
+        item['verts'] = preprocessing.center(item['verts'])[0]
+        item['verts'] = preprocessing.scale(
+            input_verts=item['verts'],
+            input_faces=item['faces'],
+            ref_verts=self.template['verts'],
+            ref_faces=self.template['faces']
+        )[0]
+        
+        # get eigenfunctions/eigenvalues
+        item = get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
+        
+        # 1 to 1 correspondence
+        item['corr'] = base_item['corr']
+        
+        
         payload =  {
             'first': self.template,
-            'second': self.base_dataset[index],
+            'second': item,
         }
         
-        payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
-            self.get_functional_map(payload['first'], payload['second'])
+        if self.return_Cxy:
+            payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
+                self.get_functional_map(payload['first'], payload['second'])
                     
         return payload
 

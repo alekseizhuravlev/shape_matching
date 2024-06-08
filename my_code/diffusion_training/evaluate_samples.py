@@ -145,12 +145,17 @@ def preprocess_metrics(metrics):
     
     metrics_payload['auc'] = round(metrics['auc'].mean(dim=0).item(), 2)
     
+    # geodesic error
     metrics_payload['geo_err_mean'] = round(metrics['geo_err_est'].mean().item() * 100, 1)
+    metrics_payload['geo_err_median'] = round(metrics['geo_err_est'].median().item() * 100, 1)
+    
+    # geodesic error ratio to gt fmap
     metrics_payload['geo_err_ratio_mean'] = round(metrics['geo_err_ratio'].mean().item(), 2)
     metrics_payload['geo_err_ratio_median'] = round(metrics['geo_err_ratio'].median().item(), 2)
     metrics_payload['geo_err_ratio_max'] = round(metrics['geo_err_ratio'].max().item(), 2)
     metrics_payload['geo_err_ratio_min'] = round(metrics['geo_err_ratio'].min().item(), 2)
     
+    # mse to gt fmap
     metrics_payload['mse_mean'] = round(metrics['mse_abs'].mean().item(), 2)
     metrics_payload['mse_median'] = round(metrics['mse_abs'].median().item(), 2)
     metrics_payload['mse_max'] = round(metrics['mse_abs'].max().item(), 2)
