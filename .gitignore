@@ -162,3 +162,8 @@ mnist/MNIST/raw/train-labels-idx1-ubyte
 mnist/MNIST/raw/train-labels-idx1-ubyte.gz
 
 SLURM_logs/*
+*.off
+*.vts
+*.txt
+*.map
+data_with_smpl_corr/*
