@@ -81,8 +81,8 @@ def get_datasets(config):
         data_root='data/FAUST_original',
         phase='train',
         return_faces=True,
-        return_evecs=True, num_evecs=32,
-        return_corr=True, return_dist=False,
+        return_evecs=False, num_evecs=32,
+        return_corr=False, return_dist=False,
     )
     test_dataset = template_dataset.TemplateDataset(
         base_dataset=dataset_faust_single,

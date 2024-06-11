@@ -95,6 +95,9 @@ class TemplateDataset(Dataset):
             ref_faces=self.template['faces']
         )[0]
         
+        item['verts_orig'] = base_item['verts']
+        
+        
         # get eigenfunctions/eigenvalues
         item = get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         

@@ -19,7 +19,9 @@ def validate_epoch(model, noise_scheduler, test_dataset, test_dataloader):
         fmap_sampled,
         test_dataset
     )
+    # calculate mean, median, min, max...
     metrics_payload = evaluate_samples.preprocess_metrics(metrics)
+    # plot pck
     fig_pck = evaluate_samples.plot_pck(metrics, title=f"PCK")
     
     model.train()
