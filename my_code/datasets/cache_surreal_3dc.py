@@ -17,8 +17,6 @@ else:
 sys.path.append(f'/home/{user_name}/shape_matching/')
 
     
-from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
-
 
 def save_train_dataset(
         dataset,
@@ -36,6 +34,14 @@ def save_train_dataset(
     evals_file = os.path.join(train_folder, f'evals_{start_idx}_{end_idx}.txt')
     fmaps_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
     
+    # remove if exist
+    if os.path.exists(evals_file):
+        print(f'Removing {evals_file}')
+        os.remove(evals_file)
+    if os.path.exists(fmaps_file):
+        print(f'Removing {fmaps_file}')
+        os.remove(fmaps_file)
+    
     print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}')
     
     for i, idx in enumerate(train_indices):
@@ -51,7 +57,8 @@ def save_train_dataset(
             
         if i % 100 == 0:
             time_elapsed = time.time() - curr_time
-            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}')
+            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
+                  flush=True)
 
 
 def parse_args():
@@ -82,11 +89,14 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
+    from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
+    
     # create the dataset
     dataset = TemplateSurrealDataset3DC(
         shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_train.pth',
         num_evecs=num_evecs,
-        use_cuda=False
+        use_cuda=False,
+        cache_lb_dir=None
     )    
     
     # sample train/test indices
@@ -94,7 +104,7 @@ if __name__ == '__main__':
     print(f'Number of training samples: {len(train_indices)}')
     
     # folder to store the dataset
-    dataset_name = f'dataset_3dc_{num_evecs}'
+    dataset_name = f'dataset_3dc_faceNorm_{num_evecs}'
     dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
     # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)
@@ -104,17 +114,23 @@ if __name__ == '__main__':
     # Saving
     ####################################################
 
+    # current and total workers
     n_workers = args.n_workers
     current_worker = args.current_worker
     
+    # samples per worker
     n_samples = len(dataset)
     samples_per_worker = n_samples // n_workers
+    
+    # start - end indices
     start = current_worker * samples_per_worker
     end = (current_worker + 1) * samples_per_worker
     if current_worker == n_workers - 1:
         end = n_samples
         
     print(f'Worker {current_worker} processing samples from {start} to {end}')
+    
+    # indices for this worker
     train_indices = train_indices[start:end]
         
 

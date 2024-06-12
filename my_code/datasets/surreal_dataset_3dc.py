@@ -20,10 +20,8 @@ else:
     user_name = 's94zalek'
 sys.path.append(f'/home/{user_name}/shape_matching')
 
-from utils.geometry_util import get_operators
-from my_code.datasets.generate_surreal_shapes import generate_shapes
 import my_code.datasets.preprocessing as preprocessing
-from my_code.datasets.surreal_dataset import get_spectral_ops
+# from my_code.datasets.surreal_legacy.surreal_dataset import get_spectral_ops
 
 
 class TemplateSurrealDataset3DC(Dataset):
@@ -33,6 +31,8 @@ class TemplateSurrealDataset3DC(Dataset):
                  use_cuda,
                  cache_lb_dir
                  ):
+        
+        # raise RuntimeError("Use regular TemplateDataset")
 
         self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
@@ -57,9 +57,14 @@ class TemplateSurrealDataset3DC(Dataset):
             'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
         }
         # center the template
-        self.template['verts'] = preprocessing.center(self.template['verts'])[0]
+        # self.template['verts'] = preprocessing.center(self.template['verts'])[0]
         
-        self.template = get_spectral_ops(self.template, num_evecs=self.num_evecs)
+        # center the template
+        self.template['verts'] = preprocessing.center_bbox(self.template['verts'])
+        self.template['verts'] = preprocessing.normalize_face_area(self.template['verts'], self.template['faces'])
+            
+        
+        self.template = preprocessing.get_spectral_ops(self.template, num_evecs=self.num_evecs)
      
     
     def get_functional_map(self, data_x, data_y):
@@ -90,16 +95,20 @@ class TemplateSurrealDataset3DC(Dataset):
         item['faces'] = self.template['faces']
         
         # preprocess the shape
-        item['verts'] = preprocessing.center(item['verts'])[0]
-        item['verts'] = preprocessing.scale(
-            input_verts=item['verts'],
-            input_faces=item['faces'],
-            ref_verts=self.template['verts'],
-            ref_faces=self.template['faces']
-        )[0]
+        # item['verts'] = preprocessing.center(item['verts'])[0]
+        # item['verts'] = preprocessing.scale(
+        #     input_verts=item['verts'],
+        #     input_faces=item['faces'],
+        #     ref_verts=self.template['verts'],
+        #     ref_faces=self.template['faces']
+        # )[0]
+        
+        item['verts'] = preprocessing.center_bbox(item['verts'])
+        item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
+        
         
         # get eigenfunctions/eigenvalues
-        item = get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
+        item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         
         # 1 to 1 correspondence
         item['corr'] = torch.tensor(list(range(len(item['verts']))))        

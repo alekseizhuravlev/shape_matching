@@ -13,49 +13,76 @@ else:
     user_name = 's94zalek'
 sys.path.append(f'/home/{user_name}/shape_matching')
 
-from my_code.datasets.surreal_dataset import get_spectral_ops
+# from shape_matching.my_code.datasets.surreal_legacy.surreal_dataset import get_spectral_ops
 
 import datasets_code.shape_dataset as shape_dataset
 import my_code.datasets.preprocessing as preprocessing
 
 
+def get_template(template_path, num_evecs, template_corr, centering):
+    
+    # load template mesh
+    template_mesh = trimesh.load(template_path, process=False)
+
+    assert template_mesh is not None, f'No template_mesh found'
+    
+    # make the template object
+    template = {
+        'id': torch.tensor(-1),
+        'verts': torch.tensor(template_mesh.vertices).float(),
+        'faces': torch.tensor(template_mesh.faces).long(),
+        'corr': torch.tensor(template_corr),
+    }
+    
+    # center the template
+    if centering == 'bbox':
+        template['verts'] = preprocessing.center_bbox(template['verts'])
+    elif centering == 'mean':
+        template['verts'] = preprocessing.center_mean(template['verts'])
+    else:
+        raise RuntimeError(f'centering={centering} not recognized')
+    
+    # normalize vertices
+    template['verts'] = preprocessing.normalize_face_area(template['verts'], template['faces'])
+        
+    # get spectral operators
+    template = preprocessing.get_spectral_ops(template, num_evecs=num_evecs)
+    
+    return template
+        
+    
+
 
 class TemplateDataset(Dataset):
     def __init__(self,
                  base_dataset,
+                 template_path,
+                 template_corr,
                  num_evecs,
-                 cache_lb_dir,
-                 return_Cxy
+                 return_Cxy=True,
+                 preload_base_dataset=True
                  ):
 
-        self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
-        self.cache_lb_dir = cache_lb_dir
         self.return_Cxy = return_Cxy
 
         # cache the base dataset
-        self.base_dataset = []
-        for i in tqdm(range(len(base_dataset)), desc='Loading base dataset'):
-            self.base_dataset.append(base_dataset[i])
-        
-        # load template mesh
-        self.template_mesh = trimesh.load(f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply', process=False)
-
-        # sanity check
+        if preload_base_dataset:
+            self.base_dataset = []
+            for i in tqdm(range(len(base_dataset)), desc='Loading base dataset'):
+                self.base_dataset.append(base_dataset[i])
+        else:
+            self.base_dataset = base_dataset
+            
         assert len(self.base_dataset) > 0, f'No base_dataset found'
-        assert self.template_mesh is not None, f'No template_mesh found'
         
-        # make the template object
-        self.template = {
-            'id': torch.tensor(-1),
-            'verts': torch.tensor(self.template_mesh.vertices).float(),
-            'faces': torch.tensor(self.template_mesh.faces).long(),
-            'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
-        }
-        # center the template
-        self.template['verts'] = preprocessing.center(self.template['verts'])[0]
-        
-        self.template = get_spectral_ops(self.template, num_evecs=self.num_evecs)
+        # get the template
+        self.template = get_template(
+            template_path=template_path,
+            num_evecs=num_evecs,
+            template_corr=template_corr,
+            centering=base_dataset.centering
+            )
         
         
     def get_functional_map(self, data_x, data_y):
@@ -78,31 +105,35 @@ class TemplateDataset(Dataset):
         
     def __getitem__(self, index):
         
-        base_item = self.base_dataset[index]
+        # base_item = self.base_dataset[index]
         
-        item = dict()
+        # item = dict()
         
-        item['id'] = torch.tensor(index)        
-        item['verts'] = base_item['verts']
-        item['faces'] = base_item['faces']
+        # item['id'] = torch.tensor(index)        
+        # item['verts'] = base_item['verts']
+        # item['faces'] = base_item['faces']
         
-        # preprocess the shape
-        item['verts'] = preprocessing.center(item['verts'])[0]
-        item['verts'] = preprocessing.scale(
-            input_verts=item['verts'],
-            input_faces=item['faces'],
-            ref_verts=self.template['verts'],
-            ref_faces=self.template['faces']
-        )[0]
+        # # preprocess the shape
+        # item['verts'] = preprocessing.center(item['verts'])[0]
+        # item['verts'] = preprocessing.scale(
+        #     input_verts=item['verts'],
+        #     input_faces=item['faces'],
+        #     ref_verts=self.template['verts'],
+        #     ref_faces=self.template['faces']
+        # )[0]
         
-        item['verts_orig'] = base_item['verts']
+        # item['verts_orig'] = base_item['verts']
         
         
-        # get eigenfunctions/eigenvalues
-        item = get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
+        # # get eigenfunctions/eigenvalues
+        # item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         
-        # 1 to 1 correspondence
-        item['corr'] = base_item['corr']
+        # # 1 to 1 correspondence
+        # item['corr'] = base_item['corr']
+        
+        
+        item = self.base_dataset[index]
+        item['id'] = torch.tensor(index)
         
         
         payload =  {

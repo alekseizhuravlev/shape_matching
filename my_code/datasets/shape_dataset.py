@@ -3,13 +3,14 @@ import numpy as np
 import scipy.io as sio
 from itertools import product
 from glob import glob
+import shutil
 
 import torch
 from torch.utils.data import Dataset
 
 from utils.shape_util import read_shape
-from utils.geometry_util import get_operators
-from utils.registry import DATASET_REGISTRY
+
+import my_code.datasets.preprocessing as preprocessing
 
 from tqdm import tqdm
 
@@ -21,30 +22,13 @@ def sort_list(l):
         return sorted(l)
 
 
-def get_spectral_ops(item, num_evecs, cache_dir=None):
-    if not os.path.isdir(cache_dir):
-        os.makedirs(cache_dir)
-    _, mass, L, evals, evecs, _, _ = get_operators(item['verts'], item.get('faces'),
-                                                   k=num_evecs,
-                                                   cache_dir=cache_dir)
-    
-    evals = evals.unsqueeze(0)
-    
-    evecs_trans = evecs.T * mass[None]
-    item['evecs'] = evecs[:, :num_evecs]
-    item['evecs_trans'] = evecs_trans[:num_evecs]
-    item['evals'] = evals[:num_evecs]
-    item['mass'] = mass
-    item['L'] = L.to_dense()
-
-    return item
-
-
 class SingleShapeDataset(Dataset):
     def __init__(self,
                  data_root, return_faces=True,
                  return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
+                 return_corr=True, return_dist=False,
+                 lb_cache_dir=None, centering='bbox'
+                 ):
         """
         Single Shape Dataset
 
@@ -56,9 +40,6 @@ class SingleShapeDataset(Dataset):
             return_corr (bool, optional): Indicate whether return the correspondences to reference shape. Default True.
             return_dist (bool, optional): Indicate whether return the geodesic distance of the shape. Default False.
         """
-        
-        raise RuntimeError("Use my_code version")
-        
         # sanity check
         assert os.path.isdir(data_root), f'Invalid data root: {data_root}.'
 
@@ -69,6 +50,13 @@ class SingleShapeDataset(Dataset):
         self.return_corr = return_corr
         self.return_dist = return_dist
         self.num_evecs = num_evecs
+        
+        self.lb_cache_dir = lb_cache_dir
+        if self.lb_cache_dir is not None:
+            shutil.rmtree(self.lb_cache_dir, ignore_errors=True)
+            os.makedirs(self.lb_cache_dir)
+        
+        self.centering = centering
 
         self.off_files = []
         self.corr_files = [] if self.return_corr else None
@@ -104,6 +92,7 @@ class SingleShapeDataset(Dataset):
             assert os.path.isdir(dist_path), f'Invalid path {dist_path} not containing .mat files'
             self.dist_files = sort_list(glob(f'{dist_path}/*.mat'))
 
+
     def __getitem__(self, index):
         item = dict()
 
@@ -117,10 +106,27 @@ class SingleShapeDataset(Dataset):
         item['verts'] = torch.from_numpy(verts).float()
         if self.return_faces:
             item['faces'] = torch.from_numpy(faces).long()
+            
+            
+        # center vertices
+        if self.centering == 'bbox':
+            item['verts'] = preprocessing.center_bbox(item['verts'])
+        elif self.centering == 'mean':
+            item['verts'] = preprocessing.center_mean(item['verts'])
+        else:
+            raise ValueError(f'Invalid centering method: {self.centering}')
+            
+        # normalize vertices by area
+        item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
+        
 
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
-            item = get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=os.path.join(self.data_root, 'diffusion'))
+            # cache_dir = os.path.join(self.data_root, 'diffusion')
+            
+            item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs,
+                                                  cache_dir=self.lb_cache_dir)
+
 
         # get geodesic distance matrix
         if self.return_dist:
@@ -138,7 +144,9 @@ class SingleShapeDataset(Dataset):
         return self._size
 
 
-@DATASET_REGISTRY.register()
+
+
+
 class SingleFaustDataset(SingleShapeDataset):
     def __init__(self, data_root,
                  phase, return_faces=True,
@@ -167,7 +175,7 @@ class SingleFaustDataset(SingleShapeDataset):
             self._size = 20
 
 
-@DATASET_REGISTRY.register()
+
 class SingleScapeDataset(SingleShapeDataset):
     def __init__(self, data_root,
                  phase, return_faces=True,
@@ -196,7 +204,7 @@ class SingleScapeDataset(SingleShapeDataset):
             self._size = 20
 
 
-@DATASET_REGISTRY.register()
+
 class SingleShrec19Dataset(SingleShapeDataset):
     def __init__(self, data_root,
                  return_faces=True,
@@ -205,7 +213,7 @@ class SingleShrec19Dataset(SingleShapeDataset):
         super(SingleShrec19Dataset, self).__init__(data_root, return_faces, return_evecs, num_evecs, False, return_dist)
 
 
-@DATASET_REGISTRY.register()
+
 class SingleSmalDataset(SingleShapeDataset):
     def __init__(self, data_root, phase='train', category=True,
                  return_faces=True,
@@ -232,7 +240,7 @@ class SingleSmalDataset(SingleShapeDataset):
                     self.dist_files += [os.path.join(self.data_root, 'dist', f'{line}.mat')]
 
 
-@DATASET_REGISTRY.register()
+
 class SingleDT4DDataset(SingleShapeDataset):
     def __init__(self, data_root, phase='train',
                  return_faces=True,
@@ -257,7 +265,7 @@ class SingleDT4DDataset(SingleShapeDataset):
                         self.dist_files += [os.path.join(self.data_root, 'dist', f'{line}.mat')]
 
 
-@DATASET_REGISTRY.register()
+
 class SingleShrec20Dataset(SingleShapeDataset):
     def __init__(self, data_root,
                  return_faces=True,
@@ -266,7 +274,7 @@ class SingleShrec20Dataset(SingleShapeDataset):
                                                    return_evecs, num_evecs, False, False)
 
 
-@DATASET_REGISTRY.register()
+
 class SingleTopKidsDataset(SingleShapeDataset):
     def __init__(self, data_root,
                  return_faces=True,
@@ -365,8 +373,8 @@ class PairShapeDataset(Dataset):
         item['second']['C_gt_xy'] = self.Cxy_list[index]
         item['second']['C_gt_yx'] = self.Cyx_list[index]
         
-        item['second']['Vxy'] = self.Vxy_list[index]
-        item['second']['Rxy'] = self.Rxy_list[index]
+        # item['second']['Vxy'] = self.Vxy_list[index]
+        # item['second']['Rxy'] = self.Rxy_list[index]
 
         return item
 
@@ -374,7 +382,11 @@ class PairShapeDataset(Dataset):
         return len(self.combinations)
 
 
-@DATASET_REGISTRY.register()
+
+
+
+
+
 class PairDataset(PairShapeDataset):
     def __init__(self, data_root, return_faces=True,
                  return_evecs=True, num_evecs=200,
@@ -384,7 +396,7 @@ class PairDataset(PairShapeDataset):
         super(PairDataset, self).__init__(dataset)
 
 
-@DATASET_REGISTRY.register()
+
 class PairFaustDataset(PairShapeDataset):
     def __init__(self, data_root,
                  phase, return_faces=True,
@@ -396,7 +408,7 @@ class PairFaustDataset(PairShapeDataset):
         super(PairFaustDataset, self).__init__(dataset)
 
 
-@DATASET_REGISTRY.register()
+
 class PairScapeDataset(PairShapeDataset):
     def __init__(self, data_root,
                  phase, return_faces=True,
@@ -408,7 +420,7 @@ class PairScapeDataset(PairShapeDataset):
         super(PairScapeDataset, self).__init__(dataset)
 
 
-@DATASET_REGISTRY.register()
+
 class PairShrec19Dataset(Dataset):
     def __init__(self, data_root, phase='test',
                  return_faces=True,
@@ -452,7 +464,7 @@ class PairShrec19Dataset(Dataset):
         return item
 
 
-@DATASET_REGISTRY.register()
+
 class PairSmalDataset(PairShapeDataset):
     def __init__(self, data_root, phase='train',
                  category=True, return_faces=True,
@@ -464,7 +476,7 @@ class PairSmalDataset(PairShapeDataset):
         super(PairSmalDataset, self).__init__(dataset=dataset)
 
 
-@DATASET_REGISTRY.register()
+
 class PairDT4DDataset(PairShapeDataset):
     def __init__(self, data_root, phase='train',
                  inter_class=False, return_faces=True,
@@ -511,7 +523,7 @@ class PairDT4DDataset(PairShapeDataset):
         return item
 
 
-@DATASET_REGISTRY.register()
+
 class PairShrec20Dataset(PairShapeDataset):
     def __init__(self, data_root,
                  return_faces=True,
@@ -520,7 +532,7 @@ class PairShrec20Dataset(PairShapeDataset):
         super(PairShrec20Dataset, self).__init__(dataset=dataset)
 
 
-@DATASET_REGISTRY.register()
+
 class PairShrec16Dataset(Dataset):
     """
     Pair SHREC16 Dataset
@@ -623,7 +635,7 @@ class PairShrec16Dataset(Dataset):
 
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
-            full_data = get_spectral_ops(full_data, self.num_evecs, cache_dir=os.path.join(self.data_root, 'null',
+            full_data = preprocessing.get_spectral_ops(full_data, self.num_evecs, cache_dir=os.path.join(self.data_root, 'null',
                                                                                            'diffusion'))
 
         # get geodesic distance matrix
@@ -645,7 +657,7 @@ class PairShrec16Dataset(Dataset):
 
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
-            partial_data = get_spectral_ops(partial_data, self.num_evecs,
+            partial_data = preprocessing.get_spectral_ops(partial_data, self.num_evecs,
                                             cache_dir=os.path.join(self.data_root, self.cut_type, 'diffusion'))
 
         # get correspondences
@@ -660,7 +672,7 @@ class PairShrec16Dataset(Dataset):
         return self._size
 
 
-@DATASET_REGISTRY.register()
+
 class PairTopKidsDataset(Dataset):
     def __init__(self, data_root, phase='train',
                  return_faces=True,

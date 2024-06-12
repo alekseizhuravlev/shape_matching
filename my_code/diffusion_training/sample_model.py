@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     # datasets
     from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
-    from my_code.datasets.surreal_cached_test_dataset import SurrealTestDataset
+    from shape_matching.my_code.datasets.surreal_legacy.surreal_cached_test_dataset import SurrealTestDataset
 
     # models
     from my_code.models.diag_conditional import DiagConditionedUnet

@@ -4,9 +4,15 @@ import my_code.diffusion_training.sample_model as sample_model
 import my_code.diffusion_training.evaluate_samples as evaluate_samples
 
 
-def validate_epoch(model, noise_scheduler, test_dataset, test_dataloader):
+def validate_epoch(model, noise_scheduler, val_payload):
+    
     model.eval()
+    
+    # unpack the validation payload
+    test_dataset = val_payload['dataset']
+    test_dataloader = val_payload['dataloader']
                 
+    # sample the model
     x_sampled = sample_model.sample(model, test_dataloader, noise_scheduler)  
 
     ### assign gt signs and unnormalize the samples 

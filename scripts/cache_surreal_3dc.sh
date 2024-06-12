@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH -t 8:00:00
 #SBATCH --array=0-19
-#SBATCH --mem=30G
+#SBATCH --mem=50G
 #SBATCH --partition=intelsr_medium
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/cache_surreal_%A_%a.out

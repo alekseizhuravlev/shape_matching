@@ -21,7 +21,7 @@ else:
 sys.path.append(f'/home/{user_name}/shape_matching')
 
 from utils.geometry_util import get_operators
-from my_code.datasets.generate_surreal_shapes import generate_shapes
+from shape_matching.my_code.datasets.surreal_legacy.generate_surreal_shapes import generate_shapes
 import my_code.datasets.preprocessing as preprocessing
 
 

@@ -9,7 +9,7 @@ sys.path.append(f'/home/{user_name}/shape_matching')
 
 # datasets
 from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
-from my_code.datasets.surreal_cached_test_dataset import SurrealTestDataset
+from shape_matching.my_code.datasets.surreal_legacy.surreal_cached_test_dataset import SurrealTestDataset
 import my_code.diffusion_training.sample_model as sample_model
 import my_code.diffusion_training.evaluate_samples as evaluate_samples
 
