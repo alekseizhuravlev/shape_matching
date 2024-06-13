@@ -71,6 +71,11 @@ class TemplateDataset(Dataset):
             self.base_dataset = []
             for i in tqdm(range(len(base_dataset)), desc='Loading base dataset'):
                 self.base_dataset.append(base_dataset[i])
+                
+            # self.base_dataset = base_dataset
+            # for i in tqdm(range(len(self.base_dataset)), desc='Loading base dataset'):
+            #     self.base_dataset[i]
+                
         else:
             self.base_dataset = base_dataset
             

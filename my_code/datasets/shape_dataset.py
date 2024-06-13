@@ -52,9 +52,9 @@ class SingleShapeDataset(Dataset):
         self.num_evecs = num_evecs
         
         self.lb_cache_dir = lb_cache_dir
-        if self.lb_cache_dir is not None:
-            shutil.rmtree(self.lb_cache_dir, ignore_errors=True)
-            os.makedirs(self.lb_cache_dir)
+        # if self.lb_cache_dir is not None:
+        #     shutil.rmtree(self.lb_cache_dir, ignore_errors=True)
+        #     os.makedirs(self.lb_cache_dir)
         
         self.centering = centering
 
@@ -148,13 +148,8 @@ class SingleShapeDataset(Dataset):
 
 
 class SingleFaustDataset(SingleShapeDataset):
-    def __init__(self, data_root,
-                 phase, return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
-        super(SingleFaustDataset, self).__init__(data_root, return_faces,
-                                                 return_evecs, num_evecs,
-                                                 return_corr, return_dist)
+    def __init__(self, phase, **kwargs):
+        super(SingleFaustDataset, self).__init__(**kwargs)
         assert phase in ['train', 'test', 'full'], f'Invalid phase {phase}, only "train" or "test" or "full"'
         assert len(self) == 100, f'FAUST dataset should contain 100 human body shapes, but get {len(self)}.'
         if phase == 'train':
@@ -295,7 +290,7 @@ class DatasetFromListOfDicts(Dataset):
 
 
 class PairShapeDataset(Dataset):
-    def __init__(self, dataset):
+    def __init__(self, dataset, cache_base_dataset):
         """
         Pair Shape Dataset
 
@@ -303,62 +298,64 @@ class PairShapeDataset(Dataset):
             dataset (SingleShapeDataset): single shape dataset
         """
         assert isinstance(dataset, SingleShapeDataset), f'Invalid input data type of dataset: {type(dataset)}'
-        # self.dataset = dataset
         
-        # construct a new dataset by iterating over all elements of the provided dataset and saving them in a list
-        self.dataset = DatasetFromListOfDicts(
-            [dataset[i] for i in tqdm(range(len(dataset)), desc="Constructing DatasetFromListOfDicts")]
-        )
-        
+                
         # make combinations of all pairs        
         self.combinations = list(product(range(len(dataset)), repeat=2))
+        self.cache_base_dataset = cache_base_dataset
         
-        # lists for functional maps and difference operators
-        self.Cxy_list = []
-        self.Cyx_list = []
         
-        self.Vxy_list = []
-        self.Rxy_list = []
+        # construct a new dataset by iterating over all elements of the provided dataset and saving them in a list        
         
-        # iterate over all pairs, calculate the functional map + differences for each pair
-        for i in tqdm(range(len(self.combinations)), desc="Calculating functional maps"):
-            # get the pair
-            first_index, second_index = self.combinations[i]
-            data_x = self.dataset[first_index]
-            data_y = self.dataset[second_index]
+        if not cache_base_dataset:
+            self.dataset = dataset
             
-            device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        
-            # functional map in both directions
-            # Fy @ Cxy = Fx
-            C_gt_xy_lstsq = torch.linalg.lstsq(
-                data_y['evecs'][data_y['corr']].to(device),
-                data_x['evecs'][data_x['corr']].to(device)
-                ).solution
+        else:
+            self.dataset = DatasetFromListOfDicts(
+                [dataset[i] for i in tqdm(range(len(dataset)), desc="Constructing DatasetFromListOfDicts")]
+            )
+            # lists for functional maps and difference operators
+            self.Cxy_list = []
+            self.Cyx_list = []
             
-            # Fx @ Cyx = Fy
-            C_gt_yx_lstsq = torch.linalg.lstsq(
-                data_x['evecs'][data_x['corr']].to(device),
-                data_y['evecs'][data_y['corr']].to(device)
-                ).solution
+            self.Vxy_list = []
+            self.Rxy_list = []
             
-            # # area shape difference
-            # V_xy = C_gt_xy_lstsq.T @ C_gt_xy_lstsq
-            
-            # # conformal shape difference
-            # R_xy = torch.diag(-1 / data_x['evals'].to(device)) @ \
-            #     C_gt_xy_lstsq.T @ \
-            #     torch.diag(- data_y['evals'].to(device)) @ \
-            #     C_gt_xy_lstsq
+            # iterate over all pairs, calculate the functional map + differences for each pair
+            for i in tqdm(range(len(self.combinations)), desc="Calculating functional maps"):
+                # get the pair
+                first_index, second_index = self.combinations[i]
+                data_x = self.dataset[first_index]
+                data_y = self.dataset[second_index]
 
-            # append the functional maps to the lists
-            self.Cxy_list.append(C_gt_xy_lstsq.to('cpu'))
-            self.Cyx_list.append(C_gt_yx_lstsq.to('cpu'))
-            
-            # self.Vxy_list.append(V_xy.to('cpu'))
-            # self.Rxy_list.append(R_xy.to('cpu'))
-            
-            
+                # functional map in both directions
+                # Fy @ Cxy = Fx
+                C_gt_xy_lstsq = torch.linalg.lstsq(
+                    data_y['evecs'][data_y['corr']],
+                    data_x['evecs'][data_x['corr']]
+                    ).solution.unsqueeze(0)
+                
+                # Fx @ Cyx = Fy
+                C_gt_yx_lstsq = torch.linalg.lstsq(
+                    data_x['evecs'][data_x['corr']],
+                    data_y['evecs'][data_y['corr']]
+                    ).solution.unsqueeze(0)
+                    
+                # append the functional maps to the lists
+                self.Cxy_list.append(C_gt_xy_lstsq.to('cpu'))
+                self.Cyx_list.append(C_gt_yx_lstsq.to('cpu'))
+                                       
+                # # area shape difference
+                # V_xy = C_gt_xy_lstsq.T @ C_gt_xy_lstsq
+                
+                # # conformal shape difference
+                # R_xy = torch.diag(-1 / data_x['evals'].to(device)) @ \
+                #     C_gt_xy_lstsq.T @ \
+                #     torch.diag(- data_y['evals'].to(device)) @ \
+                #     C_gt_xy_lstsq
+
+                # self.Vxy_list.append(V_xy.to('cpu'))
+                # self.Rxy_list.append(R_xy.to('cpu'))
             
 
     def __getitem__(self, index):
@@ -369,14 +366,34 @@ class PairShapeDataset(Dataset):
         item['first'] = self.dataset[first_index]
         item['second'] = self.dataset[second_index]
         
+        item['first']['id'] = torch.tensor(first_index)
+        item['second']['id'] = torch.tensor(second_index)       
         
-        item['second']['C_gt_xy'] = self.Cxy_list[index]
-        item['second']['C_gt_yx'] = self.Cyx_list[index]
         
-        # item['second']['Vxy'] = self.Vxy_list[index]
-        # item['second']['Rxy'] = self.Rxy_list[index]
-
+        if self.cache_base_dataset:
+            item['second']['C_gt_xy'] = self.Cxy_list[index]
+            item['second']['C_gt_yx'] = self.Cyx_list[index]
+            
+            # item['second']['Vxy'] = self.Vxy_list[index]
+            # item['second']['Rxy'] = self.Rxy_list[index]
+            
+        else:
+            C_gt_xy_lstsq = torch.linalg.lstsq(
+                item['second']['evecs'][item['second']['corr']],
+                item['first']['evecs'][item['first']['corr']]
+                ).solution.unsqueeze(0)
+            
+            # Fx @ Cyx = Fy
+            C_gt_yx_lstsq = torch.linalg.lstsq(
+                item['first']['evecs'][item['first']['corr']],
+                item['second']['evecs'][item['second']['corr']]
+                ).solution.unsqueeze(0)
+            
+            item['second']['C_gt_xy'] = C_gt_xy_lstsq
+            item['second']['C_gt_yx'] = C_gt_yx_lstsq
+            
         return item
+    
 
     def __len__(self):
         return len(self.combinations)
@@ -422,18 +439,21 @@ class PairScapeDataset(PairShapeDataset):
 
 
 class PairShrec19Dataset(Dataset):
-    def __init__(self, data_root, phase='test',
+    def __init__(self, dataset, phase='test',
                  return_faces=True,
                  return_evecs=True, num_evecs=200,
                  return_dist=False):
         assert phase in ['train', 'test'], f'Invalid phase: {phase}'
-        self.dataset = SingleShrec19Dataset(data_root, return_faces, return_evecs, num_evecs, return_dist)
+        # self.dataset = SingleShrec19Dataset(data_root, return_faces, return_evecs, num_evecs, return_dist)
+        
+        self.dataset = dataset
+        
         self.phase = phase
         if phase == 'test':
-            corr_path = os.path.join(data_root, 'corres')
+            corr_path = os.path.join(self.dataset.data_root, 'corres_pair')
             assert os.path.isdir(corr_path), f'Invalid path {corr_path} not containing .vts files'
             # ignore the shape 40, since it is a partial shape
-            self.corr_files = list(filter(lambda x: '40' not in x, sort_list(glob(f'{corr_path}/*.map'))))
+            self.corr_files = list(filter(lambda x: '40' not in x, sort_list(glob(f'{corr_path}/*.txt'))))
             self._size = len(self.corr_files)
         else:
             self.combinations = list(product(range(len(self.dataset)), repeat=2))
@@ -461,7 +481,28 @@ class PairShrec19Dataset(Dataset):
             corr = np.loadtxt(self.corr_files[index], dtype=np.int32) - 1  # minus 1 to start from 0
             item['first']['corr'] = torch.arange(0, len(corr)).long()
             item['second']['corr'] = torch.from_numpy(corr).long()
+            
+        
+        item['first']['id'] = torch.tensor(first_index)
+        item['second']['id'] = torch.tensor(second_index)
+        
+        
+        C_gt_xy_lstsq = torch.linalg.lstsq(
+            item['second']['evecs'][item['second']['corr']],
+            item['first']['evecs'][item['first']['corr']]
+            ).solution.unsqueeze(0)
+        
+        # Fx @ Cyx = Fy
+        C_gt_yx_lstsq = torch.linalg.lstsq(
+            item['first']['evecs'][item['first']['corr']],
+            item['second']['evecs'][item['second']['corr']]
+            ).solution.unsqueeze(0)
+        
+        item['second']['C_gt_xy'] = C_gt_xy_lstsq
+        item['second']['C_gt_yx'] = C_gt_yx_lstsq
+            
         return item
+    
 
 
 

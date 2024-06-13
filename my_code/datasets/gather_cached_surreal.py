@@ -29,18 +29,20 @@ def gather_files(data_dir, prefix):
     # make a file prefix.txt
     with open(f'{data_dir}/{prefix}.txt', 'w') as f:
         for file in sorted_files:
-            print('Appending', file['file'])
-            
+                        
             with open(f'{data_dir}/{file["file"]}', 'r') as file_f:
                 lines = file_f.readlines()
+                
+                print('Appending', file['file'], 'lines:', len(lines))
+                
                 for line in lines:
                     f.write(line)
             
     
 
 if __name__ == '__main__':
-    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/dataset_3dc_32/train'
-    # gather_files(data_dir, 'evals')
+    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/dataset_3dc_faceNorm_32/train'
+    gather_files(data_dir, 'evals')
     
     gather_files(data_dir, 'C_gt_xy')
 

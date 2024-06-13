@@ -8,8 +8,6 @@ else:
 sys.path.append(f'/home/{user_name}/shape_matching')
 
 # datasets
-from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
-from shape_matching.my_code.datasets.surreal_legacy.surreal_cached_test_dataset import SurrealTestDataset
 import my_code.diffusion_training.sample_model as sample_model
 import my_code.diffusion_training.evaluate_samples as evaluate_samples
 
@@ -23,6 +21,11 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import matplotlib.pyplot as plt
+
+import my_code.datasets.template_dataset as template_dataset
+import my_code.datasets.shape_dataset as shape_dataset
+
+import my_code.diffusion_training.data_loading as data_loading
 
 
 
@@ -75,14 +78,15 @@ def preprocess_metrics(metrics):
 
 if __name__ == '__main__':
 
-    experiment_name = 'test_32'
-    checkpoint_name = 'checkpoint_29'
+    experiment_name = 'test_faceScaling_faustRA'
+    checkpoint_name = 'checkpoint_60'
     subset_fraction = 100
-    dataset_name = 'faust'
+    # dataset_name = 'FAUST_orig'
+    dataset_name = 'SHREC19'
 
-    
+
     ### config
-    exp_base_folder = f'/home/s94zalek/shape_matching/my_code/experiments/{experiment_name}'
+    exp_base_folder = f'/home/{user_name}/shape_matching/my_code/experiments/{experiment_name}'
     with open(f'{exp_base_folder}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -91,61 +95,84 @@ if __name__ == '__main__':
     model = DiagConditionedUnet(config["model_params"]).to('cuda')
     model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}.pt"))
     model = model.to('cuda')
-    
-    
-    ### dataset
-    # dataset_base_folder = '/home/s94zalek/shape_matching/data/SURREAL_full/full_datasets'
-    # test_dataset = SurrealTestDataset(f'{dataset_base_folder}/{config["dataset_name"]}/test')
-    
-    
 
-    
-    import my_code.datasets.template_dataset as template_dataset
-    import datasets_code.shape_dataset as shape_dataset
-    
-    dataset_faust_single = shape_dataset.SingleFaustDataset(
-        data_root='data/FAUST_original',
-        phase='train',
-        return_faces=True,
-        return_evecs=True, num_evecs=32,
-        return_corr=True, return_dist=False
-    )
-    
-    test_dataset = template_dataset.TemplateDataset(
-        base_dataset=dataset_faust_single,
-        num_evecs=32
-    )
-    
-    # optionally get a subset of the dataset
-    if subset_fraction != 100:
-        test_dataset = get_subset(test_dataset, subset_fraction / 100)[0]
-    
-    # dataloader
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset,
-        batch_size=len(test_dataset), shuffle=False
-        )
-    
-    
+
+    ### test dataset
+    test_dataset = data_loading.get_val_dataset(
+        dataset_name, 'train', config["model_params"]["sample_size"]
+        )[1]
+
+    # return the subset
+    subset_indices = list(range(len(test_dataset))) #[10:]
+    test_dataset = torch.utils.data.Subset(test_dataset, subset_indices)
+
+
     ### sample the model
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000, beta_schedule='squaredcos_cap_v2',
                                     clip_sample=True)
-    x_sampled = sample_model.sample(model, test_loader, noise_scheduler)    
+    x_sampled = sample_model.sample_dataset(model, test_dataset, noise_scheduler)    
 
-    
-    ### assign gt signs and unnormalize the samples 
+
+    ### unnormalize the samples and assign gt signs
     x_gt = torch.stack([test_dataset[i]['second']['C_gt_xy'] for i in range(len(test_dataset))])
-    fmap_sampled = torch.sign(x_gt) * (x_sampled + 1) / 2
-    
-    
+
+    fmap_sampled = []
+    for i in range(len(x_sampled)):
+        fmap_i = x_sampled[i].cpu()
+
+        fmap_i = (fmap_i + 1) / 2
+        
+        # set the sign to 0 for elements with absolute value < 0.05
+        sign_gt_i = torch.sign(x_gt[i])
+        sign_gt_i[torch.abs(x_gt[i]) < 0.05] = 0
+        fmap_i = fmap_i * sign_gt_i
+        
+        # fmap_i = fmap_i * torch.sign(x_gt[i])
+
+
+        fmap_sampled.append(fmap_i)
+    fmap_sampled = torch.stack(fmap_sampled)
+
+
     ### calculate metrics
     metrics = evaluate_samples.calculate_metrics(
         fmap_sampled,
         test_dataset
     )
+    metrics_gt = evaluate_samples.calculate_metrics(
+        x_gt,
+        test_dataset
+    )
+
     metrics_payload = preprocess_metrics(metrics)
-    fig = plot_pck(metrics, title=f"PCK on {dataset_name}_{subset_fraction}")
-    
+    metrics_payload_gt = preprocess_metrics(metrics_gt)
+
+    fig = plot_pck(metrics, metrics_gt, title=f"PCK on {dataset_name}_{subset_fraction}")
+
+    ### print the metrics
+    print(f"AUC mean: {metrics_payload['auc']}\n")
+    print(f'GeoErr mean: {metrics_payload["geo_err_mean"]}\n')
+    print(f'GeoErr median: {metrics_payload["geo_err_median"]}\n')
+
+    print(f"GeoErr ratio mean: {metrics_payload['geo_err_ratio_mean']}")
+    print(f"GeoErr ratio median: {metrics_payload['geo_err_ratio_median']}")
+    print(f'GeoErr ratio max: {metrics_payload["geo_err_ratio_max"]}', f'min: {metrics_payload["geo_err_ratio_min"]}\n')
+    print(f"MSE mean: {metrics_payload['mse_mean']}")
+    print(f"MSE median: {metrics_payload['mse_median']}")
+    print(f"MSE max: {metrics_payload['mse_max']}", f"min: {metrics_payload['mse_min']}")
+
+
+    print(f"\n\nAUC mean_gt: {metrics_payload_gt['auc']}\n")
+    print(f'GeoErr mean_gt: {metrics_payload_gt["geo_err_mean"]}\n')
+    print(f'GeoErr median_gt: {metrics_payload_gt["geo_err_median"]}\n')
+
+    print(f"GeoErr ratio mean_gt: {metrics_payload_gt['geo_err_ratio_mean']}")
+    print(f"GeoErr ratio median_gt: {metrics_payload_gt['geo_err_ratio_median']}")
+    print(f'GeoErr ratio max_gt: {metrics_payload_gt["geo_err_ratio_max"]}', f'min_gt: {metrics_payload_gt["geo_err_ratio_min"]}\n')
+    print(f"MSE mean_gt: {metrics_payload_gt['mse_mean']}")
+    print(f"MSE median_gt: {metrics_payload_gt['mse_median']}")
+    print(f"MSE max_gt: {metrics_payload_gt['mse_max']}", f"min_gt: {metrics_payload_gt['mse_min']}")
+
     
     ### save the metrics and samples
     save_folder = f"{exp_base_folder}/evaluation"
@@ -160,16 +187,5 @@ if __name__ == '__main__':
     torch.save(fmap_sampled, f"{save_folder}/fmap_sampled_{dataset_name}_{subset_fraction}.pt")
     plt.savefig(f"{save_folder}/pck_{dataset_name}_{subset_fraction}.png")
     
-    
-    ### print the metrics
-    print(f"AUC mean: {metrics_payload['auc']}\n")
-    print(f'GeoErr mean: {metrics_payload["geo_err_mean"]}\n')
-    print(f"GeoErr ratio mean: {metrics_payload['geo_err_ratio_mean']}")
-    print(f"GeoErr ratio median: {metrics_payload['geo_err_ratio_median']}")
-    print(f'GeoErr ratio max: {metrics_payload["geo_err_ratio_max"]}', f'min: {metrics_payload["geo_err_ratio_min"]}\n')
-    print(f"MSE mean: {metrics_payload['mse_mean']}")
-    print(f"MSE median: {metrics_payload['mse_median']}")
-    print(f"MSE max: {metrics_payload['mse_max']}", f"min: {metrics_payload['mse_min']}")
-
     
     

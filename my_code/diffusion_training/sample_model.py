@@ -3,7 +3,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-def sample(model, test_loader, noise_scheduler):
+def sample_dataloader(model, test_loader, noise_scheduler):
 
     device = model.device()
     
@@ -37,6 +37,44 @@ def sample(model, test_loader, noise_scheduler):
     x_sampled_list = torch.cat(x_sampled_list, dim=0)
         
     return x_sampled_list
+        
+        
+
+def sample_dataset(model, test_dataset, noise_scheduler):
+
+    device = model.device()
+    
+    print('Sampling test dataset, device =', device)
+    
+    # get ground truth fmap and evals from test set
+    x_gt = []
+    y = []
+    for i in tqdm(range(len(test_dataset)), desc='Gathering evals and fmaps...'):
+        x_gt.append(test_dataset[i]['second']['C_gt_xy'])
+        y.append(test_dataset[i]['second']['evals'])
+    x_gt = torch.stack(x_gt)
+    y = torch.stack(y)
+    
+
+    # Prepare random x to start from, plus some desired labels y
+    x_sampled = torch.rand_like(x_gt).to(device)  
+    y = y.to(device)    
+        
+    # Sampling loop
+    for i, t in tqdm(list(enumerate(noise_scheduler.timesteps)), total=noise_scheduler.config.num_train_timesteps,
+                        desc='Denoising...'):
+
+        # Get model pred
+        with torch.no_grad():
+            residual = model(x_sampled, t,
+                                conditioning=y
+                                ).sample
+
+        # Update sample with step
+        x_sampled = noise_scheduler.step(residual, t, x_sampled).prev_sample
+
+    return x_sampled.cpu()
+        
         
         
         

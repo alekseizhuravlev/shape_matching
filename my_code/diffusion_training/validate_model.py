@@ -4,16 +4,17 @@ import my_code.diffusion_training.sample_model as sample_model
 import my_code.diffusion_training.evaluate_samples as evaluate_samples
 
 
-def validate_epoch(model, noise_scheduler, val_payload):
+def validate_epoch(model, noise_scheduler, test_dataset):
     
     model.eval()
     
     # unpack the validation payload
-    test_dataset = val_payload['dataset']
-    test_dataloader = val_payload['dataloader']
+    # test_dataloader = val_payload['dataloader']
                 
     # sample the model
-    x_sampled = sample_model.sample(model, test_dataloader, noise_scheduler)  
+    # x_sampled = sample_model.sample(model, test_dataloader, noise_scheduler)  
+    
+    x_sampled = sample_model.sample_dataset(model, test_dataset, noise_scheduler)
 
     ### assign gt signs and unnormalize the samples 
     x_gt = torch.stack([test_dataset[i]['second']['C_gt_xy'] for i in range(len(test_dataset))])
