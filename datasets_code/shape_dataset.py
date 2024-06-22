@@ -57,7 +57,7 @@ class SingleShapeDataset(Dataset):
             return_dist (bool, optional): Indicate whether return the geodesic distance of the shape. Default False.
         """
         
-        raise RuntimeError("Use my_code version")
+        # raise RuntimeError("Use my_code version")
         
         # sanity check
         assert os.path.isdir(data_root), f'Invalid data root: {data_root}.'
@@ -365,8 +365,8 @@ class PairShapeDataset(Dataset):
         item['second']['C_gt_xy'] = self.Cxy_list[index]
         item['second']['C_gt_yx'] = self.Cyx_list[index]
         
-        item['second']['Vxy'] = self.Vxy_list[index]
-        item['second']['Rxy'] = self.Rxy_list[index]
+        # item['second']['Vxy'] = self.Vxy_list[index]
+        # item['second']['Rxy'] = self.Rxy_list[index]
 
         return item
 

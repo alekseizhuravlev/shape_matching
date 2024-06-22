@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from utils.geometry_util import get_all_operators, to_basis, from_basis, compute_hks_autoscale, compute_wks_autoscale, data_augmentation
-from utils.registry import NETWORK_REGISTRY
+# from utils.registry import NETWORK_REGISTRY
 
 
 class LearnedTimeDiffusion(nn.Module):
@@ -247,7 +247,7 @@ class DiffusionNetBlock(nn.Module):
         return feat_out
 
 
-@NETWORK_REGISTRY.register()
+# @NETWORK_REGISTRY.register()
 class DiffusionNet(nn.Module):
     """
     DiffusionNet: stacked of DiffusionBlock
@@ -360,14 +360,14 @@ class DiffusionNet(nn.Module):
             x = feats
         else:
             if self.input_type == 'hks':
-                x = compute_hks_autoscale(evals, evecs)
+                x = compute_hks_autoscale(evals, evecs, count=self.in_channels)
             elif self.input_type == 'wks':
-                x = compute_wks_autoscale(evals, evecs, mass)
+                x = compute_wks_autoscale(evals, evecs, mass, n_descr=self.in_channels)
             elif self.input_type == 'xyz':
                 if self.training:
                     verts = data_augmentation(verts)
                 x = verts
-
+                
         # Apply the first linear layer
         x = self.first_linear(x)
 
