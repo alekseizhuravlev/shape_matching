@@ -46,7 +46,12 @@ def get_template(template_path, num_evecs, template_corr, centering):
     template['verts'] = preprocessing.normalize_face_area(template['verts'], template['faces'])
         
     # get spectral operators
-    template = preprocessing.get_spectral_ops(template, num_evecs=num_evecs)
+    # directory of file template_path
+    template = preprocessing.get_spectral_ops(
+        template,
+        num_evecs=num_evecs,
+        cache_dir=os.path.dirname(template_path)
+        )
     
     return template
         
@@ -60,11 +65,14 @@ class TemplateDataset(Dataset):
                  template_corr,
                  num_evecs,
                  return_Cxy=True,
-                 preload_base_dataset=True
+                 preload_base_dataset=True,
+                #  canonicalize_fmap='max'
+                canonicalize_fmap=None
                  ):
 
         self.num_evecs = num_evecs
         self.return_Cxy = return_Cxy
+        self.canonicalize_fmap = canonicalize_fmap
 
         # cache the base dataset
         if preload_base_dataset:
@@ -100,12 +108,14 @@ class TemplateDataset(Dataset):
             data_x['evecs'][data_x['corr']].to(device)
             ).solution.to('cpu').unsqueeze(0)
         
-        C_gt_yx = torch.linalg.lstsq(
-            data_x['evecs'][data_x['corr']].to(device),
-            data_y['evecs'][data_y['corr']].to(device)
-            ).solution.to('cpu').unsqueeze(0)
+        return C_gt_xy
+                
+        # C_gt_yx = torch.linalg.lstsq(
+        #     data_x['evecs'][data_x['corr']].to(device),
+        #     data_y['evecs'][data_y['corr']].to(device)
+        #     ).solution.to('cpu').unsqueeze(0)
 
-        return C_gt_xy, C_gt_yx
+        # return C_gt_xy, C_gt_yx
         
         
     def __getitem__(self, index):
@@ -147,8 +157,33 @@ class TemplateDataset(Dataset):
         }
         
         if self.return_Cxy:
-            payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
+            # payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
+            #     self.get_functional_map(payload['first'], payload['second'])
+            
+            payload['second']['C_gt_xy'] =\
                 self.get_functional_map(payload['first'], payload['second'])
+                
+            if self.canonicalize_fmap is not None:
+                
+                C_gt_xy_prepr, evecs_second_prepr = preprocessing.canonicalize_fmap(
+                    canon_type=self.canonicalize_fmap,
+                    data_payload=payload
+                    )
+                
+                ### doesn't work: dict from single dataset is modified during canonicalization
+                # save the uncanonicalized values
+                # payload['second']['C_gt_xy_uncan'] = payload['second']['C_gt_xy'].detach().clone()
+                # payload['second']['evecs_uncan'] = payload['second']['evecs'].detach().clone()
+                
+                # assign the canonicalized values
+                payload['second']['C_gt_xy'] = C_gt_xy_prepr
+                payload['second']['evecs'] = evecs_second_prepr
+                
+                
+            #     payload = preprocessing.canonicalize_fmap(
+            #         canon_type=self.canonicalize_fmap,
+            #         data_payload=payload
+            #         )
                     
         return payload
 

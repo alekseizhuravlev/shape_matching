@@ -87,3 +87,77 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     item['L'] = L.to_dense()
 
     return item
+
+
+def canonicalize_fmap(canon_type, data_payload):
+    
+    # initial functional map
+    C_gt_xy = data_payload['second']['C_gt_xy'].clone()
+    assert len(C_gt_xy.shape) == 3, f'Expected 3D tensor, got {C_gt_xy.shape}'
+    
+    # initial eigenvectors and correspondences
+    evecs_first = data_payload['first']['evecs'].clone()
+    evecs_second = data_payload['second']['evecs'].clone()
+
+    corr_first = data_payload['first']['corr']
+    corr_second = data_payload['second']['corr']
+
+
+    ###########################################################
+    # Set the signs
+    ###########################################################
+
+    # option 1: take the sign of the sum of the row
+    sum_per_row = torch.sum(C_gt_xy, dim=2).transpose(0, 1)
+    signs_sum_per_row = torch.sign(sum_per_row)
+    
+    # option 2: take the sign of the max element of the row
+    arg_max_in_row = torch.argmax(torch.abs(C_gt_xy), dim=2)
+    sign_max_in_row = torch.sign(
+        C_gt_xy[torch.arange(C_gt_xy.shape[0]), torch.arange(C_gt_xy.shape[1]), arg_max_in_row]
+    ).transpose(0, 1)
+    
+    # option 3: for rows that have abs sum < 0.2, use the max
+    abs_sum = torch.abs(sum_per_row).flatten()
+    mask = abs_sum < 0.2
+
+    signs_both = torch.ones_like(signs_sum_per_row)
+    signs_both[mask] = signs_both[mask] * sign_max_in_row[mask]
+    signs_both[~mask] = signs_both[~mask] * signs_sum_per_row[~mask]
+
+       
+    # update the eigenvectors
+    if canon_type == 'sum':
+        evecs_second = evecs_second * signs_sum_per_row[:, 0]
+        
+    elif canon_type == 'max':
+        evecs_second = evecs_second * sign_max_in_row[:, 0]
+        
+    elif canon_type == 'both':
+        evecs_second = evecs_second * signs_both[:, 0]
+        
+        # abs_sum = torch.abs(sum_per_row)
+        # mask = abs_sum < 0.2
+        # evecs_second[mask] = evecs_second[mask] * sign_max_in_row[mask, 0]
+        # evecs_second[~mask] = evecs_second[~mask] * signs_sum_per_row[~mask, 0]
+        
+    else:
+        raise ValueError(f'Unknown canonicalization type {canon_type}')
+
+    # canonicalize the functional map
+    C_gt_xy_norm = torch.linalg.lstsq(
+        evecs_second[corr_second],
+        evecs_first[corr_first]
+        ).solution
+    
+    return C_gt_xy_norm.unsqueeze(0), evecs_second
+    
+    # # save the old values
+    # data_payload['second']['C_gt_xy_uncan'] = data_payload['second']['C_gt_xy'].detach().clone()
+    # data_payload['second']['evecs_uncan'] = data_payload['second']['evecs'].detach().clone()
+    
+    # # update the data payload
+    # data_payload['second']['C_gt_xy'] = C_gt_xy_norm.unsqueeze(0)
+    # data_payload['second']['evecs'] = evecs_second 
+    
+    # return data_payload
