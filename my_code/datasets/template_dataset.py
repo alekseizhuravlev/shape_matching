@@ -101,7 +101,8 @@ class TemplateDataset(Dataset):
     def get_functional_map(self, data_x, data_y):
 
         # calculate the map
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        # device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        device = 'cpu'
         
         C_gt_xy = torch.linalg.lstsq(
             data_y['evecs'][data_y['corr']].to(device),
