@@ -167,3 +167,4 @@ SLURM_logs/*
 *.txt
 *.map
 data_with_smpl_corr/*
+saved_models/model.pth
