@@ -14,6 +14,12 @@ __pycache__/
 *.tar
 *.zip
 *.pth
+*.obj
+*.off
+*.npz
+*.pkl
+*.npy
+
 # C extensions
 *.so
 

@@ -21,7 +21,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap):
             data_root = 'data_with_smpl_corr/SURREAL_test',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/SURREAL_test/{num_evecs}',
+            lb_cache_dir=f'data_with_smpl_corr/SURREAL_test/diffusion',
         )   
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -37,7 +37,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap):
             data_root = 'data_with_smpl_corr/FAUST_original',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_original/{num_evecs}'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_original/diffusion'
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -53,7 +53,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap):
             data_root = 'data_with_smpl_corr/FAUST_r',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_r/{num_evecs}'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_r/diffusion'
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -68,7 +68,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap):
             data_root = 'data_with_smpl_corr/FAUST_a',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_a/{num_evecs}'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_a/diffusion'
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -83,7 +83,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap):
             data_root = 'data_with_smpl_corr/SHREC19_original',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/{num_evecs}'
+            lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/diffusion'
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,

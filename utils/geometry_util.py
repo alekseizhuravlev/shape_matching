@@ -499,9 +499,11 @@ def laplacian_decomposition(verts, faces, k=150):
         L, M = robust_laplacian.point_cloud_laplacian(verts)
         massvec = M.diagonal()
     else:
-        L = pp3d.cotan_laplacian(verts, faces, denom_eps=1e-10)
-        massvec = pp3d.vertex_areas(verts, faces)
-        massvec += eps * np.mean(massvec)
+        # L = pp3d.cotan_laplacian(verts, faces, denom_eps=1e-10)
+        # massvec = pp3d.vertex_areas(verts, faces)
+        # massvec += eps * np.mean(massvec)
+        L, M = robust_laplacian.mesh_laplacian(verts, faces)
+        massvec = M.diagonal()
 
     if np.isnan(L.data).any():
         raise RuntimeError("NaN Laplace matrix")
@@ -579,9 +581,12 @@ def compute_operators(verts, faces, k=120, normals=None):
         L, M = robust_laplacian.point_cloud_laplacian(verts_np)
         massvec_np = M.diagonal()
     else:
-        L = pp3d.cotan_laplacian(verts_np, faces_np, denom_eps=1e-10)
-        massvec_np = pp3d.vertex_areas(verts_np, faces_np)
-        massvec_np += eps * np.mean(massvec_np)
+        # L = pp3d.cotan_laplacian(verts_np, faces_np, denom_eps=1e-10)
+        # massvec_np = pp3d.vertex_areas(verts_np, faces_np)
+        # massvec_np += eps * np.mean(massvec_np)
+        
+        L, M = robust_laplacian.mesh_laplacian(verts_np, faces_np)
+        massvec_np = M.diagonal()
 
     if np.isnan(L.data).any():
         raise RuntimeError("NaN Laplace matrix")
@@ -609,11 +614,12 @@ def compute_operators(verts, faces, k=120, normals=None):
                 evals_np = np.clip(evals_np, a_min=0., a_max=float('inf'))
 
                 break
-            except:
+            # except 
+            except Exception as e:
                 if fail_cnt > 3:
                     raise ValueError('Failed to compute eigen-decomposition')
                 fail_cnt += 1
-                print('Decomposition failed; adding eps')
+                print(f'{e}: Decomposition failed; adding eps')
                 L_eigsh = L_eigsh + (eps * 10 ** fail_cnt) * scipy.sparse.identity(L.shape[0])
     else: # k == 0
         evals_np = np.zeros((0))
