@@ -15,8 +15,9 @@ from tqdm import tqdm
 if __name__ == '__main__':
     
     n_shapes = 300
-    # save_folder = 'FAUST_rot_xyz_90_scaling_0.9_1.1'
-    save_folder = 'FAUST_rot_y_90'
+    lapl_type = 'mesh'
+    save_folder = f'FAUST_rot_xyz_180_scaling_0.9_1.1_noise_0.01_{lapl_type}Lapl'
+    
     split = 'test'
     
     
@@ -30,12 +31,12 @@ if __name__ == '__main__':
     mesh_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/meshes'
     diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/diffusion'
 
-    shutil.rmtree(
-        f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}',
-        ignore_errors=True
-        )
-    os.makedirs(mesh_folder, exist_ok=True)
-    os.makedirs(diff_folder, exist_ok=True)
+    # shutil.rmtree(
+    #     f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}',
+    #     ignore_errors=True
+    #     )
+    os.makedirs(mesh_folder)
+    os.makedirs(diff_folder)
 
 
     iterator = tqdm(range(n_shapes))
@@ -50,10 +51,9 @@ if __name__ == '__main__':
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(verts.unsqueeze(0),
                                                     # rot_x=0.0, rot_y=90.0, rot_z=0.0,
-                                                    rot_x=0.0, rot_y=90.0, rot_z=0.0,
-                                                    std=0,
-                                                    scale_min=1, scale_max=1
-                                                    # scale_min=0.9, scale_max=1.1
+                                                    rot_x=180.0, rot_y=180.0, rot_z=180.0,
+                                                    std=0.01,
+                                                    scale_min=0.9, scale_max=1.1
                                                     )[0]
 
             
@@ -74,9 +74,14 @@ if __name__ == '__main__':
             faces = torch.tensor(faces, dtype=torch.int32)
         
             # calculate and cache the laplacian
-            _, _, _, _, evecs_orig, _, _ = geometry_util.get_operators(verts_aug, faces,
-                                                        k=128,
-                                                        cache_dir=diff_folder)
+            if lapl_type == 'pcl':
+                _, _, _, _, evecs_orig, _, _ = geometry_util.get_operators(
+                    verts_aug, None,
+                    k=128, cache_dir=diff_folder) 
+            else:               
+                _, _, _, _, evecs_orig, _, _ = geometry_util.get_operators(
+                    verts_aug, faces,
+                    k=128, cache_dir=diff_folder)
 
             # update the iterator
             iterator.update(1)

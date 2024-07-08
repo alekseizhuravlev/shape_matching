@@ -171,14 +171,37 @@ class SingleFaustDataset(SingleShapeDataset):
 
 
 
+# class SingleScapeDataset(SingleShapeDataset):
+#     def __init__(self, data_root,
+#                  phase, return_faces=True,
+#                  return_evecs=True, num_evecs=200,
+#                  return_corr=True, return_dist=False):
+#         super(SingleScapeDataset, self).__init__(data_root, return_faces,
+#                                                  return_evecs, num_evecs,
+#                                                  return_corr, return_dist)
+#         assert phase in ['train', 'test', 'full'], f'Invalid phase {phase}, only "train" or "test" or "full"'
+#         assert len(self) == 71, f'FAUST dataset should contain 71 human body shapes, but get {len(self)}.'
+#         if phase == 'train':
+#             if self.off_files:
+#                 self.off_files = self.off_files[:51]
+#             if self.corr_files:
+#                 self.corr_files = self.corr_files[:51]
+#             if self.dist_files:
+#                 self.dist_files = self.dist_files[:51]
+#             self._size = 51
+#         elif phase == 'test':
+#             if self.off_files:
+#                 self.off_files = self.off_files[51:]
+#             if self.corr_files:
+#                 self.corr_files = self.corr_files[51:]
+#             if self.dist_files:
+#                 self.dist_files = self.dist_files[51:]
+#             self._size = 20
+
+
 class SingleScapeDataset(SingleShapeDataset):
-    def __init__(self, data_root,
-                 phase, return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
-        super(SingleScapeDataset, self).__init__(data_root, return_faces,
-                                                 return_evecs, num_evecs,
-                                                 return_corr, return_dist)
+    def __init__(self, phase, **kwargs):
+        super(SingleScapeDataset, self).__init__(**kwargs)
         assert phase in ['train', 'test', 'full'], f'Invalid phase {phase}, only "train" or "test" or "full"'
         assert len(self) == 71, f'FAUST dataset should contain 71 human body shapes, but get {len(self)}.'
         if phase == 'train':
@@ -197,7 +220,7 @@ class SingleScapeDataset(SingleShapeDataset):
             if self.dist_files:
                 self.dist_files = self.dist_files[51:]
             self._size = 20
-
+            
 
 
 class SingleShrec19Dataset(SingleShapeDataset):
