@@ -525,7 +525,7 @@ def laplacian_decomposition(verts, faces, k=150):
             evals = np.clip(evals, a_min=0., a_max=float('inf'))
             evals = evals.reshape(-1, 1)
             break
-        except:
+        except Exception as e:
             if fail_cnt > 3:
                 raise ValueError('Failed to compute eigen-decomposition')
             fail_cnt += 1

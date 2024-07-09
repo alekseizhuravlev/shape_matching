@@ -224,23 +224,30 @@ class SingleScapeDataset(SingleShapeDataset):
 
 
 class SingleShrec19Dataset(SingleShapeDataset):
-    def __init__(self, data_root,
-                 return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_dist=False):
-        super(SingleShrec19Dataset, self).__init__(data_root, return_faces, return_evecs, num_evecs, False, return_dist)
+    # def __init__(self, data_root,
+    #              return_faces=True,
+    #              return_evecs=True, num_evecs=200,
+    #              return_dist=False):
+    #     super(SingleShrec19Dataset, self).__init__(data_root, return_faces, return_evecs, num_evecs, False, return_dist)
 
+    def __init__(self, **kwargs):
+        super(SingleShrec19Dataset, self).__init__(**kwargs)
 
 
 class SingleSmalDataset(SingleShapeDataset):
-    def __init__(self, data_root, phase='train', category=True,
-                 return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
+    # def __init__(self, data_root, phase='train', category=True,
+    #              return_faces=True,
+    #              return_evecs=True, num_evecs=200,
+    #              return_corr=True, return_dist=False):
+    #     self.phase = phase
+    #     self.category = category
+    #     super(SingleSmalDataset, self).__init__(data_root, return_faces, return_evecs, num_evecs,
+    #                                             return_corr, return_dist)
+    
+    def __init__(self, phase='train', category=True, **kwargs):
         self.phase = phase
         self.category = category
-        super(SingleSmalDataset, self).__init__(data_root, return_faces, return_evecs, num_evecs,
-                                                return_corr, return_dist)
+        super(SingleSmalDataset, self).__init__(**kwargs)
 
     def _init_data(self):
         if self.category:

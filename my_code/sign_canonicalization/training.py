@@ -97,20 +97,21 @@ def load_cached_shapes(save_folder, lapl_type):
 
 if __name__ == '__main__':
     
-    condition_dim = 0
     start_dim = 0
 
     feature_dim = 64
-    evecs_per_support = 8
+    evecs_per_support = 4
     n_block = 6
     
     input_type = 'wks'
     lapl_type = 'mesh'
-    
-    chkpt_name = f'sign_double_start_{start_dim}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_180xyz_09_11_{input_type}'
 
-    train_folder = 'FAUST_rot_xyz_180_scaling_0.9_1.1'
-    test_folder = 'FAUST_rot_xyz_180_scaling_0.9_1.1'
+    train_folder = 'Smal_category_0'
+    test_folder = 'Smal_category_0'
+    
+    chkpt_name = f'sign_double_start_{start_dim}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
+
+    
     
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{chkpt_name}'
     os.makedirs(experiment_dir)
@@ -141,7 +142,6 @@ if __name__ == '__main__':
         f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
         lapl_type=lapl_type
     )
-    
     
     
     loss_fn = torch.nn.MSELoss()

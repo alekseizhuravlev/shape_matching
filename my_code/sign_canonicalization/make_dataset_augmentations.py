@@ -18,7 +18,7 @@ if __name__ == '__main__':
     lapl_type = 'mesh'
     save_folder = f'FAUST_rot_xyz_180_scaling_0.9_1.1_noise_0.01_{lapl_type}Lapl'
     
-    split = 'test'
+    split = 'train'
     
     
     
