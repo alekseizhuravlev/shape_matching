@@ -37,11 +37,14 @@ def compare_fmap_with_gt(
     # remove the channel dimension if it exists
     if len(Cxy_est.shape) == 3:
         Cxy_est = Cxy_est[0]
-        data_y['C_gt_xy'] = data_y['C_gt_xy'][0]
+        C_gt_xy = data_y['C_gt_xy'][0]
+        # data_y['C_gt_xy'] = data_y['C_gt_xy'][0]
+    else:
+        C_gt_xy = data_y['C_gt_xy']
     
     # hard correspondence 
     p2p_gt = fmap_util.fmap2pointmap(
-        C12=data_y['C_gt_xy'],
+        C12=C_gt_xy,
         evecs_x=data_x['evecs'],
         evecs_y=data_y['evecs'],
         )
@@ -52,7 +55,7 @@ def compare_fmap_with_gt(
         )
     
     # soft correspondence
-    Pyx_gt = data_y['evecs'] @ data_y['C_gt_xy'] @ data_x['evecs_trans']
+    Pyx_gt = data_y['evecs'] @ C_gt_xy @ data_x['evecs_trans']
     Pyx_est = data_y['evecs'] @ Cxy_est @ data_x['evecs_trans']
     
     # distance matrices
@@ -64,6 +67,7 @@ def compare_fmap_with_gt(
     geo_err_est = geodist_metric.calculate_geodesic_error(dist_x, data_x['corr'], data_y['corr'], p2p_est, return_mean=False)
     
     return geo_err_gt, geo_err_est, p2p_gt, p2p_est
+
 
 
 def calculate_metrics(x_sampled, test_dataset):
