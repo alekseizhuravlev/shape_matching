@@ -14,17 +14,38 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     
-    n_shapes = 300
-    lapl_type = 'mesh'
-    save_folder = f'FAUST_rot_xyz_180_scaling_0.9_1.1_noise_0.01_{lapl_type}Lapl'
+    dataset_name = 'FAUST_orig'
     
+    n_shapes = 1000
+    lapl_type = 'mesh'
+
     split = 'train'
+    
+    rot_x=180
+    rot_y=180
+    rot_z=180
+    
+    along_normal=True
+    std=0.01
+    noise_clip_low = -0.05
+    noise_clip_high = 0.05
+    
+    scale_min=0.9
+    scale_max=1.1
+    
+    save_folder = f'{dataset_name}_{split}_' +\
+                f'rot_{rot_x:.0f}_{rot_y:.0f}_{rot_z:.0f}_' + \
+                f'normal_{along_normal}_' + \
+                f'noise_{std}_{noise_clip_low}_{noise_clip_high}_' + \
+                f'lapl_{lapl_type}_' + \
+                f'scale_{scale_min}_{scale_max}'
+    
     
     
     
     # get the source dataset
     train_dataset = data_loading.get_val_dataset(
-        'FAUST_orig', split, 200, canonicalize_fmap=None
+        dataset_name, split, 200, canonicalize_fmap=None
         )[1]    
     
     # prepare the folders
@@ -50,11 +71,17 @@ if __name__ == '__main__':
             
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(verts.unsqueeze(0),
-                                                    # rot_x=0.0, rot_y=90.0, rot_z=0.0,
-                                                    rot_x=180.0, rot_y=180.0, rot_z=180.0,
-                                                    std=0.01,
-                                                    scale_min=0.9, scale_max=1.1
-                                                    )[0]
+                                                        faces.unsqueeze(0),
+                                                        rot_x=rot_x,
+                                                        rot_y=rot_y,
+                                                        rot_z=rot_z,
+                                                        along_normal=along_normal,
+                                                        std=std,
+                                                        noise_clip_low=noise_clip_low,
+                                                        noise_clip_high=noise_clip_high,
+                                                        scale_min=scale_min,
+                                                        scale_max=scale_max,
+                                                        )[0]
 
             
             # get current iteration

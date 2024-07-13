@@ -106,8 +106,8 @@ if __name__ == '__main__':
     input_type = 'wks'
     lapl_type = 'mesh'
 
-    train_folder = 'Smal_category_0'
-    test_folder = 'Smal_category_0'
+    train_folder = 'FAUST_orig_train_rot_180_180_180_normal_True_noise_0.01_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    test_folder = 'FAUST_orig_test_rot_180_180_180_normal_True_noise_0.01_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     
     chkpt_name = f'sign_double_start_{start_dim}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
 
