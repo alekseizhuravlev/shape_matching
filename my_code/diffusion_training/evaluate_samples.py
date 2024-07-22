@@ -129,6 +129,8 @@ def calculate_metrics(x_sampled, test_dataset):
 
 
 def plot_pck(metrics, title):
+    raise NotImplementedError('PCK for the whole dataset should be calculated using point errors for each mesh')
+    
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
 
     thresholds = np.linspace(0., 0.1, 40)
