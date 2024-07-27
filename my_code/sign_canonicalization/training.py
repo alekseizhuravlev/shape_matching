@@ -8,6 +8,7 @@ import os
 import utils.geometry_util as geometry_util
 import utils.shape_util as shape_util
 from tqdm import tqdm
+import my_code.datasets.shape_dataset as shape_dataset
 
 
 
@@ -64,7 +65,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type):
 def load_cached_shapes(save_folder, lapl_type):
 
     # prepare the folders
-    mesh_folder = f'{save_folder}/meshes'
+    mesh_folder = f'{save_folder}/off'
     diff_folder = f'{save_folder}/diffusion'
 
 
@@ -99,15 +100,15 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    feature_dim = 64
+    feature_dim = 32
     evecs_per_support = 4
     n_block = 6
     
     input_type = 'wks'
     lapl_type = 'mesh'
 
-    train_folder = 'FAUST_orig_train_rot_180_180_180_normal_True_noise_0.01_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    test_folder = 'FAUST_orig_test_rot_180_180_180_normal_True_noise_0.01_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    train_folder = 'SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    test_folder = 'FAUST_r'
     
     chkpt_name = f'sign_double_start_{start_dim}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
 
@@ -138,15 +139,49 @@ if __name__ == '__main__':
         f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
         lapl_type=lapl_type
     )
-    test_shapes, test_diff_folder = load_cached_shapes(
-        f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
-        lapl_type=lapl_type
-    )
+    # test_shapes, test_diff_folder = load_cached_shapes(
+    #     f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
+    #     lapl_type=lapl_type
+    # )
+    
+    # train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}/diffusion'
+    # train_dataset = shape_dataset.SingleShapeDataset(
+    #     data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
+    #     centering = 'bbox',
+    #     num_evecs=128,
+    #     lb_cache_dir=train_diff_folder,
+    # ) 
+    
+    # train_shapes = []
+    # for i in tqdm(range(len(train_dataset))):
+    #     data_i = train_dataset[i]
+    #     train_shapes.append({
+    #         'verts': data_i['verts'],
+    #         'faces': data_i['faces'],
+    #         'evecs': data_i['evecs'],
+    #         })
+    
+    test_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}/diffusion'
+    test_dataset = shape_dataset.SingleShapeDataset(
+        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
+        centering = 'bbox',
+        num_evecs=128,
+        lb_cache_dir=test_diff_folder,
+    )     
+    
+    test_shapes = []
+    for i in tqdm(range(len(test_dataset))):
+        data_i = test_dataset[i]
+        test_shapes.append({
+            'verts': data_i['verts'],
+            'faces': data_i['faces'],
+            'evecs': data_i['evecs'],
+            })
     
     
     loss_fn = torch.nn.MSELoss()
     losses = torch.tensor([])
-    train_iterator = tqdm(range(40001))
+    train_iterator = tqdm(range(40000))
        
     net.cache_dir = train_diff_folder      
             
@@ -245,6 +280,11 @@ if __name__ == '__main__':
                 plt.savefig(f'{experiment_dir}/losses_{curr_iter}.png')
                 plt.close()
                 
+                torch.save(
+                    net.state_dict(),
+                    f'{experiment_dir}/{curr_iter}.pth'
+                    )
+                
             curr_iter += 1
             train_iterator.update(1)
             
@@ -284,7 +324,7 @@ if __name__ == '__main__':
             if lapl_type == 'pcl':
                 faces = None
             else:
-                faces = train_shape['faces'].unsqueeze(0).to(device)    
+                faces = test_shape['faces'].unsqueeze(0).to(device)    
             
             evecs_orig = test_shape['evecs'][:, start_dim:start_dim+feature_dim].unsqueeze(0).to(device)
 

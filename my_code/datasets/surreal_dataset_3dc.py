@@ -29,7 +29,8 @@ class TemplateSurrealDataset3DC(Dataset):
                  shape_path,
                  num_evecs,
                  use_cuda,
-                 cache_lb_dir
+                 cache_lb_dir,
+                 return_evecs
                  ):
         
         # raise RuntimeError("Use regular TemplateDataset")
@@ -38,6 +39,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.num_evecs = num_evecs
         self.use_cuda = use_cuda
         self.cache_lb_dir = cache_lb_dir
+        self.return_evecs = return_evecs
 
         # load the shapes from 3D-coded
         self.shapes = torch.load(shape_path)
@@ -108,7 +110,8 @@ class TemplateSurrealDataset3DC(Dataset):
         
         
         # get eigenfunctions/eigenvalues
-        item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
+        if self.return_evecs:
+            item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         
         # 1 to 1 correspondence
         item['corr'] = torch.tensor(list(range(len(item['verts']))))        
@@ -117,8 +120,10 @@ class TemplateSurrealDataset3DC(Dataset):
             'first': self.template,
             'second': item,
         }
-        payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
-            self.get_functional_map(payload['first'], payload['second'])
+        
+        if self.return_evecs:
+            payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
+                self.get_functional_map(payload['first'], payload['second'])
         
         return payload
 

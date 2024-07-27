@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 import trimesh
 import my_code.diffusion_training.data_loading as data_loading
+import my_code.datasets.shape_dataset as shape_dataset
 
 import os
 import shutil
@@ -14,7 +15,7 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     
-    dataset_name = 'FAUST_orig'
+    dataset_name = 'SURREAL'
     
     n_shapes = 1000
     lapl_type = 'mesh'
@@ -26,7 +27,7 @@ if __name__ == '__main__':
     rot_z=180
     
     along_normal=True
-    std=0.01
+    std=0.0
     noise_clip_low = -0.05
     noise_clip_high = 0.05
     
@@ -44,12 +45,22 @@ if __name__ == '__main__':
     
     
     # get the source dataset
-    train_dataset = data_loading.get_val_dataset(
-        dataset_name, split, 200, canonicalize_fmap=None
-        )[1]    
+    # train_dataset = data_loading.get_val_dataset(
+    #     dataset_name, split, 200, canonicalize_fmap=None
+    #     )[1]    
+    
+    train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
+    train_dataset = shape_dataset.SingleShapeDataset(
+        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL',
+        centering = 'bbox',
+        num_evecs=128,
+        lb_cache_dir=train_diff_folder,
+        return_evecs=False
+    ) 
+    
     
     # prepare the folders
-    mesh_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/meshes'
+    mesh_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/off'
     diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/diffusion'
 
     # shutil.rmtree(
@@ -66,8 +77,10 @@ if __name__ == '__main__':
         for i in range(len(train_dataset)):
         
             # get the vertices and faces            
-            verts = train_dataset[i]['second']['verts']
-            faces = train_dataset[i]['second']['faces']
+            # verts = train_dataset[i]['second']['verts']
+            # faces = train_dataset[i]['second']['faces']
+            verts = train_dataset[i]['verts']
+            faces = train_dataset[i]['faces']
             
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(verts.unsqueeze(0),

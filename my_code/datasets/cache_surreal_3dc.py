@@ -96,7 +96,8 @@ if __name__ == '__main__':
         shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_train.pth',
         num_evecs=num_evecs,
         use_cuda=False,
-        cache_lb_dir=None
+        cache_lb_dir=None,
+        return_evecs=True
     )    
     
     # sample train/test indices
