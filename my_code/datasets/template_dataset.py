@@ -73,6 +73,8 @@ class TemplateDataset(Dataset):
         self.num_evecs = num_evecs
         self.return_Cxy = return_Cxy
         self.canonicalize_fmap = canonicalize_fmap
+        
+        self.lb_cache_dir = base_dataset.lb_cache_dir
 
         # cache the base dataset
         if preload_base_dataset:

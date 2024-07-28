@@ -3,15 +3,20 @@ import numpy as np
 
 
 class SurrealTrainDataset(torch.utils.data.Dataset):
-    def __init__(self, base_folder):
+    def __init__(self, base_folder, input_type):
         super(SurrealTrainDataset, self).__init__()
         
-        self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt')       
+        self.input_type = input_type
         
+        
+        self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt')       
+    
         fmap_dim = int(np.sqrt(self.fmaps.shape[1]))
         print('Train dataset, functional map dimension:', fmap_dim)
         self.fmaps = torch.tensor(self.fmaps, dtype=torch.float32).reshape(len(self.fmaps), fmap_dim, fmap_dim)
-        self.fmaps = self.fmaps.abs()
+        
+        if self.input_type == 'abs':
+            self.fmaps = self.fmaps.abs()
         
         self.evals = np.loadtxt(f'{base_folder}/evals.txt')
         self.evals = torch.tensor(self.evals, dtype=torch.float32)
@@ -24,8 +29,9 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
         # fmap = self.fmaps[idx]
         
         # normalize to [0, 1] and to [-1, 1]
-        fmap = fmap / fmap.max()
-        fmap = fmap * 2 - 1 
+        if self.input_type == 'abs':
+            fmap = fmap / fmap.max()
+            fmap = fmap * 2 - 1 
         
         eval = self.evals[idx].unsqueeze(0)
         # eval = self.evals[idx]
