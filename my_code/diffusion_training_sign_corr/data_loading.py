@@ -84,6 +84,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             centering = 'bbox',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/diffusion'
+            # lb_cache_dir=None
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,

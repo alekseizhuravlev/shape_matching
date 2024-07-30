@@ -47,17 +47,19 @@ def sample_dataset(model, test_dataset, noise_scheduler):
     print('Sampling test dataset, device =', device)
     
     # get ground truth fmap and evals from test set
-    x_gt = []
+    # x_gt = []
     y = []
     for i in tqdm(range(len(test_dataset)), desc='Gathering evals and fmaps...'):
-        x_gt.append(test_dataset[i]['second']['C_gt_xy'])
-        y.append(test_dataset[i]['second']['evals'])
-    x_gt = torch.stack(x_gt)
+        # x_gt.append(test_dataset[i]['second']['C_gt_xy'])
+        y.append(test_dataset[i]['second']['evals'][:, :model.model.sample_size])
+    # x_gt = torch.stack(x_gt)
     y = torch.stack(y)
     
 
     # Prepare random x to start from, plus some desired labels y
-    x_sampled = torch.rand_like(x_gt).to(device)  
+    # x_sampled = torch.rand_like(x_gt).to(device)  
+    # make random values of shape [len(test_dataset), 1, 32, 32]
+    x_sampled = torch.rand(len(test_dataset), 1, model.model.sample_size, model.model.sample_size).to(device)
     y = y.to(device)    
         
     # Sampling loop

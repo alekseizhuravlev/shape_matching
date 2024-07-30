@@ -111,7 +111,7 @@ def compare_fmap_with_gt(
     geo_err_est = geodist_metric.calculate_geodesic_error(dist_x, data_x['corr'], data_y['corr'], p2p_est, return_mean=False)
     
     # mse between sampled and corrected fmap
-    mse_fmap = torch.sum((Cxy_est - C_gt_xy_corr)**2)
+    mse_fmap = torch.nn.functional.mse_loss(Cxy_est, C_gt_xy_corr)
     
     
     return geo_err_gt, geo_err_corr_gt, geo_err_est, mse_fmap
