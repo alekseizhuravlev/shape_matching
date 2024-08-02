@@ -20,9 +20,12 @@ from my_code.sign_canonicalization.training import predict_sign_change
 import networks.diffusion_network as diffusion_network
 import my_code.utils.plotting_utils as plotting_utils
 import matplotlib.pyplot as plt
+
+import my_code.datasets.shape_dataset as shape_dataset
+import my_code.datasets.template_dataset as template_dataset
     
     
-def visualize_before_after(data, C_xy_corr, figures_folder, idx):
+def visualize_before_after(data, C_xy_corr, evecs_cond, figures_folder, idx):
         l = 0
         h = 32
 
@@ -36,13 +39,15 @@ def visualize_before_after(data, C_xy_corr, figures_folder, idx):
                         'diff', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[3], data['second']['C_gt_xy'][0].abs() - C_xy_corr.abs(),
                         'abs diff', l, h, show_grid=False, show_colorbar=False)
+        plotting_utils.plot_Cxy(fig, axs[3], evecs_cond,
+                        'evecs_cond', l, h, show_grid=False, show_colorbar=False)
 
         # save the figure
         fig.savefig(f'{figures_folder}/{idx}.png')
         plt.close(fig)
         
     
-def get_corrected_fmap(data, net, net_input_type):
+def get_corrected_data(data, net, net_input_type):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
@@ -62,17 +67,28 @@ def get_corrected_fmap(data, net, net_input_type):
 
     # predict the sign change
     with torch.no_grad():
-        sign_pred_first = predict_sign_change(net, verts_first, faces_first, evecs_first, 
-                                                evecs_cond=None, input_type=net_input_type)[0]
+        # sign_pred_first = predict_sign_change(net, verts_first, faces_first, evecs_first, 
+        #                                         evecs_cond=None, input_type=net_input_type)[0]
         sign_pred_second = predict_sign_change(net, verts_second, faces_second, evecs_second, 
                                                 evecs_cond=None, input_type=net_input_type)[0]
 
+    # correct the evecs
+    evecs_second_corrected = evecs_second.cpu()[0] * torch.sign(sign_pred_second).cpu()
+    
+    # normalize the evecs
+    evecs_second_corrected = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
+    
+    # product with itself
+    evecs_cond = evecs_second_corrected.transpose(0, 1) @ evecs_second_corrected
+
+    # correct the functional map
     C_xy_pred = torch.linalg.lstsq(
         evecs_second.cpu()[0, corr_second] * torch.sign(sign_pred_second).cpu(),
-        evecs_first.cpu()[0, corr_first] * torch.sign(sign_pred_first).cpu()
+        evecs_first.cpu()[0, corr_first].cpu()
+        # evecs_first.cpu()[0, corr_first] * torch.sign(sign_pred_first).cpu()
         ).solution
-    
-    return C_xy_pred
+
+    return C_xy_pred, evecs_cond
     
     
     
@@ -91,27 +107,26 @@ def save_train_dataset(
     train_folder = f'{dataset_folder}/train'
     os.makedirs(train_folder, exist_ok=True)
     
-    # figures_folder = f'{train_folder}/figures'
-    # os.makedirs(figures_folder, exist_ok=True)
+    figures_folder = f'{train_folder}/figures'
+    os.makedirs(figures_folder, exist_ok=True)
 
     evals_file = os.path.join(train_folder, f'evals_{start_idx}_{end_idx}.txt')
     fmaps_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
+    evecs_cond_file = os.path.join(train_folder, f'evecs_cond_{start_idx}_{end_idx}.txt')
     
-    # remove if exist
-    if os.path.exists(evals_file):
-        print(f'Removing {evals_file}')
-        os.remove(evals_file)
-    if os.path.exists(fmaps_file):
-        print(f'Removing {fmaps_file}')
-        os.remove(fmaps_file)
+    # remove if exists    
+    for file_type in [evals_file, fmaps_file, evecs_cond_file]:
+        if os.path.exists(file_type):
+            print(f'Removing {file_type}')
+            os.remove(file_type)
     
-    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}')
+    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}', f'evecs_cond to {evecs_cond_file}')
     
     for i, idx in enumerate(train_indices):
         data = dataset[idx]
         
         evals = data['second']['evals']
-        C_xy_corr = get_corrected_fmap(
+        C_xy_corr, evecs_cond = get_corrected_data(
             data=data,
             **net_params
         )
@@ -123,12 +138,19 @@ def save_train_dataset(
         with open(evals_file, 'ab') as f:
             np.savetxt(f, evals.numpy().astype(np.float32), newline=" ")
             f.write(b'\n')
+            
+        with open(evecs_cond_file, 'ab') as f:
+            np.savetxt(f, evecs_cond.numpy().flatten().astype(np.float32), newline=" ")
+            f.write(b'\n')
         
             
         if i % 100 == 0 or i == 25:
             time_elapsed = time.time() - curr_time
             print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
                   flush=True)
+            
+        if i < 20:
+            visualize_before_after(data, C_xy_corr, evecs_cond, figures_folder, idx)
 
 
 def parse_args():
@@ -166,13 +188,30 @@ if __name__ == '__main__':
     from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
     
     # create the dataset
-    dataset = TemplateSurrealDataset3DC(
-        shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_train.pth',
-        num_evecs=num_evecs,
-        use_cuda=False,
-        cache_lb_dir=None,
+    # dataset = TemplateSurrealDataset3DC(
+    #     shape_path=f'/home/{user_name}/3D-CODED/data/datas_surreal_train.pth',
+    #     num_evecs=num_evecs,
+    #     use_cuda=False,
+    #     cache_lb_dir=None,
+    #     return_evecs=True
+    # )    
+    
+    train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
+    dataset_single = shape_dataset.SingleShapeDataset(
+        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL',
+        centering = 'bbox',
+        num_evecs=128,
+        lb_cache_dir=train_diff_folder,
         return_evecs=True
-    )    
+    ) 
+    dataset = template_dataset.TemplateDataset(
+        base_dataset=dataset_single,
+        template_path='data/SURREAL_full/template/template.ply',
+        template_corr=list(range(6890)),
+        num_evecs=dataset_single.num_evecs,
+        preload_base_dataset=False,
+        canonicalize_fmap=None,
+    )
     print('Dataset created')
     
     # sample train/test indices
@@ -180,7 +219,8 @@ if __name__ == '__main__':
     print(f'Number of training samples: {len(train_indices)}')
     
     # folder to store the dataset
-    dataset_name = f'dataset_3dc_corrected_noAug_{num_evecs}'
+    # dataset_name = f'dataset_3dc_correctedSecond_noAug_{num_evecs}'
+    dataset_name = f'dataset_SURREAL_train_correctedSecond_noAug_{num_evecs}'
     dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
     # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)

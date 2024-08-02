@@ -42,7 +42,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.return_evecs = return_evecs
 
         # load the shapes from 3D-coded
-        self.shapes = torch.load(shape_path)
+        self.shapes = torch.load(shape_path, mmap=True)
         
         # load template mesh
         self.template_mesh = trimesh.load(f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply')

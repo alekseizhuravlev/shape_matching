@@ -61,7 +61,7 @@ class LearnedTimeDiffusion(nn.Module):
             V = feat.shape[-2]
 
             # Form the dense matrix (M + tL) with dims (B, C, V, V)
-            mat_dense = L.to_dense().unsuqeeze(1).expand(-1, self.in_channels, -1, -1).clone()
+            mat_dense = L.to_dense().unsqueeze(1).expand(-1, self.in_channels, -1, -1).clone()
             mat_dense *= self.diffusion_time.unsqueeze(0).unsqueeze(-1).unsqueeze(-1)
             mat_dense += torch.diag_embed(mass).unsqueeze(1)
 

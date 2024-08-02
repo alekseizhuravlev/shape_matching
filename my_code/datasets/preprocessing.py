@@ -75,7 +75,18 @@ def normalize_face_area(verts, faces):
 def get_spectral_ops(item, num_evecs, cache_dir=None):
     if cache_dir is not None and not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)
-    _, mass, L, evals, evecs, _, _ = get_operators(item['verts'], item.get('faces'),
+    # _, mass, L, evals, evecs, _, _ = get_operators(item['verts'], item.get('faces'),
+    #                                                k=num_evecs,
+    #                                                cache_dir=cache_dir)
+    # evals = evals.unsqueeze(0)
+    # evecs_trans = evecs.T * mass[None]
+    # item['evecs'] = evecs[:, :num_evecs]
+    # item['evecs_trans'] = evecs_trans[:num_evecs]
+    # item['evals'] = evals[:num_evecs]
+    # item['mass'] = mass
+    # item['L'] = L.to_dense()
+    
+    _, mass, L, evals, evecs, gradX, gradY = get_operators(item['verts'], item.get('faces'),
                                                    k=num_evecs,
                                                    cache_dir=cache_dir)
     evals = evals.unsqueeze(0)
@@ -84,7 +95,9 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     item['evecs_trans'] = evecs_trans[:num_evecs]
     item['evals'] = evals[:num_evecs]
     item['mass'] = mass
-    item['L'] = L.to_dense()
+    item['L'] = L
+    item['gradX'] = gradX
+    item['gradY'] = gradY
 
     return item
 

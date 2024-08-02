@@ -174,3 +174,5 @@ SLURM_logs/*
 *.map
 data_with_smpl_corr/*
 saved_models/model.pth
+notebooks/31.07.2024/diffusionnet_runtime_profile.csv
+notebooks/31.07.2024/profiling.profile

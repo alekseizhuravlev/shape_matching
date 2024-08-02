@@ -23,9 +23,10 @@ def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type):
         
     elif input_type == 'wks':
         evecs_input = None
-        
-    else:
+    elif input_type == 'evecs':
         evecs_input = evecs_flip
+    else:
+        raise ValueError(f'Unknown input type {input_type}')
         
     # process the flipped evecs
     support_vector_flip = net(
