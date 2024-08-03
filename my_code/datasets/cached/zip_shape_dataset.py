@@ -1,10 +1,10 @@
-from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
 import utils.geometry_util as geometry_util
 import scipy.sparse
 import zipfile
 import numpy as np
 from tqdm import tqdm
 import os
+import torch
 
 
 def zip_write_operators(verts, faces, k, cache_zip, search_path, normals=None):
@@ -58,10 +58,138 @@ def zip_write_operators(verts, faces, k, cache_zip, search_path, normals=None):
     return
 
 
+def read_sp_mat(npzfile, prefix):
+    data = npzfile[prefix + '_data']
+    indices = npzfile[prefix + '_indices']
+    indptr = npzfile[prefix + '_indptr']
+    shape = npzfile[prefix + '_shape']
+    mat = scipy.sparse.csc_matrix((data, indices, indptr), shape=shape)
+    return mat
+
+
+def zip_read_operators(cache_zip, search_path, k):
+
+    with cache_zip.open(search_path) as f:
+        with np.load(f, allow_pickle=True) as npzfile:
+
+            cache_verts = npzfile['verts']
+            cache_faces = npzfile['faces']
+            cache_k = npzfile['k_eig'].item()
+            
+            if cache_k < k:
+                raise ValueError(f'cache_k={cache_k} is less than k={k}.')
+
+            # this entry matches. return it.
+            frames = npzfile['frames']
+            mass = npzfile['mass']
+            L = read_sp_mat(npzfile, 'L')
+            evals = npzfile['evals'][:k]
+            evecs = npzfile['evecs'][:, :k]
+            gradX = read_sp_mat(npzfile, 'gradX')
+            gradY = read_sp_mat(npzfile, 'gradY')
+
+    device = torch.device('cpu')
+    dtype = torch.float32
+
+    cache_verts = torch.from_numpy(cache_verts).to(device=device, dtype=dtype)
+    cache_faces = torch.from_numpy(cache_faces).to(device=device, dtype=torch.int64)
+    frames = torch.from_numpy(frames).to(device=device, dtype=dtype)
+    mass = torch.from_numpy(mass).to(device=device, dtype=dtype)
+    L = geometry_util.sparse_np_to_torch(L).to(device=device, dtype=dtype)
+    evals = torch.from_numpy(evals).to(device=device, dtype=dtype)
+    evecs = torch.from_numpy(evecs).to(device=device, dtype=dtype)
+    gradX = geometry_util.sparse_np_to_torch(gradX).to(device=device, dtype=dtype)
+    gradY = geometry_util.sparse_np_to_torch(gradY).to(device=device, dtype=dtype)
+
+
+    return frames, cache_verts, cache_faces, mass, L, evals, evecs, gradX, gradY
+
+
+class ZipCollection:
+    '''
+    Context manager for opening and closing multiple zip files
+    '''
+    
+    def __init__(self, zip_files_path_list):
+        self.zip_files_path_list = zip_files_path_list
+        self.zip_files = []
+        
+    def __enter__(self):
+        print(f'Opening {len(self.zip_files_path_list)} zip files...')
+        
+        for zip_file_path in self.zip_files_path_list:
+            self.zip_files.append(zipfile.ZipFile(zip_file_path, 'r'))
+        return self.zip_files
+    
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        print(f'Closing {len(self.zip_files)} zip files...')
+        
+        for zip_file in self.zip_files:
+            zip_file.close()
+        return
+    
+    def open(self):
+        return self.__enter__()
+    
+    def close(self):
+        return self.__exit__(None, None, None)
+
+
+class ZipFileDataset(torch.utils.data.Dataset):
+    def __init__(self, zip_files, k):
+
+        self.k = k        
+        self.zip_files = zip_files
+
+        # get all the namelists and their lengths
+        self.zip_namelists = []
+        self.zip_namelists_len = []
+        for zip_file in self.zip_files:
+            zip_file_namelist = zip_file.namelist()
+            self.zip_namelists.append(zip_file_namelist)
+            self.zip_namelists_len.append(len(zip_file_namelist))
+        
+    def __len__(self):
+        return sum(self.zip_namelists_len)
+    
+    def __getitem__(self, idx):
+        
+        # find the source zip file
+        zip_file_idx = 0
+        while idx >= self.zip_namelists_len[zip_file_idx]:
+            idx -= self.zip_namelists_len[zip_file_idx]
+            zip_file_idx += 1
+            
+        # get the filename
+        file_name = self.zip_namelists[zip_file_idx][idx]
+        
+        # read the operators
+        frames, verts, faces, mass, L, evals, evecs, gradX, gradY = zip_read_operators(
+            self.zip_files[zip_file_idx], file_name, self.k)
+        
+        # construct the output payload
+        item = {
+            'verts': verts,
+            'faces': faces,
+            'evals': evals[:self.k].unsqueeze(0),
+            'evecs': evecs[:, :self.k],
+            'evecs_trans': evecs[:, :self.k].T * mass[None],
+            'mass': mass,
+            'L': L,
+            'gradX': gradX,
+            'gradY': gradY,
+            'corr': torch.arange(len(verts)),
+        }
+        return item
+
+
+
 if __name__ == '__main__':
     
-    idx_start = 0
-    idx_end = 10000
+    from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
+    
+    idx_start = 10000
+    idx_end = 20000
 
     base_folder = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL'
     os.makedirs(base_folder, exist_ok=True)

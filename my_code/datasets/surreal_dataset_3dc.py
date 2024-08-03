@@ -30,7 +30,8 @@ class TemplateSurrealDataset3DC(Dataset):
                  num_evecs,
                  use_cuda,
                  cache_lb_dir,
-                 return_evecs
+                 return_evecs,
+                 mmap,
                  ):
         
         # raise RuntimeError("Use regular TemplateDataset")
@@ -42,7 +43,8 @@ class TemplateSurrealDataset3DC(Dataset):
         self.return_evecs = return_evecs
 
         # load the shapes from 3D-coded
-        self.shapes = torch.load(shape_path, mmap=True)
+        self.shapes = torch.load(shape_path, mmap=mmap)
+        
         
         # load template mesh
         self.template_mesh = trimesh.load(f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply')

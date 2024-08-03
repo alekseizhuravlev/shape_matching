@@ -12,7 +12,7 @@ import my_code.datasets.shape_dataset as shape_dataset
 
 
 
-def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type):
+def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type, **kwargs):
     
     # normalize the evecs
     evecs_flip = torch.nn.functional.normalize(evecs_flip, p=2, dim=1)
@@ -33,6 +33,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type):
         verts=verts,
         faces=faces,
         feats=evecs_input,
+        **kwargs
     ) # [1 x 6890 x 1]
 
     # normalize the support vector

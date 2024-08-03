@@ -64,17 +64,20 @@ class TemplateDataset(Dataset):
                  template_path,
                  template_corr,
                  num_evecs,
+                 centering,
                  return_Cxy=True,
                  preload_base_dataset=True,
+                 lb_cache_dir=None,
                 #  canonicalize_fmap='max'
-                canonicalize_fmap=None
+                canonicalize_fmap=None,
+                
                  ):
 
         self.num_evecs = num_evecs
         self.return_Cxy = return_Cxy
         self.canonicalize_fmap = canonicalize_fmap
         
-        self.lb_cache_dir = base_dataset.lb_cache_dir
+        self.lb_cache_dir = lb_cache_dir
 
         # cache the base dataset
         if preload_base_dataset:
@@ -96,7 +99,7 @@ class TemplateDataset(Dataset):
             template_path=template_path,
             num_evecs=num_evecs,
             template_corr=template_corr,
-            centering=base_dataset.centering
+            centering=centering
             )
         
         
@@ -166,21 +169,21 @@ class TemplateDataset(Dataset):
             payload['second']['C_gt_xy'] =\
                 self.get_functional_map(payload['first'], payload['second'])
                 
-            if self.canonicalize_fmap is not None:
+            # if self.canonicalize_fmap is not None:
                 
-                C_gt_xy_prepr, evecs_second_prepr = preprocessing.canonicalize_fmap(
-                    canon_type=self.canonicalize_fmap,
-                    data_payload=payload
-                    )
+            #     C_gt_xy_prepr, evecs_second_prepr = preprocessing.canonicalize_fmap(
+            #         canon_type=self.canonicalize_fmap,
+            #         data_payload=payload
+            #         )
                 
-                ### doesn't work: dict from single dataset is modified during canonicalization
-                # save the uncanonicalized values
-                # payload['second']['C_gt_xy_uncan'] = payload['second']['C_gt_xy'].detach().clone()
-                # payload['second']['evecs_uncan'] = payload['second']['evecs'].detach().clone()
+            #     ### doesn't work: dict from single dataset is modified during canonicalization
+            #     # save the uncanonicalized values
+            #     # payload['second']['C_gt_xy_uncan'] = payload['second']['C_gt_xy'].detach().clone()
+            #     # payload['second']['evecs_uncan'] = payload['second']['evecs'].detach().clone()
                 
-                # assign the canonicalized values
-                payload['second']['C_gt_xy'] = C_gt_xy_prepr
-                payload['second']['evecs'] = evecs_second_prepr
+            #     # assign the canonicalized values
+            #     payload['second']['C_gt_xy'] = C_gt_xy_prepr
+            #     payload['second']['evecs'] = evecs_second_prepr
                 
                 
             #     payload = preprocessing.canonicalize_fmap(

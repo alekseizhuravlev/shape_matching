@@ -336,18 +336,28 @@ class DiffusionNet(nn.Module):
             blocks += [block]
         self.blocks = nn.ModuleList(blocks)
 
-    def forward(self, verts, faces=None, feats=None):
+    def forward(self, verts, faces=None, feats=None,
+                mass=None, L=None, evals=None,
+                evecs=None, gradX=None, gradY=None
+                ):
         assert verts.dim() == 3, 'Only support batch operation'
         if faces is not None:
             assert faces.dim() == 3, 'Only support batch operation'
 
-        # ensure reproducibility to first convert to cpu to find the precomputed spectral ops
-        if faces is not None:
-            _, mass, L, evals, evecs, gradX, gradY = get_all_operators(verts.cpu(), faces.cpu(), k=self.k_eig,
-                                                                       cache_dir=self.cache_dir)
+        # find the precomputed spectral ops
+        # ensure reproducibility to first convert to cpu
+        if mass is None or L is None or evals is None or evecs is None or gradX is None or gradY is None:
+            if faces is not None:
+                _, mass, L, evals, evecs, gradX, gradY = get_all_operators(verts.cpu(), faces.cpu(), k=self.k_eig,
+                                                                        cache_dir=self.cache_dir)
+            else:
+                _, mass, L, evals, evecs, gradX, gradY = get_all_operators(verts.cpu(), None, k=self.k_eig,
+                                                                        cache_dir=self.cache_dir)
+            # print(f'Computed spectral operators, evecs dim: {evecs.shape}')
         else:
-            _, mass, L, evals, evecs, gradX, gradY = get_all_operators(verts.cpu(), None, k=self.k_eig,
-                                                                       cache_dir=self.cache_dir)
+            assert evals.shape[1] == self.k_eig, f'Expected number of eigenvalues: {self.k_eig}, but got: {evals.shape[1]}'
+            assert evecs.shape[2] == self.k_eig, f'Expected number of eigenvectors: {self.k_eig}, but got: {evecs.shape[2]}'
+        
         mass = mass.to(device=verts.device)
         L = L.to(device=verts.device)
         evals = evals.to(device=verts.device)
