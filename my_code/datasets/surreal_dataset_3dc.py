@@ -79,12 +79,12 @@ class TemplateSurrealDataset3DC(Dataset):
         C_gt_xy = torch.linalg.lstsq(
             data_y['evecs'][data_y['corr']].to(device),
             data_x['evecs'][data_x['corr']].to(device)
-            ).solution.to('cpu').unsqueeze(0)
+            ).solution.to('cpu') #.unsqueeze(0)
         
         C_gt_yx = torch.linalg.lstsq(
             data_x['evecs'][data_x['corr']].to(device),
             data_y['evecs'][data_y['corr']].to(device)
-            ).solution.to('cpu').unsqueeze(0)
+            ).solution.to('cpu') #.unsqueeze(0)
 
         return C_gt_xy, C_gt_yx
         

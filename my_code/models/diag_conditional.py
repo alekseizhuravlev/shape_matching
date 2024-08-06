@@ -15,10 +15,15 @@ class DiagConditionedUnet(nn.Module):
   def forward(self, sample, timestep, conditioning):
 
     # Create a diagonal matrix from the conditioning
-    conditioning_diag = torch.diag_embed(conditioning) 
+    # conditioning_diag = torch.diag_embed(conditioning) 
 
     # concatenate the sample and the conditioning
-    net_input = torch.cat((sample, conditioning_diag), 1) # (bs, 2, 28, 28)
+    # net_input = torch.cat((sample, conditioning_diag), 1) # (bs, 2, 28, 28)
+    
+    # assert that both sample and conditioning are square matrices with the same shape
+    assert sample.shape[2] == sample.shape[3] == conditioning.shape[2] == conditioning.shape[3],\
+      f"Shape mismatch, sample shape: {sample.shape}, conditioning shape: {conditioning.shape}"
+    net_input = torch.cat((sample, conditioning), 1) # (bs, 2, 28, 28)
 
     # Feed this to the UNet alongside the timestep and return the prediction
     return self.model(net_input, timestep)

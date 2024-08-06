@@ -61,7 +61,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, evecs_cond, input_type, *
     # get the sign of the support vector
     # sign_flip_predicted = product_with_support
  
-    return sign_flip_predicted, support_vector_norm, product_with_support
+    return sign_flip_predicted, support_vector_norm_repeated, product_with_support
 
 
 def load_cached_shapes(save_folder, lapl_type):

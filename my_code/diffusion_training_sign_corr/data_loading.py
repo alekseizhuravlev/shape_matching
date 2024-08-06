@@ -28,8 +28,9 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=list(range(6890)),
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=True,
+            preload_base_dataset=False,
             canonicalize_fmap=canonicalize_fmap,
+            centering='bbox'
         )
     elif name == 'FAUST_orig':
         dataset_single = shape_dataset.SingleFaustDataset(
@@ -46,6 +47,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=True,
             canonicalize_fmap=canonicalize_fmap,
+            centering='bbox'
         )
     elif name == 'FAUST_r':
         dataset_single = shape_dataset.SingleFaustDataset(
@@ -62,6 +64,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=True,
             canonicalize_fmap=canonicalize_fmap,
+            centering='bbox'
         )
     elif name == 'FAUST_a':
         dataset_single = shape_dataset.SingleShapeDataset(
@@ -77,6 +80,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=True,
             canonicalize_fmap=canonicalize_fmap,
+            centering='bbox'
         )
     elif name == 'SHREC19':
         dataset_single = shape_dataset.SingleShapeDataset(
@@ -93,6 +97,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=False,
             canonicalize_fmap=canonicalize_fmap,
+            centering='bbox'
         )
         
     return dataset_single, dataset_template

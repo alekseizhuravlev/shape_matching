@@ -81,10 +81,13 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_signCorr_noAug',
-        'dataset_name': 'dataset_3dc_corrected_noAug_32',
+        'experiment_name': 'test_signCorr_withAug_evalsInvEvecs_32',
         
+        'dataset_name': 'dataset_SURREAL_train_withAug_productSuppCond_32',
         'fmap_type': 'orig',
+        'conditioning_types': {'evals_inv', 'evecs'},
+        
+        
         'sign_net_path': '/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_estimator_no_aug/40000.pth',
         'net_input_type': 'wks',
         'evecs_per_support': 4,
@@ -98,7 +101,7 @@ if __name__ == '__main__':
         
         'model_params': {
             'sample_size': 32,
-            'in_channels': 2,
+            'in_channels': 4,
             'out_channels': 1,
             'layers_per_block': 2,
             'block_out_channels': (32, 64, 64),
@@ -118,8 +121,8 @@ if __name__ == '__main__':
     # experiment setup
     experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/{config["experiment_name"]}'
     # shutil.rmtree(experiment_folder, ignore_errors=True)
-    os.makedirs(experiment_folder, exist_ok=True)
-    os.makedirs(f'{experiment_folder}/checkpoints', exist_ok=True)
+    os.makedirs(experiment_folder)
+    os.makedirs(f'{experiment_folder}/checkpoints')
 
     # save the config file
     with open(f'{experiment_folder}/config.yaml', 'w') as f:
@@ -127,8 +130,11 @@ if __name__ == '__main__':
     
     
     ### Train dataset with dataloader
-    dataset_train = SurrealTrainDataset(f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
-                                        input_type=config["fmap_type"])
+    dataset_train = SurrealTrainDataset(
+        f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
+        fmap_input_type=config["fmap_type"],
+        conditioning_types=config["conditioning_types"]
+        )
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=config["batch_size"], shuffle=True)
        
     # validation datasets
@@ -141,7 +147,7 @@ if __name__ == '__main__':
         print(f'Number of {val_dataset["name"]} samples: {len(val_dataset["dataset"])}')
         
     print(f'Fmap shape: {dataset_train[10][0].shape}, ', 
-          f'eval shape: {dataset_train[10][1].shape}')
+          f'conditioning shape: {dataset_train[10][1].shape}')
         
         
     ### Model

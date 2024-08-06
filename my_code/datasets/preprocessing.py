@@ -89,14 +89,13 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     _, mass, L, evals, evecs, gradX, gradY = get_operators(item['verts'], item.get('faces'),
                                                    k=num_evecs,
                                                    cache_dir=cache_dir)
-    evals = evals.unsqueeze(0)
+    # evals = evals.unsqueeze(0)
     evecs_trans = evecs.T * mass[None]
     item['evecs'] = evecs[:, :num_evecs]
     item['evecs_trans'] = evecs_trans[:num_evecs]
     item['evals'] = evals[:num_evecs]
     item['mass'] = mass
     item['L'] = L.to_dense()
-    # item['L'] = L
     item['gradX'] = gradX.to_dense()
     item['gradY'] = gradY.to_dense()
 

@@ -31,13 +31,13 @@ def visualize_before_after(data, C_xy_corr, evecs_cond_first, evecs_cond_second,
 
         fig, axs = plt.subplots(1, 5, figsize=(18, 5))
 
-        plotting_utils.plot_Cxy(fig, axs[0], data['second']['C_gt_xy'],
+        plotting_utils.plot_Cxy(fig, axs[0], data['second']['C_gt_xy'][0],
                                 'before', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[1], C_xy_corr,
                                 'after', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[2], data['second']['C_gt_xy'][l:h, l:h] - C_xy_corr,
+        plotting_utils.plot_Cxy(fig, axs[2], data['second']['C_gt_xy'][0, l:h, l:h] - C_xy_corr,
                         'diff', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[3], data['second']['C_gt_xy'][l:h, l:h].abs() - C_xy_corr.abs(),
+        plotting_utils.plot_Cxy(fig, axs[3], data['second']['C_gt_xy'][0, l:h, l:h].abs() - C_xy_corr.abs(),
                         'abs diff', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[3], evecs_cond_first,
                         'evecs_cond_first', l, h, show_grid=False, show_colorbar=False)
@@ -54,14 +54,14 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
     
-    verts_first = data['first']['verts'].unsqueeze(0).to(device)
-    verts_second = data['second']['verts'].unsqueeze(0).to(device)
+    verts_first = data['first']['verts'].to(device)
+    verts_second = data['second']['verts'].to(device)
     
-    faces_first = data['first']['faces'].unsqueeze(0).to(device)
-    faces_second = data['second']['faces'].unsqueeze(0).to(device)
+    faces_first = data['first']['faces'].to(device)
+    faces_second = data['second']['faces'].to(device)
 
-    evecs_first = data['first']['evecs'][:, :num_evecs].unsqueeze(0).to(device)
-    evecs_second = data['second']['evecs'][:, :num_evecs].unsqueeze(0).to(device)
+    evecs_first = data['first']['evecs'][:,:, :num_evecs].to(device)
+    evecs_second = data['second']['evecs'][:,:, :num_evecs].to(device)
 
     corr_first = data['first']['corr']
     corr_second = data['second']['corr']
@@ -69,22 +69,22 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
 
     # predict the sign change
     with torch.no_grad():
-        sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
+        sign_pred_first = predict_sign_change(
             net, verts_first, faces_first, evecs_first, 
             evecs_cond=None, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
-            mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
-            evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
-            gradX=data['first']['gradX'].unsqueeze(0), gradY=data['first']['gradY'].unsqueeze(0)
-            )
-        sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
+            mass=data['first']['mass'], L=data['first']['L'],
+            evals=data['first']['evals'], evecs=data['first']['evecs'],
+            gradX=data['first']['gradX'], gradY=data['first']['gradY'],
+            )[0]
+        sign_pred_second = predict_sign_change(
             net, verts_second, faces_second, evecs_second, 
             evecs_cond=None, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
-            mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
-            evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
-            gradX=data['second']['gradX'].unsqueeze(0), gradY=data['second']['gradY'].unsqueeze(0)
-            )
+            mass=data['second']['mass'], L=data['second']['L'],
+            evals=data['second']['evals'], evecs=data['second']['evecs'],
+            gradX=data['second']['gradX'], gradY=data['second']['gradY'],
+            )[0]
 
     # correct the evecs
     
@@ -95,21 +95,13 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
     evecs_second_corrected = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
     
     # product with itself
-    # evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ evecs_first_corrected
-    # evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ evecs_second_corrected
-    
-    # product with support
-    evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ support_vector_norm_first[0].cpu()
-    evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ support_vector_norm_second[0].cpu()
-
-    # print(f'evecs_first_corrected: {evecs_first_corrected.shape}, support_vector_norm_first: {support_vector_norm_first.shape}')
-    # exit()
+    evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ evecs_first_corrected
+    evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ evecs_second_corrected
 
     # correct the functional map
     C_xy_pred = torch.linalg.lstsq(
-        evecs_second.cpu()[0, corr_second] * torch.sign(sign_pred_second).cpu(),
-        # evecs_first.cpu()[0, corr_first].cpu()
-        evecs_first.cpu()[0, corr_first] * torch.sign(sign_pred_first).cpu()
+        evecs_second.cpu()[0, corr_second[0]] * torch.sign(sign_pred_second).cpu(),
+        evecs_first.cpu()[0, corr_first[0]] * torch.sign(sign_pred_first).cpu()
         ).solution
 
     return C_xy_pred, evecs_cond_first, evecs_cond_second
@@ -118,8 +110,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
     
 
 def save_train_dataset(
-        dataset,
-        train_indices,
+        dataloader,
         dataset_folder,
         start_idx,
         end_idx,
@@ -148,10 +139,9 @@ def save_train_dataset(
     
     print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}', f'evecs_cond to {evecs_cond_first_file}')
     
-    for i, idx in enumerate(train_indices):
-        data = dataset[idx]
+    for i, data in enumerate(dataloader):
         
-        evals = data['second']['evals'][:num_evecs]
+        evals = data['second']['evals'][:,:num_evecs]
         C_xy_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
             data=data,
             num_evecs=num_evecs,
@@ -184,7 +174,7 @@ def save_train_dataset(
             visualize_before_after(
                 data, C_xy_corr,
                 evecs_cond_first, evecs_cond_second,
-                figures_folder, idx)
+                figures_folder, start_idx + i)
 
 
 def parse_args():
@@ -202,7 +192,7 @@ def parse_args():
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_input_type wks --evecs_per_support 4 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_double_start_0_feat_32_6block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/40000.pth
+    # python my_code/datasets/cache_surreal_sign_corr_dataloader.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_input_type wks --evecs_per_support 4 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_double_start_0_feat_32_6block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/40000.pth
     
     return args
          
@@ -221,21 +211,31 @@ if __name__ == '__main__':
     
     from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
     
+    if not os.path.exists('/tmp/mmap_datas_surreal_train.pth'):
+        
+        print('Copying the file to /tmp', flush=True)
+        #rsync -aq /home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth /tmp/
+        os.system('rsync -aq /home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth /tmp/')
+        
+        assert os.path.exists('/tmp/mmap_datas_surreal_train.pth')
+
+    
     dataset = TemplateSurrealDataset3DC(
         # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
-        shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
+        # shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
+        shape_path=f'/tmp/mmap_datas_surreal_train.pth',
         num_evecs=128,
         use_cuda=False,
         cache_lb_dir=None,
         return_evecs=True,
-        mmap=False
+        mmap=True
     )    
     
-    print('Dataset created')
+    print('Dataset created', flush=True)
     
     # sample train/test indices
     train_indices = list(range(len(dataset)))
-    print(f'Number of training samples: {len(train_indices)}')
+    print(f'Number of training samples: {len(train_indices)}', flush=True)
     
     # folder to store the dataset
     # dataset_name = f'dataset_3dc_correctedSecond_noAug_{num_evecs}'
@@ -281,18 +281,21 @@ if __name__ == '__main__':
     if current_worker == n_workers - 1:
         end = n_samples
         
-    print(f'Worker {current_worker} processing samples from {start} to {end}')
+    print(f'Worker {current_worker} processing samples from {start} to {end}', flush=True)
     
     # indices for this worker
     train_indices = train_indices[start:end]
     
-    # subset = torch.utils.data.Subset(dataset, train_indices)
-        
+    subset = torch.utils.data.Subset(dataset, train_indices)
+    dataloader = torch.utils.data.DataLoader(
+        subset, batch_size=1, shuffle=False,
+        num_workers=4,
+        pin_memory=False
+    )
 
-    print(f"Saving train dataset...")
+    print(f"Saving train dataset...", flush=True)
     save_train_dataset(
-        dataset=dataset,
-        train_indices=train_indices,
+        dataloader=dataloader,
         dataset_folder=dataset_folder,
         start_idx=start,
         end_idx=end,
