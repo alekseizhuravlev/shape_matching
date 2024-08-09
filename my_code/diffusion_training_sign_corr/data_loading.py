@@ -14,7 +14,7 @@ import my_code.datasets.shape_dataset as shape_dataset
 import my_code.datasets.template_dataset as template_dataset
 
 
-def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
+def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
     
     if name == 'SURREAL':
         dataset_single = shape_dataset.SingleShapeDataset(
@@ -28,7 +28,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=list(range(6890)),
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=False,
+            preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
             centering='bbox'
         )
@@ -45,7 +45,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=list(range(6890)),
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=True,
+            preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
             centering='bbox'
         )
@@ -62,7 +62,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=np.loadtxt('data_with_smpl_corr/FAUST_r/sampleID.vts', dtype=int) - 1,
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=True,
+            preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
             centering='bbox'
         )
@@ -78,7 +78,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=list(range(6890)),
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=True,
+            preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
             centering='bbox'
         )
@@ -95,7 +95,7 @@ def get_val_dataset(name, phase, num_evecs, canonicalize_fmap=None):
             template_path='data/SURREAL_full/template/template.ply',
             template_corr=list(range(6890)),
             num_evecs=dataset_single.num_evecs,
-            preload_base_dataset=False,
+            preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
             centering='bbox'
         )
