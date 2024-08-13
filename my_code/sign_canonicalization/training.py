@@ -18,7 +18,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **k
     assert verts.dim() == 3
     assert faces is None or faces.dim() == 3
     assert evecs_flip.dim() == 3
-    assert mass_mat.dim() == 3 and mass_mat.shape[1] == mass_mat.shape[2]
+    assert mass_mat is None or (mass_mat.dim() == 3 and mass_mat.shape[1] == mass_mat.shape[2])
     
     # normalize the evecs
     evecs_flip = torch.nn.functional.normalize(evecs_flip, p=2, dim=1)
@@ -56,12 +56,18 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **k
     # multiply the support vector by the flipped evecs 
     # [1 x 6890 x 4].T @ [1 x 6890 x 6890] @ [1 x 6890 x 4]
     
-    support_mass_norm = torch.nn.functional.normalize(
-        support_vector_norm_repeated.transpose(1, 2) @ mass_mat,
-        p=2, dim=2)
+    if mass_mat is not None:
+        support_mass_norm = torch.nn.functional.normalize(
+            support_vector_norm_repeated.transpose(1, 2) @ mass_mat,
+            p=2, dim=2)
+        
+        # product_with_support = support_vector_norm_repeated.transpose(1, 2) @ mass_mat @ evecs_flip
+        product_with_support = support_mass_norm @ evecs_flip
+        
+    else:
+        product_with_support = support_vector_norm_repeated.transpose(1, 2) @ evecs_flip
     
-    # product_with_support = support_vector_norm_repeated.transpose(1, 2) @ mass_mat @ evecs_flip
-    product_with_support = support_mass_norm @ evecs_flip
+    
     assert product_with_support.shape[1] == product_with_support.shape[2]
     
     # take the sign of diagonal elements
@@ -108,9 +114,12 @@ if __name__ == '__main__':
     
     start_dim = 0
 
+    input_channels = 128
     feature_dim = 32
     evecs_per_support = 4
-    n_block = 6
+    n_block = 2
+    
+    n_iter = 20000
     
     input_type = 'wks'
     # lapl_type = 'mesh'
@@ -118,7 +127,7 @@ if __name__ == '__main__':
     train_folder = 'SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     test_folder = 'FAUST_r'
     
-    chkpt_name = f'sign_mass_start_{start_dim}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
+    chkpt_name = f'sign_overfit_start_{start_dim}_inCh_{input_channels}_iter_{n_iter}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
 
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{chkpt_name}'
@@ -127,7 +136,7 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=feature_dim,
+        in_channels=input_channels,
         out_channels=feature_dim // evecs_per_support,
         cache_dir=None,
         input_type=input_type,
@@ -138,20 +147,20 @@ if __name__ == '__main__':
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.LinearLR(
         opt, start_factor=1, end_factor=0.1, 
-        total_iters=50000)
+        total_iters=n_iter)
     
     
     train_shapes, train_diff_folder = load_cached_shapes(
         f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}'
     )
-    test_shapes, test_diff_folder = load_cached_shapes(
-        f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
-    )
+    # test_shapes, test_diff_folder = load_cached_shapes(
+    #     f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
+    # )
         
     
     loss_fn = torch.nn.MSELoss()
     losses = torch.tensor([])
-    train_iterator = tqdm(range(40000))
+    train_iterator = tqdm(range(n_iter))
        
     net.cache_dir = train_diff_folder      
             
@@ -176,9 +185,11 @@ if __name__ == '__main__':
 
             evecs_orig = train_shape['evecs'][:, :, start_dim:start_dim+feature_dim].to(device)
             
-            mass_mat = torch.diag_embed(
-                train_shape['mass']
-                ).to(device)
+            # mass_mat = torch.diag_embed(
+            #     train_shape['mass']
+            #     ).to(device)
+            
+            mass_mat = None
 
             ##############################################
             # Set the signs on shape 0

@@ -14,7 +14,7 @@ import my_code.datasets.shape_dataset as shape_dataset
 import my_code.datasets.template_dataset as template_dataset
 
 
-def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
+def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_fmap=None):
     
     if name == 'SURREAL':
         dataset_single = shape_dataset.SingleShapeDataset(
@@ -22,6 +22,7 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             centering = 'bbox',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/SURREAL_test/diffusion',
+            return_evecs=return_evecs
         )   
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -30,7 +31,8 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox'
+            centering='bbox',
+            return_Cxy=return_evecs
         )
     elif name == 'FAUST_orig':
         dataset_single = shape_dataset.SingleFaustDataset(
@@ -38,7 +40,8 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             data_root = 'data_with_smpl_corr/FAUST_original',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_original/diffusion'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_original/diffusion',
+            return_evecs=return_evecs,
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -47,7 +50,8 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox'
+            centering='bbox',
+            return_Cxy=return_evecs,
         )
     elif name == 'FAUST_r':
         dataset_single = shape_dataset.SingleFaustDataset(
@@ -55,7 +59,8 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             data_root = 'data_with_smpl_corr/FAUST_r',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_r/diffusion'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_r/diffusion',
+            return_evecs=return_evecs,
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -64,14 +69,16 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox'
+            centering='bbox',
+            return_Cxy=return_evecs,
         )
     elif name == 'FAUST_a':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/FAUST_a',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/FAUST_a/diffusion'
+            lb_cache_dir=f'data_with_smpl_corr/FAUST_a/diffusion',
+            return_evecs=return_evecs,
         )
         dataset_template = template_dataset.TemplateDataset(
             base_dataset=dataset_single,
@@ -80,14 +87,16 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox'
+            centering='bbox',
+            return_Cxy=return_evecs,
         )
     elif name == 'SHREC19':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/SHREC19_original',
             centering = 'bbox',
             num_evecs=num_evecs,
-            lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/diffusion'
+            lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/diffusion',
+            return_evecs=return_evecs,
             # lb_cache_dir=None
         )
         dataset_template = template_dataset.TemplateDataset(
@@ -97,7 +106,8 @@ def get_val_dataset(name, phase, num_evecs, preload, canonicalize_fmap=None):
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox'
+            centering='bbox',
+            return_Cxy=return_evecs,
         )
         
     return dataset_single, dataset_template

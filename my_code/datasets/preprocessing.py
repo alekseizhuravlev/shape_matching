@@ -95,9 +95,12 @@ def get_spectral_ops(item, num_evecs, cache_dir=None):
     item['evecs_trans'] = evecs_trans[:num_evecs]
     item['evals'] = evals[:num_evecs]
     item['mass'] = mass
-    item['L'] = L.to_dense()
-    item['gradX'] = gradX.to_dense()
-    item['gradY'] = gradY.to_dense()
+    # item['L'] = L.to_dense()
+    # item['gradX'] = gradX.to_dense()
+    # item['gradY'] = gradY.to_dense()
+    item['L'] = L
+    item['gradX'] = gradX
+    item['gradY'] = gradY
 
     return item
 

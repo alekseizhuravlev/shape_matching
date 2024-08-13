@@ -23,14 +23,14 @@ if __name__ == '__main__':
     
     base_dir = '/home/s94zalek_hpc/shape_matching/my_code/experiments'
     
-    experiment_name = 'signCorr_FAUST_r'
+    experiment_name = 'signCorr_FAUSTr_nBlocks_4_inCh_128'
     
     experiment_dir = f'{base_dir}/{experiment_name}'
     os.makedirs(experiment_dir, exist_ok=True)
     
 
     train_dataset = data_loading.get_val_dataset(
-        'FAUST_r', 'train', 128, canonicalize_fmap=None
+        'FAUST_r', 'train', 128, canonicalize_fmap=None, preload=True
         )[1]
 
 
@@ -43,12 +43,12 @@ if __name__ == '__main__':
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=feature_dim,
+        in_channels=128,
         out_channels=feature_dim // evecs_per_support,
         cache_dir=None,
         input_type='wks',
         k_eig=128,
-        n_block=6
+        n_block=4,
         ).to(device)
 
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
@@ -85,9 +85,10 @@ if __name__ == '__main__':
 
             evecs_orig = train_shape['evecs'].unsqueeze(0)[:, :, start_dim:start_dim+feature_dim].to(device)
             
-            mass_mat = torch.diag_embed(
-                torch.ones_like(train_shape['mass'].unsqueeze(0))
-                ).to(device)
+            # mass_mat = torch.diag_embed(
+            #     torch.ones_like(train_shape['mass'].unsqueeze(0))
+            #     ).to(device)
+            mass_mat = None
 
             ##############################################
             # Set the signs on shape 0
