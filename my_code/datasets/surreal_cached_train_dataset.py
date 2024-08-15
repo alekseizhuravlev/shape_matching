@@ -27,13 +27,15 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
 
         if 'evecs' in conditioning_types:
             
-            print('WARNING evecs shape [32, 8] is hard coded')
+            # print('WARNING evecs shape [32, 8] is hard coded')
             
             self.evecs_cond_first = np.loadtxt(f'{base_folder}/evecs_cond_first.txt')
             self.evecs_cond_first = torch.tensor(self.evecs_cond_first, dtype=torch.float32)
+            self.evecs_cond_first = self.evecs_cond_first.reshape(len(self.evecs_cond_first), fmap_dim, fmap_dim)
             
             self.evecs_cond_second = np.loadtxt(f'{base_folder}/evecs_cond_second.txt')
             self.evecs_cond_second = torch.tensor(self.evecs_cond_second, dtype=torch.float32)
+            self.evecs_cond_second = self.evecs_cond_second.reshape(len(self.evecs_cond_second), fmap_dim, fmap_dim)
         
         
     
@@ -65,12 +67,12 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
         
         if 'evecs' in self.conditioning_types:
             evecs_cond_first = self.evecs_cond_first[idx].unsqueeze(0)
-            evecs_cond_first = evecs_cond_first.reshape(1, 32, 8)
-            evecs_cond_first = torch.repeat_interleave(evecs_cond_first, 4, 2)
+            # evecs_cond_first = evecs_cond_first.reshape(1, 32, 8)
+            # evecs_cond_first = torch.repeat_interleave(evecs_cond_first, 4, 2)
             
             evecs_cond_second = self.evecs_cond_second[idx].unsqueeze(0)
-            evecs_cond_second = evecs_cond_second.reshape(1, 32, 8)
-            evecs_cond_second = torch.repeat_interleave(evecs_cond_second, 4, 2)
+            # evecs_cond_second = evecs_cond_second.reshape(1, 32, 8)
+            # evecs_cond_second = torch.repeat_interleave(evecs_cond_second, 4, 2)
             
             evecs = torch.cat((evecs_cond_first, evecs_cond_second), 0)
             conditioning = torch.cat((conditioning, evecs), 0)

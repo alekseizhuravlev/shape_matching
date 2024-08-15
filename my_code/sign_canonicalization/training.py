@@ -117,9 +117,9 @@ if __name__ == '__main__':
     input_channels = 128
     feature_dim = 32
     evecs_per_support = 4
-    n_block = 2
+    n_block = 4
     
-    n_iter = 20000
+    n_iter = 50000
     
     input_type = 'wks'
     # lapl_type = 'mesh'

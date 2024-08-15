@@ -9,7 +9,7 @@ def test_on_dataset(net, test_dataset):
 
     tqdm._instances.clear()
 
-    n_epochs = 5
+    n_epochs = 10
         
     iterator = tqdm(total=len(test_dataset) * n_epochs)
     incorrect_signs_list = torch.tensor([])
@@ -128,34 +128,35 @@ if __name__ == '__main__':
         cache_dir=None,
         input_type='wks',
         k_eig=128,
-        n_block=2,
+        n_block=4,
         ).to(device)
 
     input_type = 'wks'
     
     # exp_name = 'sign_overfit_start_0_inCh_128_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks'
-    exp_name = 'sign_overfit_start_0_inCh_128_iter_20000_feat_32_2block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks'
+    exp_name = 'sign_overfit_start_0_inCh_128_iter_50000_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks'
     
-    log_file = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/log_1.txt'
+    log_file = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/log_10ep.txt'
     
 
-    for dataset_name, split in [
-        ('FAUST_a', 'test'),
-        ('SHREC19', 'train'), 
-        ('FAUST_r', 'test'),
-        ('FAUST_orig', 'test'), 
-        ('FAUST_r', 'train'), 
-        ('FAUST_orig', 'train'), 
-        ]:
-        
-        test_dataset_curr = data_loading.get_val_dataset(
-            dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
-            )[1]
-        
-        for n_iter in [2000, 4000, 6000, 8000, 10000, 14000, 20000]:
-    
-            net.load_state_dict(torch.load(f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/{n_iter}.pth'))
+    for n_iter in [5000, 10000, 25000, 50000]:
+    # for n_iter in [200, 600, 1000, 1400, 2000]:
 
+        net.load_state_dict(torch.load(f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/{n_iter}.pth'))
+
+
+        for dataset_name, split in [
+            ('FAUST_a', 'test'),
+            # ('SHREC19', 'train'), 
+            ('FAUST_r', 'test'),
+            ('FAUST_orig', 'test'), 
+            ('FAUST_r', 'train'), 
+            ('FAUST_orig', 'train'), 
+            ]:
+            
+            test_dataset_curr = data_loading.get_val_dataset(
+                dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
+                )[1]
             
             mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr)
             

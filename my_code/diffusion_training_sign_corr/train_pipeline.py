@@ -81,16 +81,23 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_signCorr_withAug_evalsInvEvecs_32',
+        'experiment_name': 'test_signCorr_withAug_evecs_32_4blocks_50k_pth',
         
-        'dataset_name': 'dataset_SURREAL_train_withAug_productSuppCond_32',
+        'dataset_name': 'dataset_SURREAL_train_withAug_productSuppCond_32_4block_50k_pth',
         'fmap_type': 'orig',
-        'conditioning_types': {'evals_inv', 'evecs'},
+        'conditioning_types': {'evecs'},
         
+        'sign_net_path': '/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_overfit_start_0_inCh_128_iter_50000_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/50000.pth',
+        # 'net_input_type': 'wks',
+        # 'evecs_per_support': 4,
         
-        'sign_net_path': '/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_estimator_no_aug/40000.pth',
-        'net_input_type': 'wks',
-        'evecs_per_support': 4,
+        'sign_net_params': {
+            'in_channels': 128,
+            'out_channels': 32 // 4,
+            'input_type': 'wks',
+            'k_eig': 128,
+            'n_block': 4,
+        },
         
         'n_epochs': 100,
         'validate_every': 5,
@@ -101,7 +108,7 @@ if __name__ == '__main__':
         
         'model_params': {
             'sample_size': 32,
-            'in_channels': 4,
+            'in_channels': 3,
             'out_channels': 1,
             'layers_per_block': 2,
             'block_out_channels': (32, 64, 64),
@@ -115,7 +122,7 @@ if __name__ == '__main__':
                 "AttnUpBlock2D",
                 "UpBlock2D",
             ),
-        }
+        },
     }   
     
     # experiment setup
@@ -161,13 +168,15 @@ if __name__ == '__main__':
     
     ### Sign correction network
     sign_corr_net = diffusion_network.DiffusionNet(
-        in_channels=config["model_params"]["sample_size"],
-        out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
-        cache_dir=None,
-        input_type=config["net_input_type"],
-        k_eig=128,
-        n_block=6
-        ).to('cuda')
+        **config["sign_net_params"]
+    ).to('cuda')
+        # in_channels=128,
+        # out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
+        # cache_dir=None,
+        # input_type=config["net_input_type"],
+        # k_eig=128,
+        # n_block=2
+        
     sign_corr_net.load_state_dict(torch.load(config["sign_net_path"]))
     sign_corr_net.eval()
     

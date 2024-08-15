@@ -62,13 +62,15 @@ if __name__ == '__main__':
     
     ### Sign correction network
     sign_corr_net = diffusion_network.DiffusionNet(
-        in_channels=config["model_params"]["sample_size"],
-        out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
-        cache_dir=None,
-        input_type=config["net_input_type"],
-        k_eig=128,
-        n_block=6
+        **config["sign_net_params"]
         ).to('cuda')
+        # in_channels=128,
+        # out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
+        # cache_dir=None,
+        # input_type=config["net_input_type"],
+        # k_eig=128,
+        # n_block=2
+        
     sign_corr_net.load_state_dict(
         torch.load(config["sign_net_path"]))
 
@@ -83,7 +85,7 @@ if __name__ == '__main__':
     split = args.split
 
     test_dataset = data_loading.get_val_dataset(
-        dataset_name, split, 128
+        dataset_name, split, 128, preload=False, return_evecs=True
         )[1]
     sign_corr_net.cache_dir = test_dataset.lb_cache_dir
 
@@ -141,7 +143,7 @@ if __name__ == '__main__':
         with torch.no_grad():
             sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
                 sign_corr_net, verts_first, faces_first, evecs_first, 
-                evecs_cond=None, input_type=sign_corr_net.input_type,
+                mass_mat=None, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
                 evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -149,7 +151,7 @@ if __name__ == '__main__':
                 )
             sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
                 sign_corr_net, verts_second, faces_second, evecs_second, 
-                evecs_cond=None, input_type=sign_corr_net.input_type,
+                mass_mat=None, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
                 evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),

@@ -71,7 +71,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
     with torch.no_grad():
         sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
             net, verts_first, faces_first, evecs_first, 
-            evecs_cond=None, input_type=net_input_type,
+            mass_mat=None, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
             evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -79,7 +79,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
             )
         sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
             net, verts_second, faces_second, evecs_second, 
-            evecs_cond=None, input_type=net_input_type,
+            mass_mat=None, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
             evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
@@ -200,9 +200,11 @@ def parse_args():
     parser.add_argument('--net_input_type', type=str)
     parser.add_argument('--evecs_per_support', type=int)
     
+    parser.add_argument('--dataset_name', type=str)
+    
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_input_type wks --evecs_per_support 4 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_double_start_0_feat_32_6block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/40000.pth
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_input_type wks --evecs_per_support 4 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_overfit_start_0_inCh_128_iter_2000_feat_32_2block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/1000.pth
     
     return args
          
@@ -239,7 +241,9 @@ if __name__ == '__main__':
     
     # folder to store the dataset
     # dataset_name = f'dataset_3dc_correctedSecond_noAug_{num_evecs}'
-    dataset_name = f'dataset_SURREAL_train_withAug_productSuppCond_{num_evecs}'
+    # dataset_name = f'dataset_SURREAL_train_withAug_productSuppCond_{num_evecs}_1000pth'
+    
+    dataset_name = args.dataset_name
     dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
     # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)
@@ -252,12 +256,12 @@ if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=num_evecs,
+        in_channels=128,
         out_channels=num_evecs // args.evecs_per_support,
         cache_dir=None,
         input_type=args.net_input_type,
         k_eig=128,
-        n_block=6
+        n_block=4
         ).to(device)
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
