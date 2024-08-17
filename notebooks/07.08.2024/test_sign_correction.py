@@ -3,9 +3,9 @@ from tqdm import tqdm
 import my_code.sign_canonicalization.training as sign_training
 import torch
 import my_code.diffusion_training_sign_corr.data_loading as data_loading
+import yaml
 
-
-def test_on_dataset(net, test_dataset):
+def test_on_dataset(net, test_dataset, with_mass):
 
     tqdm._instances.clear()
 
@@ -31,9 +31,12 @@ def test_on_dataset(net, test_dataset):
 
             evecs_orig = train_shape['evecs'].unsqueeze(0)[:, :, start_dim:start_dim+feature_dim].to(device)
             
-            mass_mat = torch.diag_embed(
-                torch.ones_like(train_shape['mass'].unsqueeze(0))
-                ).to(device)
+            if with_mass:
+                mass_mat = torch.diag_embed(
+                    train_shape['mass'].unsqueeze(0)
+                    ).to(device)
+            else:
+                mass_mat = None
 
             ##############################################
             # Set the signs on shape 0
@@ -114,35 +117,33 @@ def test_on_dataset(net, test_dataset):
 
 if __name__ == '__main__':
         
-    condition_dim = 0
-    start_dim = 0
+    exp_name = 'signNet_remeshed_evecs_4b_10_0.5_1' 
+    exp_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
+    
+    with open(f'{exp_dir}/config.yaml', 'r') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
+        
+    start_dim = config['start_dim']
 
-    feature_dim = 32
-    evecs_per_support = 4
+    feature_dim = config['feature_dim']
+    evecs_per_support = config['evecs_per_support']
 
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=128,
-        out_channels=feature_dim // evecs_per_support,
-        cache_dir=None,
-        input_type='wks',
-        k_eig=128,
-        n_block=4,
+        **config['net_params']
         ).to(device)
 
-    input_type = 'wks'
+    input_type = config['net_params']['input_type']
     
-    # exp_name = 'sign_overfit_start_0_inCh_128_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks'
-    exp_name = 'sign_overfit_start_0_inCh_128_iter_50000_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks'
     
-    log_file = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/log_10ep.txt'
+    log_file = f'{exp_dir}/log_10ep.txt'
     
 
     for n_iter in [5000, 10000, 25000, 50000]:
     # for n_iter in [200, 600, 1000, 1400, 2000]:
 
-        net.load_state_dict(torch.load(f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{exp_name}/{n_iter}.pth'))
+        net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
 
 
         for dataset_name, split in [
@@ -158,7 +159,7 @@ if __name__ == '__main__':
                 dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
                 )[1]
             
-            mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr)
+            mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'])
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs:.2f} max_incorrect_signs {max_incorrect_signs}')
             

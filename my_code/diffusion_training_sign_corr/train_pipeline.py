@@ -81,23 +81,11 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'test_signCorr_withAug_evecs_32_4blocks_50k_pth',
+        'experiment_name': 'origShapes_signNet_remeshed_10_0.5_1',
         
-        'dataset_name': 'dataset_SURREAL_train_withAug_productSuppCond_32_4block_50k_pth',
+        'dataset_name': 'SURREAL_origShapes_signNet_remeshed_10_0.5_1',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
-        
-        'sign_net_path': '/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_overfit_start_0_inCh_128_iter_50000_feat_32_4block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/50000.pth',
-        # 'net_input_type': 'wks',
-        # 'evecs_per_support': 4,
-        
-        'sign_net_params': {
-            'in_channels': 128,
-            'out_channels': 32 // 4,
-            'input_type': 'wks',
-            'k_eig': 128,
-            'n_block': 4,
-        },
         
         'n_epochs': 100,
         'validate_every': 5,
@@ -126,10 +114,17 @@ if __name__ == '__main__':
     }   
     
     # experiment setup
-    experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/{config["experiment_name"]}'
+    experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/ddpm/{config["experiment_name"]}'
     # shutil.rmtree(experiment_folder, ignore_errors=True)
     os.makedirs(experiment_folder)
     os.makedirs(f'{experiment_folder}/checkpoints')
+    
+    # sign net config
+    with open(f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/config.yaml', 'r') as f:
+        sign_net_config = yaml.load(f, Loader=yaml.FullLoader)
+        
+    # add the sign net config to the main config
+    config['sign_net'] = sign_net_config
 
     # save the config file
     with open(f'{experiment_folder}/config.yaml', 'w') as f:
@@ -167,9 +162,9 @@ if __name__ == '__main__':
     
     
     ### Sign correction network
-    sign_corr_net = diffusion_network.DiffusionNet(
-        **config["sign_net_params"]
-    ).to('cuda')
+    # sign_corr_net = diffusion_network.DiffusionNet(
+    #     **config["sign_net_params"]
+    # ).to('cuda')
         # in_channels=128,
         # out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
         # cache_dir=None,
@@ -177,8 +172,8 @@ if __name__ == '__main__':
         # k_eig=128,
         # n_block=2
         
-    sign_corr_net.load_state_dict(torch.load(config["sign_net_path"]))
-    sign_corr_net.eval()
+    # sign_corr_net.load_state_dict(torch.load(config["sign_net_path"]))
+    # sign_corr_net.eval()
     
     
     ### Training

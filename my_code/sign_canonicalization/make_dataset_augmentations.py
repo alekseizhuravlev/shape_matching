@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import trimesh
-import my_code.diffusion_training.data_loading as data_loading
+# import my_code.diffusion_training_sign_corr.data_loading as data_loading
 import my_code.datasets.shape_dataset as shape_dataset
 
 import os
@@ -11,6 +11,8 @@ import shutil
 import utils.geometry_util as geometry_util
 import utils.shape_util as shape_util
 from tqdm import tqdm
+
+import my_code.sign_canonicalization.remesh as remesh
 
 
 if __name__ == '__main__':
@@ -22,9 +24,9 @@ if __name__ == '__main__':
 
     split = 'train'
     
-    rot_x=180
-    rot_y=180
-    rot_z=180
+    rot_x=0
+    rot_y=90
+    rot_z=0
     
     along_normal=True
     std=0.0
@@ -34,7 +36,13 @@ if __name__ == '__main__':
     scale_min=0.9
     scale_max=1.1
     
+    n_remesh_iters=10
+    simplify_percent_min=0.2
+    simplify_percent_max=0.8
+    
     save_folder = f'{dataset_name}_{split}_' +\
+                f'remesh_iters_{n_remesh_iters:.0f}_' + \
+                f'simplify_{simplify_percent_min:.2f}_{simplify_percent_max:.2f}_' + \
                 f'rot_{rot_x:.0f}_{rot_y:.0f}_{rot_z:.0f}_' + \
                 f'normal_{along_normal}_' + \
                 f'noise_{std}_{noise_clip_low}_{noise_clip_high}_' + \
@@ -76,11 +84,18 @@ if __name__ == '__main__':
     for epoch in range(n_shapes // len(train_dataset)):
         for i in range(len(train_dataset)):
         
-            # get the vertices and faces            
-            # verts = train_dataset[i]['second']['verts']
-            # faces = train_dataset[i]['second']['faces']
-            verts = train_dataset[i]['verts']
-            faces = train_dataset[i]['faces']
+            # get the vertices and faces                        
+            verts_orig = train_dataset[i]['verts']
+            faces_orig = train_dataset[i]['faces']
+            
+            simplify_percent = np.random.uniform(simplify_percent_min, simplify_percent_max)
+            
+            verts, faces = remesh.remesh_simplify(
+                verts_orig,
+                faces_orig,
+                n_remesh_iters=n_remesh_iters,
+                simplify_percent=simplify_percent,
+            )
             
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(verts.unsqueeze(0),

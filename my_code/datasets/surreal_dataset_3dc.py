@@ -22,6 +22,8 @@ sys.path.append(f'/home/{user_name}/shape_matching')
 
 import my_code.datasets.preprocessing as preprocessing
 # from my_code.datasets.surreal_legacy.surreal_dataset import get_spectral_ops
+import my_code.sign_canonicalization.remesh as remesh
+import utils.fmap_util as fmap_util
 
 
 class TemplateSurrealDataset3DC(Dataset):
@@ -32,6 +34,7 @@ class TemplateSurrealDataset3DC(Dataset):
                  cache_lb_dir,
                  return_evecs,
                  mmap,
+                 augmentations,
                  ):
         
         # raise RuntimeError("Use regular TemplateDataset")
@@ -41,6 +44,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.use_cuda = use_cuda
         self.cache_lb_dir = cache_lb_dir
         self.return_evecs = return_evecs
+        self.augmentations = augmentations
 
         # load the shapes from 3D-coded
         self.shapes = torch.load(shape_path, mmap=mmap)
@@ -98,25 +102,43 @@ class TemplateSurrealDataset3DC(Dataset):
         item['verts'] = self.shapes[index]
         item['faces'] = self.template['faces']
         
-        # preprocess the shape
-        # item['verts'] = preprocessing.center(item['verts'])[0]
-        # item['verts'] = preprocessing.scale(
-        #     input_verts=item['verts'],
-        #     input_faces=item['faces'],
-        #     ref_verts=self.template['verts'],
-        #     ref_faces=self.template['faces']
-        # )[0]
+
+        # augmentations
+        if self.augmentations is not None and 'remesh' in self.augmentations:
+            
+            verts_orig = item['verts']
+            faces_orig = item['faces']
+            
+            # sample the simplification percent
+            simplify_percent = np.random.uniform(
+                self.augmentations['remesh']['simplify_percent_min'],
+                self.augmentations['remesh']['simplify_percent_max'],
+                )
+            # remesh and simplify the shape
+            item['verts'], item['faces'] = remesh.remesh_simplify(
+                verts_orig,
+                faces_orig,
+                n_remesh_iters=self.augmentations['remesh']['n_remesh_iters'],
+                simplify_percent=simplify_percent,
+            )
+            # correspondence by a nearest neighbor search
+            item['corr'] = fmap_util.nn_query(
+                item['verts'],
+                verts_orig, 
+                )
+        else:
+            # 1 to 1 correspondence
+            item['corr'] = torch.tensor(list(range(len(item['verts']))))        
         
+        # center the shape and normalize the face area
         item['verts'] = preprocessing.center_bbox(item['verts'])
         item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
-        
+
         
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
             item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         
-        # 1 to 1 correspondence
-        item['corr'] = torch.tensor(list(range(len(item['verts']))))        
         
         payload =  {
             'first': self.template,

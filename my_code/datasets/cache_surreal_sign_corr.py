@@ -9,6 +9,8 @@ import time
 
 import sys
 import os
+
+import yaml
 curr_dir = os.getcwd()
 if 's94zalek_hpc' in curr_dir:
     user_name = 's94zalek_hpc'
@@ -23,6 +25,7 @@ import matplotlib.pyplot as plt
 
 import my_code.datasets.shape_dataset as shape_dataset
 import my_code.datasets.template_dataset as template_dataset
+from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
     
     
 def visualize_before_after(data, C_xy_corr, evecs_cond_first, evecs_cond_second, figures_folder, idx):
@@ -49,7 +52,7 @@ def visualize_before_after(data, C_xy_corr, evecs_cond_first, evecs_cond_second,
         plt.close(fig)
         
     
-def get_corrected_data(data, num_evecs, net, net_input_type):
+def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
@@ -65,13 +68,24 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
 
     corr_first = data['first']['corr']
     corr_second = data['second']['corr']
+    
+    if with_mass:
+        mass_mat_first = torch.diag_embed(
+            data['first']['mass'].unsqueeze(0)
+            ).to(device)
+        mass_mat_second = torch.diag_embed(
+            data['second']['mass'].unsqueeze(0)
+            ).to(device)
+    else:
+        mass_mat_first = None
+        mass_mat_second = None
 
 
     # predict the sign change
     with torch.no_grad():
         sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
             net, verts_first, faces_first, evecs_first, 
-            mass_mat=None, input_type=net_input_type,
+            mass_mat=mass_mat_first, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
             evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -79,7 +93,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
             )
         sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
             net, verts_second, faces_second, evecs_second, 
-            mass_mat=None, input_type=net_input_type,
+            mass_mat=mass_mat_second, input_type=net_input_type,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
             evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
@@ -87,23 +101,37 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
             )
 
     # correct the evecs
-    
     evecs_first_corrected = evecs_first.cpu()[0] * torch.sign(sign_pred_first).cpu()
     evecs_first_corrected = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
     
     evecs_second_corrected = evecs_second.cpu()[0] * torch.sign(sign_pred_second).cpu()
     evecs_second_corrected = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
     
-    # product with itself
-    # evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ evecs_first_corrected
-    # evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ evecs_second_corrected
     
     # product with support
-    evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ support_vector_norm_first[0].cpu()
-    evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ support_vector_norm_second[0].cpu()
+    if with_mass:
+        evecs_cond_first = torch.nn.functional.normalize(
+            support_vector_norm_first[0].cpu().transpose(0, 1) \
+                @ mass_mat_first[0].cpu(),
+            p=2, dim=1) \
+                @ evecs_first_corrected
+        
+        evecs_cond_second = torch.nn.functional.normalize(
+            support_vector_norm_second[0].cpu().transpose(0, 1) \
+                @ mass_mat_second[0].cpu(),
+            p=2, dim=1) \
+                @ evecs_second_corrected 
+        
+    else:
+        evecs_cond_first = support_vector_norm_first[0].cpu().transpose(0, 1) @ evecs_first_corrected
+        evecs_cond_second = support_vector_norm_second[0].cpu().transpose(0, 1) @ evecs_second_corrected
+    
+    # wrong order?
+    # evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ support_vector_norm_first[0].cpu()
+    # evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ support_vector_norm_second[0].cpu()
 
-    # print(f'evecs_first_corrected: {evecs_first_corrected.shape}, support_vector_norm_first: {support_vector_norm_first.shape}')
-    # exit()
+
+
 
     # correct the functional map
     C_xy_pred = torch.linalg.lstsq(
@@ -116,7 +144,6 @@ def get_corrected_data(data, num_evecs, net, net_input_type):
     
     
     
-
 def save_train_dataset(
         dataset,
         train_indices,
@@ -197,14 +224,14 @@ def parse_args():
     parser.add_argument('--num_evecs', type=int)
     
     parser.add_argument('--net_path', type=str)
-    parser.add_argument('--net_input_type', type=str)
-    parser.add_argument('--evecs_per_support', type=int)
+    # parser.add_argument('--net_input_type', type=str)
+    # parser.add_argument('--evecs_per_support', type=int)
     
     parser.add_argument('--dataset_name', type=str)
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_input_type wks --evecs_per_support 4 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_overfit_start_0_inCh_128_iter_2000_feat_32_2block_factor4_dataset_SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1_wks/1000.pth
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_4b_mass_10_0.5_1 --dataset_name SURREAL_augShapes_mass_signNet_remeshed_10_0.5_1
     
     return args
          
@@ -221,7 +248,13 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
-    from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
+    augmentations = {
+        'remesh': {
+            'n_remesh_iters': 10,
+            'simplify_percent_min': 0.5,
+            'simplify_percent_max': 1.0,
+        }
+    }
     
     dataset = TemplateSurrealDataset3DC(
         # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
@@ -230,7 +263,8 @@ if __name__ == '__main__':
         use_cuda=False,
         cache_lb_dir=None,
         return_evecs=True,
-        mmap=False
+        mmap=True,
+        augmentations=augmentations
     )    
     
     print('Dataset created')
@@ -240,12 +274,8 @@ if __name__ == '__main__':
     print(f'Number of training samples: {len(train_indices)}')
     
     # folder to store the dataset
-    # dataset_name = f'dataset_3dc_correctedSecond_noAug_{num_evecs}'
-    # dataset_name = f'dataset_SURREAL_train_withAug_productSuppCond_{num_evecs}_1000pth'
-    
     dataset_name = args.dataset_name
     dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
-    # shutil.rmtree(dataset_folder, ignore_errors=True)
     os.makedirs(dataset_folder, exist_ok=True)
     
     
@@ -253,19 +283,27 @@ if __name__ == '__main__':
     # Sign correction network
     ####################################################
 
+    # load the network
+    with open(f'{args.net_path}/config.yaml', 'r') as f:
+        sign_net_config = yaml.load(f, Loader=yaml.FullLoader)
+        
+    # initialize the network
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    # device = 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=128,
-        out_channels=num_evecs // args.evecs_per_support,
-        cache_dir=None,
-        input_type=args.net_input_type,
-        k_eig=128,
-        n_block=4
+        **sign_net_config['net_params']
         ).to(device)
+    net.load_state_dict(torch.load(
+        f'{args.net_path}/{sign_net_config["n_iter"]}.pth',
+        map_location=device))
     
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    net.load_state_dict(torch.load(args.net_path, map_location=device))
+    # update the config
+    sign_net_config['net_path'] = args.net_path
+    sign_net_config['augmentations'] = augmentations
+    
+    # save the config to the dataset folder
+    if not os.path.exists(f'{dataset_folder}/config.yaml'):
+        with open(f'{dataset_folder}/config.yaml', 'w') as f:
+            yaml.dump(sign_net_config, f)
     
     ####################################################
     # Saving
@@ -304,5 +342,6 @@ if __name__ == '__main__':
         
         # sign corr net parameters
         net=net,
-        net_input_type=args.net_input_type
+        net_input_type=sign_net_config['net_params']['input_type'],
+        with_mass=sign_net_config['with_mass']
     )

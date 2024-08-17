@@ -9,7 +9,7 @@ import utils.geometry_util as geometry_util
 import utils.shape_util as shape_util
 from tqdm import tqdm
 import my_code.datasets.shape_dataset as shape_dataset
-
+import yaml
 
 
 def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **kwargs):
@@ -114,35 +114,49 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 128
+    input_channels = 32
     feature_dim = 32
     evecs_per_support = 4
     n_block = 4
     
     n_iter = 50000
+    input_type = 'evecs'
     
-    input_type = 'wks'
-    # lapl_type = 'mesh'
+    with_mass = False
 
-    train_folder = 'SURREAL_train_rot_180_180_180_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    test_folder = 'FAUST_r'
+    train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.50_1.00_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     
-    chkpt_name = f'sign_overfit_start_{start_dim}_inCh_{input_channels}_iter_{n_iter}_feat_{feature_dim}_{n_block}block_factor{evecs_per_support}_dataset_{train_folder}_{input_type}'
+    exp_name = f'signNet_remeshed_evecs_4b_10_0.5_1'
 
 
-    experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{chkpt_name}'
+    experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     os.makedirs(experiment_dir)
+    
+    config = {
+        'train_folder': train_folder,
+        'net_params': {
+            'in_channels': input_channels,
+            'out_channels': feature_dim // evecs_per_support,
+            'input_type': input_type,
+            'k_eig': 128,
+            'n_block': n_block,
+        },
+        'start_dim': start_dim,
+        'feature_dim': feature_dim,
+        'evecs_per_support': evecs_per_support,
+        'n_iter': n_iter,
+        'with_mass': with_mass
+        }
+    with open(f'{experiment_dir}/config.yaml', 'w') as f:
+        yaml.dump(config, f, sort_keys=False)
+    
     
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = diffusion_network.DiffusionNet(
-        in_channels=input_channels,
-        out_channels=feature_dim // evecs_per_support,
-        cache_dir=None,
-        input_type=input_type,
-        k_eig=128,
-        n_block=n_block,
+        **config['net_params']
         ).to(device)
+
 
     opt = torch.optim.Adam(net.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.LinearLR(
@@ -152,11 +166,7 @@ if __name__ == '__main__':
     
     train_shapes, train_diff_folder = load_cached_shapes(
         f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}'
-    )
-    # test_shapes, test_diff_folder = load_cached_shapes(
-    #     f'/home/s94zalek_hpc/shape_matching/data_sign_training/test/{test_folder}',
-    # )
-        
+    )        
     
     loss_fn = torch.nn.MSELoss()
     losses = torch.tensor([])
@@ -185,11 +195,12 @@ if __name__ == '__main__':
 
             evecs_orig = train_shape['evecs'][:, :, start_dim:start_dim+feature_dim].to(device)
             
-            # mass_mat = torch.diag_embed(
-            #     train_shape['mass']
-            #     ).to(device)
-            
-            mass_mat = None
+            if with_mass:
+                mass_mat = torch.diag_embed(
+                    train_shape['mass']
+                    ).to(device)
+            else:
+                mass_mat = None
 
             ##############################################
             # Set the signs on shape 0
