@@ -13,49 +13,52 @@ import utils.shape_util as shape_util
 from tqdm import tqdm
 
 import my_code.sign_canonicalization.remesh as remesh
+import yaml
 
 
 if __name__ == '__main__':
     
-    dataset_name = 'SURREAL'
+    config = {
     
-    n_shapes = 1000
-    lapl_type = 'mesh'
-
-    split = 'train'
-    
-    rot_x=0
-    rot_y=90
-    rot_z=0
-    
-    along_normal=True
-    std=0.0
-    noise_clip_low = -0.05
-    noise_clip_high = 0.05
-    
-    scale_min=0.9
-    scale_max=1.1
-    
-    n_remesh_iters=10
-    simplify_percent_min=0.2
-    simplify_percent_max=0.8
-    
-    save_folder = f'{dataset_name}_{split}_' +\
-                f'remesh_iters_{n_remesh_iters:.0f}_' + \
-                f'simplify_{simplify_percent_min:.2f}_{simplify_percent_max:.2f}_' + \
-                f'rot_{rot_x:.0f}_{rot_y:.0f}_{rot_z:.0f}_' + \
-                f'normal_{along_normal}_' + \
-                f'noise_{std}_{noise_clip_low}_{noise_clip_high}_' + \
-                f'lapl_{lapl_type}_' + \
-                f'scale_{scale_min}_{scale_max}'
-    
-    
-    
-    
-    # get the source dataset
-    # train_dataset = data_loading.get_val_dataset(
-    #     dataset_name, split, 200, canonicalize_fmap=None
-    #     )[1]    
+        "dataset_name": "SURREAL_anisRemesh_0.5",
+        
+        "n_shapes": 1000,
+        "lapl_type": "mesh",
+        
+        "split": "train",
+        
+        "rot_x": 0,
+        "rot_y": 90,
+        "rot_z": 0,
+        
+        "along_normal": True,
+        "std": 0.0,
+        "noise_clip_low": -0.05,
+        "noise_clip_high": 0.05,
+        
+        "scale_min": 0.9,
+        "scale_max": 1.1,
+        
+        "remesh": {
+            "isotropic": {
+                "n_remesh_iters": 10,
+                "simplify_strength_min": 0.2,
+                "simplify_strength_max": 0.8
+            },
+            "anisotropic": {
+                "probability": 0.5,
+                
+                "n_remesh_iters": 10,
+                # "remesh_targetlen":
+                
+                "fraction_to_simplify_min": 0.4,
+                "fraction_to_simplify_max": 0.8,
+                "simplify_strength_min": 0.2,
+                "simplify_strength_max": 0.5,
+                "weighted_by": "face_count",
+            },
+        },
+    }
     
     train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
     train_dataset = shape_dataset.SingleShapeDataset(
@@ -66,50 +69,67 @@ if __name__ == '__main__':
         return_evecs=False
     ) 
     
-    
     # prepare the folders
-    mesh_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/off'
-    diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}/diffusion'
-
-    # shutil.rmtree(
-    #     f'/home/s94zalek_hpc/shape_matching/data_sign_training/{split}/{save_folder}',
-    #     ignore_errors=True
-    #     )
+    base_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{config["split"]}/{config["dataset_name"]}'
+    shutil.rmtree(base_folder, ignore_errors=True)
+    
+    mesh_folder = f'{base_folder}/off'
+    diff_folder = f'{base_folder}/diffusion'
     os.makedirs(mesh_folder)
     os.makedirs(diff_folder)
-
-
-    iterator = tqdm(range(n_shapes))
     
-    for epoch in range(n_shapes // len(train_dataset)):
+    # save the config
+    with open(f'{base_folder}/config.yaml', 'w') as f:
+        yaml.dump(config, f, sort_keys=False)
+    
+
+    iterator = tqdm(range(config["n_shapes"]))
+    
+    for epoch in range(config["n_shapes"] // len(train_dataset)):
         for i in range(len(train_dataset)):
         
             # get the vertices and faces                        
             verts_orig = train_dataset[i]['verts']
             faces_orig = train_dataset[i]['faces']
             
-            simplify_percent = np.random.uniform(simplify_percent_min, simplify_percent_max)
+            # randomly choose the remeshing type
+            remesh_type = np.random.choice(['isotropic', 'anisotropic'], p=[1-config["remesh"]["anisotropic"]["probability"], config["remesh"]["anisotropic"]["probability"]])
             
-            verts, faces = remesh.remesh_simplify(
-                verts_orig,
-                faces_orig,
-                n_remesh_iters=n_remesh_iters,
-                simplify_percent=simplify_percent,
-            )
+            if remesh_type == 'isotropic':
+                simplify_strength = np.random.uniform(config["remesh"]["isotropic"]["simplify_strength_min"], config["remesh"]["isotropic"]["simplify_strength_max"])
+                verts, faces = remesh.remesh_simplify_iso(
+                    verts_orig,
+                    faces_orig,
+                    n_remesh_iters=config["remesh"]["isotropic"]["n_remesh_iters"],
+                    simplify_strength=simplify_strength,
+                )
+            else:
+                fraction_to_simplify = np.random.uniform(config["remesh"]["anisotropic"]["fraction_to_simplify_min"], config["remesh"]["anisotropic"]["fraction_to_simplify_max"])
+                simplify_strength = np.random.uniform(config["remesh"]["anisotropic"]["simplify_strength_min"], config["remesh"]["anisotropic"]["simplify_strength_max"])
+                
+                verts, faces = remesh.remesh_simplify_anis(
+                    verts_orig,
+                    faces_orig,
+                    n_remesh_iters=config["remesh"]["anisotropic"]["n_remesh_iters"],
+                    fraction_to_simplify=fraction_to_simplify,
+                    simplify_strength=simplify_strength,
+                    weighted_by=config["remesh"]["anisotropic"]["weighted_by"]
+                )
             
             # augment the vertices
-            verts_aug = geometry_util.data_augmentation(verts.unsqueeze(0),
-                                                        faces.unsqueeze(0),
-                                                        rot_x=rot_x,
-                                                        rot_y=rot_y,
-                                                        rot_z=rot_z,
-                                                        along_normal=along_normal,
-                                                        std=std,
-                                                        noise_clip_low=noise_clip_low,
-                                                        noise_clip_high=noise_clip_high,
-                                                        scale_min=scale_min,
-                                                        scale_max=scale_max,
-                                                        )[0]
+            verts_aug = geometry_util.data_augmentation(
+                verts.unsqueeze(0),
+                faces.unsqueeze(0),
+                rot_x=config["rot_x"],
+                rot_y=config["rot_y"],
+                rot_z=config["rot_z"],
+                along_normal=config["along_normal"],
+                std=config["std"],
+                noise_clip_low=config["noise_clip_low"],
+                noise_clip_high=config["noise_clip_high"],
+                scale_min=config["scale_min"],
+                scale_max=config["scale_max"],
+                )[0]
 
             
             # get current iteration
@@ -129,7 +149,7 @@ if __name__ == '__main__':
             faces = torch.tensor(faces, dtype=torch.int32)
         
             # calculate and cache the laplacian
-            if lapl_type == 'pcl':
+            if config["lapl_type"] == 'pcl':
                 _, _, _, _, evecs_orig, _, _ = geometry_util.get_operators(
                     verts_aug, None,
                     k=128, cache_dir=diff_folder) 

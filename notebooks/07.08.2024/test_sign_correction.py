@@ -5,11 +5,9 @@ import torch
 import my_code.diffusion_training_sign_corr.data_loading as data_loading
 import yaml
 
-def test_on_dataset(net, test_dataset, with_mass):
+def test_on_dataset(net, test_dataset, with_mass, n_epochs):
 
     tqdm._instances.clear()
-
-    n_epochs = 10
         
     iterator = tqdm(total=len(test_dataset) * n_epochs)
     incorrect_signs_list = torch.tensor([])
@@ -23,7 +21,7 @@ def test_on_dataset(net, test_dataset, with_mass):
             # Select a shape
             ##############################################
 
-            train_shape = test_dataset[curr_idx]['second']
+            train_shape = test_dataset[curr_idx]
 
             # train_shape = double_shape['second']
             verts = train_shape['verts'].unsqueeze(0).to(device)
@@ -48,8 +46,12 @@ def test_on_dataset(net, test_dataset, with_mass):
             sign_gt_0[sign_gt_0 == 0] = -1
             sign_gt_0 = sign_gt_0.float().unsqueeze(0)
 
+            # print('evecs_orig', evecs_orig.shape, 'sign_gt_0', sign_gt_0.shape)
+
             # multiply evecs [6890 x 16] by sign_flip [16]
             evecs_flip_0 = evecs_orig * sign_gt_0
+            
+            
             
             # predict the sign change
             with torch.no_grad():
@@ -117,7 +119,7 @@ def test_on_dataset(net, test_dataset, with_mass):
 
 if __name__ == '__main__':
         
-    exp_name = 'signNet_remeshed_evecs_4b_10_0.5_1' 
+    exp_name = 'signNet_anisRemesh_noMass_0.75' 
     exp_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
     with open(f'{exp_dir}/config.yaml', 'r') as f:
@@ -140,13 +142,14 @@ if __name__ == '__main__':
     log_file = f'{exp_dir}/log_10ep.txt'
     
 
-    for n_iter in [5000, 10000, 25000, 50000]:
+    for n_iter in [50000]:
     # for n_iter in [200, 600, 1000, 1400, 2000]:
 
         net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
 
 
         for dataset_name, split in [
+            (config["train_folder"], 'train'),
             ('FAUST_a', 'test'),
             # ('SHREC19', 'train'), 
             ('FAUST_r', 'test'),
@@ -155,11 +158,27 @@ if __name__ == '__main__':
             ('FAUST_orig', 'train'), 
             ]:
             
-            test_dataset_curr = data_loading.get_val_dataset(
-                dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
-                )[1]
+            if dataset_name == config["train_folder"]:
+                test_dataset_curr_unsq, _ = sign_training.load_cached_shapes(
+                    f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{config["train_folder"]}',
+                )  
+                # for each entry in test_dataset_curr, for each key, squeeze the first dimension
+                test_dataset_curr = []
+                for shape in test_dataset_curr_unsq:
+                    shape_squeezed = {}
+                    for key, value in shape.items():
+                        shape_squeezed[key] = value[0]
+                    test_dataset_curr.append(shape_squeezed)
+                    
+                mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'], n_epochs=1)
+                
+            else:
+                test_dataset_curr = data_loading.get_val_dataset(
+                    dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
+                    )[0]
+                mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'], n_epochs=10)
             
-            mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'])
+            
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs:.2f} max_incorrect_signs {max_incorrect_signs}')
             

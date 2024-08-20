@@ -34,6 +34,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train the model')
     
     parser.add_argument('--experiment_name', type=str)
+    parser.add_argument('--checkpoint_name', type=str)
+    
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--split', type=str)
     
@@ -47,22 +49,22 @@ if __name__ == '__main__':
 
     # configuration
     experiment_name = args.experiment_name
-    checkpoint_name = 'checkpoint_99'
+    checkpoint_name = args.checkpoint_name
 
     ### config
-    exp_base_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/{experiment_name}'
+    exp_base_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/{experiment_name}'
     with open(f'{exp_base_folder}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
 
     ### model
     model = DiagConditionedUnet(config["model_params"]).to('cuda')
-    model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}.pt"))
+    model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
     model = model.to('cuda')
     
     ### Sign correction network
     sign_corr_net = diffusion_network.DiffusionNet(
-        **config["sign_net_params"]
+        **config["sign_net"]["net_params"]
         ).to('cuda')
         # in_channels=128,
         # out_channels=config["model_params"]["sample_size"] // config["evecs_per_support"],
@@ -71,8 +73,9 @@ if __name__ == '__main__':
         # k_eig=128,
         # n_block=2
         
-    sign_corr_net.load_state_dict(
-        torch.load(config["sign_net_path"]))
+    sign_corr_net.load_state_dict(torch.load(
+            f'{config["sign_net"]["net_path"]}/{config["sign_net"]["n_iter"]}.pth'
+            ))
 
 
     ### sample the model
@@ -96,7 +99,7 @@ if __name__ == '__main__':
     # Logging
     ##########################################
 
-    log_dir = f'{exp_base_folder}/eval/{dataset_name}-{split}'
+    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}'
     os.makedirs(log_dir, exist_ok=True)
 
     fig_dir = f'{log_dir}/figs'
@@ -137,13 +140,24 @@ if __name__ == '__main__':
 
         corr_first = data['first']['corr']
         corr_second = data['second']['corr']
+        
+        if config["sign_net"]["with_mass"]:
+            mass_mat_first = torch.diag_embed(
+                data['first']['mass'].unsqueeze(0)
+                ).to(device)
+            mass_mat_second = torch.diag_embed(
+                data['second']['mass'].unsqueeze(0)
+                ).to(device)
+        else:
+            mass_mat_first = None
+            mass_mat_second = None
 
 
         # predict the sign change
         with torch.no_grad():
             sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
                 sign_corr_net, verts_first, faces_first, evecs_first, 
-                mass_mat=None, input_type=sign_corr_net.input_type,
+                mass_mat=mass_mat_first, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
                 evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -151,7 +165,7 @@ if __name__ == '__main__':
                 )
             sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
                 sign_corr_net, verts_second, faces_second, evecs_second, 
-                mass_mat=None, input_type=sign_corr_net.input_type,
+                mass_mat=mass_mat_second, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
                 evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
@@ -166,8 +180,29 @@ if __name__ == '__main__':
         evecs_second_corrected_norm = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
         
         # product with support
-        evecs_cond_first = evecs_first_corrected_norm.transpose(0, 1) @ support_vector_norm_first[0].cpu()
-        evecs_cond_second = evecs_second_corrected_norm.transpose(0, 1) @ support_vector_norm_second[0].cpu()
+        # evecs_cond_first = evecs_first_corrected_norm.transpose(0, 1) @ support_vector_norm_first[0].cpu()
+        # evecs_cond_second = evecs_second_corrected_norm.transpose(0, 1) @ support_vector_norm_second[0].cpu()
+
+
+        # product with support
+        if config["sign_net"]["with_mass"]:
+            evecs_cond_first = torch.nn.functional.normalize(
+                support_vector_norm_first[0].cpu().transpose(0, 1) \
+                    @ mass_mat_first[0].cpu(),
+                p=2, dim=1) \
+                    @ evecs_first_corrected_norm
+            
+            evecs_cond_second = torch.nn.functional.normalize(
+                support_vector_norm_second[0].cpu().transpose(0, 1) \
+                    @ mass_mat_second[0].cpu(),
+                p=2, dim=1) \
+                    @ evecs_second_corrected_norm 
+            
+        else:
+            evecs_cond_first = support_vector_norm_first[0].cpu().transpose(0, 1) @ evecs_first_corrected_norm
+            evecs_cond_second = support_vector_norm_second[0].cpu().transpose(0, 1) @ evecs_second_corrected_norm
+        
+
 
         # gt corrected fmap
         C_gt_xy_corr = torch.linalg.lstsq(

@@ -18,7 +18,7 @@ train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 
 num_evecs=32
 
-srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_10_0.5_1 --dataset_name SURREAL_augShapes_signNet_remeshed_10_0.5_1
+srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_4b_mass_10_0.2_0.8 --dataset_name SURREAL_augShapes_mass_signNet_remeshed_10_0.2_0.8
 # srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_4b_mass_10_0.5_1 --dataset_name SURREAL_augShapes_mass_signNet_remeshed_10_0.5_1
 
     

@@ -251,8 +251,8 @@ if __name__ == '__main__':
     augmentations = {
         'remesh': {
             'n_remesh_iters': 10,
-            'simplify_percent_min': 0.5,
-            'simplify_percent_max': 1.0,
+            'simplify_percent_min': 0.2,
+            'simplify_percent_max': 0.8,
         }
     }
     

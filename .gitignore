@@ -10,7 +10,7 @@ func_maps_old/*
 __pycache__/
 *.py[cod]
 *$py.class
-
+*.yaml
 *.tar
 *.zip
 *.pth

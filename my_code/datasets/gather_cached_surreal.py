@@ -41,7 +41,7 @@ def gather_files(data_dir, prefix):
     
 
 if __name__ == '__main__':
-    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_origShapes_signNet_remeshed_10_0.5_1/train'
+    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_augShapes_mass_signNet_remeshed_10_0.2_0.8/train'
     gather_files(data_dir, 'evals')
     
     gather_files(data_dir, 'C_gt_xy')

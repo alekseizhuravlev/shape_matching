@@ -1,3 +1,4 @@
+import shutil
 import torch
 from tqdm import tqdm
 import pandas as pd
@@ -114,23 +115,26 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 32
+    input_channels = 128
     feature_dim = 32
     evecs_per_support = 4
     n_block = 4
     
     n_iter = 50000
-    input_type = 'evecs'
+    input_type = 'wks'
     
     with_mass = False
 
-    train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.50_1.00_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    
-    exp_name = f'signNet_remeshed_evecs_4b_10_0.5_1'
-
+    train_folder = 'SURREAL_anisRemesh_0.75'
+    exp_name = f'signNet_anisRemesh_noMass_0.75'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
+    
+    # shutil.rmtree(experiment_dir, ignore_errors=True)
     os.makedirs(experiment_dir)
+    
+    with open(f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}/config.yaml', 'r') as f:
+        dataset_config = yaml.load(f, Loader=yaml.FullLoader)
     
     config = {
         'train_folder': train_folder,
@@ -145,11 +149,11 @@ if __name__ == '__main__':
         'feature_dim': feature_dim,
         'evecs_per_support': evecs_per_support,
         'n_iter': n_iter,
-        'with_mass': with_mass
+        'with_mass': with_mass,
+        'dataset': dataset_config
         }
     with open(f'{experiment_dir}/config.yaml', 'w') as f:
         yaml.dump(config, f, sort_keys=False)
-    
     
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
