@@ -20,7 +20,7 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "SURREAL_anisRemesh_0.5",
+        "dataset_name": "SURREAL_isoRemesh_targetlen_3.5",
         
         "n_shapes": 1000,
         "lapl_type": "mesh",
@@ -42,11 +42,12 @@ if __name__ == '__main__':
         "remesh": {
             "isotropic": {
                 "n_remesh_iters": 10,
-                "simplify_strength_min": 0.2,
-                "simplify_strength_max": 0.8
+                "remesh_targetlen": 3.5,
+                "simplify_strength_min": 0.8,
+                "simplify_strength_max": 1
             },
             "anisotropic": {
-                "probability": 0.5,
+                "probability": 0.0,
                 
                 "n_remesh_iters": 10,
                 # "remesh_targetlen":
@@ -101,6 +102,7 @@ if __name__ == '__main__':
                     verts_orig,
                     faces_orig,
                     n_remesh_iters=config["remesh"]["isotropic"]["n_remesh_iters"],
+                    remesh_targetlen=config["remesh"]["isotropic"]["remesh_targetlen"],
                     simplify_strength=simplify_strength,
                 )
             else:

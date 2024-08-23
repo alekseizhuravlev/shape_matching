@@ -1,11 +1,6 @@
-import json
-import os, re
+import os
 import numpy as np
-import scipy.io as sio
-from itertools import product
-from glob import glob
 import trimesh
-import shutil
 
 import torch
 from torch.utils.data import Dataset

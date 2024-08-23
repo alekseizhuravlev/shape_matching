@@ -1,9 +1,48 @@
 import networks.diffusion_network as diffusion_network
 from tqdm import tqdm
 import my_code.sign_canonicalization.training as sign_training
+import my_code.sign_canonicalization.remesh as remesh
 import torch
 import my_code.diffusion_training_sign_corr.data_loading as data_loading
 import yaml
+import my_code.datasets.preprocessing as preprocessing
+import trimesh
+
+
+def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
+
+    new_dataset = []
+
+    for i in tqdm(range(len(dataset)), desc=f'Remeshing the dataset {name}'):
+        
+        train_shape_orig = dataset[i]
+
+        verts_orig = train_shape_orig['verts']
+        faces_orig = train_shape_orig['faces']
+        
+        verts, faces = remesh.remesh_simplify_iso(
+            verts_orig,
+            faces_orig,
+            n_remesh_iters=10,
+            remesh_targetlen=remesh_targetlen,
+            simplify_strength=1,
+        )
+        
+        mesh_anis_remeshed = trimesh.Trimesh(verts, faces)
+        # apply laplacian smoothing
+        trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        
+        train_shape = {
+            'verts': torch.tensor(mesh_anis_remeshed.vertices).float(),
+            'faces': torch.tensor(mesh_anis_remeshed.faces).int(),
+        }
+        train_shape = preprocessing.get_spectral_ops(train_shape, num_evecs=num_evecs,
+                                    cache_dir=None)
+        
+        new_dataset.append(train_shape)
+    
+    return new_dataset
+
 
 def test_on_dataset(net, test_dataset, with_mass, n_epochs):
 
@@ -21,7 +60,11 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
             # Select a shape
             ##############################################
 
-            train_shape = test_dataset[curr_idx]
+            train_shape = test_dataset[curr_idx]           
+            
+            ##############################################
+            # Set the variables
+            ##############################################
 
             # train_shape = double_shape['second']
             verts = train_shape['verts'].unsqueeze(0).to(device)
@@ -119,11 +162,17 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
 
 if __name__ == '__main__':
         
-    exp_name = 'signNet_anisRemesh_noMass_0.75' 
+    exp_name = 'signNet_remeshed_4b_10_0.2_0.8' 
+    
+    
     exp_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
     with open(f'{exp_dir}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
+        
+    remesh_targetlen = None
+    smoothing_iter = 0
+    # remesh_targetlen = config['dataset']['remesh']['isotropic']['remesh_targetlen']
         
     start_dim = config['start_dim']
 
@@ -139,7 +188,8 @@ if __name__ == '__main__':
     input_type = config['net_params']['input_type']
     
     
-    log_file = f'{exp_dir}/log_10ep.txt'
+    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_smooth_{smoothing_iter}.txt'
+    # log_file = f'{exp_dir}/log_10ep_noRemesh.txt'
     
 
     for n_iter in [50000]:
@@ -149,7 +199,7 @@ if __name__ == '__main__':
 
 
         for dataset_name, split in [
-            (config["train_folder"], 'train'),
+            # (config["train_folder"], 'train'),
             ('FAUST_a', 'test'),
             # ('SHREC19', 'train'), 
             ('FAUST_r', 'test'),
@@ -159,16 +209,11 @@ if __name__ == '__main__':
             ]:
             
             if dataset_name == config["train_folder"]:
-                test_dataset_curr_unsq, _ = sign_training.load_cached_shapes(
+                test_dataset_curr, _ = sign_training.load_cached_shapes(
                     f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{config["train_folder"]}',
+                    unsqueeze=False
                 )  
-                # for each entry in test_dataset_curr, for each key, squeeze the first dimension
-                test_dataset_curr = []
-                for shape in test_dataset_curr_unsq:
-                    shape_squeezed = {}
-                    for key, value in shape.items():
-                        shape_squeezed[key] = value[0]
-                    test_dataset_curr.append(shape_squeezed)
+
                     
                 mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'], n_epochs=1)
                 
@@ -176,9 +221,17 @@ if __name__ == '__main__':
                 test_dataset_curr = data_loading.get_val_dataset(
                     dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
                     )[0]
-                mean_incorrect_signs, max_incorrect_signs = test_on_dataset(net, test_dataset_curr, with_mass=config['with_mass'], n_epochs=10)
-            
-            
+                
+                if remesh_targetlen is not None:
+                    test_dataset_curr = remesh_dataset(
+                        test_dataset_curr, dataset_name,
+                        remesh_targetlen, num_evecs=net.k_eig,
+                        smoothing_iter=smoothing_iter)
+                
+                mean_incorrect_signs, max_incorrect_signs = test_on_dataset(
+                    net, test_dataset_curr,
+                    with_mass=config['with_mass'], n_epochs=10)
+    
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs:.2f} max_incorrect_signs {max_incorrect_signs}')
             

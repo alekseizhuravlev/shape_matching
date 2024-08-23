@@ -8,8 +8,9 @@ ms = pymeshlab.MeshSet()
 def remesh_simplify_iso(
     verts,
     faces,
-    n_remesh_iters=10,
-    simplify_strength=0.75,
+    n_remesh_iters,
+    remesh_targetlen,
+    simplify_strength,
 ):
     mesh = pymeshlab.Mesh(verts, faces)
     ms.add_mesh(mesh)
@@ -17,6 +18,7 @@ def remesh_simplify_iso(
     if n_remesh_iters > 0:
         ms.meshing_isotropic_explicit_remeshing(
             iterations=n_remesh_iters,
+            targetlen=pymeshlab.PercentageValue(remesh_targetlen),
         )
         
     if 0 < simplify_strength < 1:

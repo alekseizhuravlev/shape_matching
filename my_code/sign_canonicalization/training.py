@@ -77,7 +77,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **k
     return sign_flip_predicted, support_vector_norm_repeated, product_with_support
 
 
-def load_cached_shapes(save_folder):
+def load_cached_shapes(save_folder, unsqueeze):
 
     # prepare the folders
     mesh_folder = f'{save_folder}/off'
@@ -97,16 +97,28 @@ def load_cached_shapes(save_folder):
         _, mass, L, evals, evecs, gradX, gradY = geometry_util.get_operators(verts, faces,
                                                 k=128,
                                                 cache_dir=diff_folder)
-        shapes_list.append({
-            'verts': verts.unsqueeze(0),
-            'faces': faces.unsqueeze(0),
-            'evecs': evecs.unsqueeze(0),
-            'mass': mass.unsqueeze(0),
-            'L': L.unsqueeze(0),
-            'evals': evals.unsqueeze(0),
-            'gradX': gradX.unsqueeze(0),
-            'gradY': gradY.unsqueeze(0),
-        })
+        if unsqueeze:
+            shapes_list.append({
+                'verts': verts.unsqueeze(0),
+                'faces': faces.unsqueeze(0),
+                'evecs': evecs.unsqueeze(0),
+                'mass': mass.unsqueeze(0),
+                'L': L.unsqueeze(0),
+                'evals': evals.unsqueeze(0),
+                'gradX': gradX.unsqueeze(0),
+                'gradY': gradY.unsqueeze(0),
+            })
+        else:
+            shapes_list.append({
+                'verts': verts,
+                'faces': faces,
+                'evecs': evecs,
+                'mass': mass,
+                'L': L,
+                'evals': evals,
+                'gradX': gradX,
+                'gradY': gradY,
+            })
         
     return shapes_list, diff_folder
 
@@ -125,8 +137,8 @@ if __name__ == '__main__':
     
     with_mass = False
 
-    train_folder = 'SURREAL_anisRemesh_0.75'
-    exp_name = f'signNet_anisRemesh_noMass_0.75'
+    train_folder = 'SURREAL_isoRemesh_targetlen_3.5'
+    exp_name = f'signNet_isoRemesh_targetlen_3.5'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
@@ -169,7 +181,8 @@ if __name__ == '__main__':
     
     
     train_shapes, train_diff_folder = load_cached_shapes(
-        f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}'
+        f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
+        unsqueeze=True
     )        
     
     loss_fn = torch.nn.MSELoss()
