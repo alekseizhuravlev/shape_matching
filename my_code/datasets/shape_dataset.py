@@ -232,6 +232,9 @@ class SingleShrec19Dataset(SingleShapeDataset):
 
     def __init__(self, **kwargs):
         super(SingleShrec19Dataset, self).__init__(**kwargs)
+        
+        self.off_files = list(filter(lambda x: '40' not in x, self.off_files))
+        self._size = len(self.off_files)
 
 
 class SingleSmalDataset(SingleShapeDataset):

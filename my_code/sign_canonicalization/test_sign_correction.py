@@ -1,3 +1,4 @@
+import os
 import networks.diffusion_network as diffusion_network
 from tqdm import tqdm
 import my_code.sign_canonicalization.training as sign_training
@@ -31,6 +32,7 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
         mesh_anis_remeshed = trimesh.Trimesh(verts, faces)
         # apply laplacian smoothing
         trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        # trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
         
         train_shape = {
             'verts': torch.tensor(mesh_anis_remeshed.vertices).float(),
@@ -162,7 +164,8 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
 
 if __name__ == '__main__':
         
-    exp_name = 'signNet_remeshed_4b_10_0.2_0.8' 
+    exp_name = 'signNet_remeshed_4b_mass_10_0.2_0.8' 
+    # exp_name = 'signNet_remeshed_10_0.5_1' 
     
     
     exp_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
@@ -170,8 +173,8 @@ if __name__ == '__main__':
     with open(f'{exp_dir}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         
-    remesh_targetlen = None
-    smoothing_iter = 0
+    remesh_targetlen = 1
+    smoothing_iter = 2
     # remesh_targetlen = config['dataset']['remesh']['isotropic']['remesh_targetlen']
         
     start_dim = config['start_dim']
@@ -188,8 +191,12 @@ if __name__ == '__main__':
     input_type = config['net_params']['input_type']
     
     
-    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_smooth_{smoothing_iter}.txt'
-    # log_file = f'{exp_dir}/log_10ep_noRemesh.txt'
+    # log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_taubinSmooth_{smoothing_iter}.txt'
+    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_laplaceSmooth_{smoothing_iter}.txt'
+    # log_file = f'{exp_dir}/log_10ep_noRemesh_Shrec19R.txt'
+    
+    # log_file = f'{exp_dir}/logs_shrec/log_10ep_laplaceSmooth_{smoothing_iter}.txt'
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
 
     for n_iter in [50000]:
@@ -201,7 +208,7 @@ if __name__ == '__main__':
         for dataset_name, split in [
             # (config["train_folder"], 'train'),
             ('FAUST_a', 'test'),
-            # ('SHREC19', 'train'), 
+            ('SHREC19_r', 'train'), 
             ('FAUST_r', 'test'),
             ('FAUST_orig', 'test'), 
             ('FAUST_r', 'train'), 

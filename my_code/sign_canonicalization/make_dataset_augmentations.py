@@ -20,7 +20,7 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "SURREAL_isoRemesh_targetlen_3.5",
+        "dataset_name": "SURREAL_isoRemesh_0.2_0.8_smooth_taubin_5_6",
         
         "n_shapes": 1000,
         "lapl_type": "mesh",
@@ -42,16 +42,14 @@ if __name__ == '__main__':
         "remesh": {
             "isotropic": {
                 "n_remesh_iters": 10,
-                "remesh_targetlen": 3.5,
-                "simplify_strength_min": 0.8,
-                "simplify_strength_max": 1
+                "remesh_targetlen": 1,
+                "simplify_strength_min": 0.2,
+                "simplify_strength_max": 0.8,
             },
             "anisotropic": {
                 "probability": 0.0,
-                
+                    
                 "n_remesh_iters": 10,
-                # "remesh_targetlen":
-                
                 "fraction_to_simplify_min": 0.4,
                 "fraction_to_simplify_max": 0.8,
                 "simplify_strength_min": 0.2,
@@ -59,6 +57,11 @@ if __name__ == '__main__':
                 "weighted_by": "face_count",
             },
         },
+        "smooth": {
+            "filter": "taubin",
+            "iterations_min": 5,
+            "iterations_max": 6,
+        }
     }
     
     train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
@@ -68,7 +71,7 @@ if __name__ == '__main__':
         num_evecs=128,
         lb_cache_dir=train_diff_folder,
         return_evecs=False
-    ) 
+    )
     
     # prepare the folders
     base_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{config["split"]}/{config["dataset_name"]}'
@@ -117,6 +120,19 @@ if __name__ == '__main__':
                     simplify_strength=simplify_strength,
                     weighted_by=config["remesh"]["anisotropic"]["weighted_by"]
                 )
+                
+            # laplacian smoothing
+            mesh_remeshed = trimesh.Trimesh(verts, faces)
+            smoothing_iter = np.random.randint(config["smooth"]["iterations_min"], config["smooth"]["iterations_max"])
+            
+            if smoothing_iter > 0 and config["smooth"]["filter"] == 'taubin':
+                trimesh.smoothing.filter_taubin(mesh_remeshed, iterations=smoothing_iter)
+            elif smoothing_iter > 0 and config["smooth"]["filter"] == 'humphrey':
+                trimesh.smoothing.filter_humphrey(mesh_remeshed, iterations=smoothing_iter)
+                
+            verts = torch.tensor(mesh_remeshed.vertices).float()
+            faces = torch.tensor(mesh_remeshed.faces).int()              
+                
             
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(

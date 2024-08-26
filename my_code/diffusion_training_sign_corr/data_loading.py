@@ -90,7 +90,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             centering='bbox',
             return_Cxy=return_evecs,
         )
-    elif name == 'SHREC19':
+    elif name == 'SHREC19_orig':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/SHREC19_original',
             centering = 'bbox',
@@ -109,6 +109,18 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             centering='bbox',
             return_Cxy=return_evecs,
         )
+    elif name == 'SHREC19_r':
+        dataset_single = shape_dataset.SingleShrec19Dataset(
+            data_root = 'data/SHREC19_r',
+            centering = 'bbox',
+            num_evecs=num_evecs,
+            lb_cache_dir=f'data/SHREC19_r/diffusion',
+            return_evecs=return_evecs,
+            return_corr=False,
+        )
+        dataset_template = None
+    else:
+        raise ValueError(f'Unknown dataset name: {name}')
         
     return dataset_single, dataset_template
     

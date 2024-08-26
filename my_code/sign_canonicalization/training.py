@@ -137,8 +137,8 @@ if __name__ == '__main__':
     
     with_mass = False
 
-    train_folder = 'SURREAL_isoRemesh_targetlen_3.5'
-    exp_name = f'signNet_isoRemesh_targetlen_3.5'
+    train_folder = 'SURREAL'
+    exp_name = f'signNet_orig'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
