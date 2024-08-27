@@ -331,15 +331,12 @@ class PairShapeDataset(Dataset):
             dataset (SingleShapeDataset): single shape dataset
         """
         assert isinstance(dataset, SingleShapeDataset), f'Invalid input data type of dataset: {type(dataset)}'
-        
-                
+          
         # make combinations of all pairs        
         self.combinations = list(product(range(len(dataset)), repeat=2))
         self.cache_base_dataset = cache_base_dataset
         
-        
         # construct a new dataset by iterating over all elements of the provided dataset and saving them in a list        
-        
         if not cache_base_dataset:
             self.dataset = dataset
             
@@ -425,11 +422,6 @@ class PairShapeDataset(Dataset):
             item['second']['C_gt_xy'] = C_gt_xy_lstsq
             item['second']['C_gt_yx'] = C_gt_yx_lstsq
             
-            
-        
-            
-            
-            
         return item
     
 
@@ -488,10 +480,13 @@ class PairShrec19Dataset(Dataset):
         
         self.phase = phase
         if phase == 'test':
-            corr_path = os.path.join(self.dataset.data_root, 'corres_pair')
+            # corr_path = os.path.join(self.dataset.data_root, 'corres_pair')
+            corr_path = os.path.join(self.dataset.data_root, 'corres')
             assert os.path.isdir(corr_path), f'Invalid path {corr_path} not containing .vts files'
             # ignore the shape 40, since it is a partial shape
-            self.corr_files = list(filter(lambda x: '40' not in x, sort_list(glob(f'{corr_path}/*.txt'))))
+            # self.corr_files = list(filter(lambda x: '40' not in x, sort_list(glob(f'{corr_path}/*.txt'))))
+            
+            self.corr_files = list(filter(lambda x: '40' not in x, sort_list(glob(f'{corr_path}/*.map'))))
             self._size = len(self.corr_files)
         else:
             self.combinations = list(product(range(len(self.dataset)), repeat=2))

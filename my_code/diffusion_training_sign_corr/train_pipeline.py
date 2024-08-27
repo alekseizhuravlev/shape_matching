@@ -81,9 +81,9 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'augShapes_mass_signNet_remeshed_10_0.2_0.8',
+        'experiment_name': 'pair_augShapes_signNet_remeshed_10_0.2_0.8',
         
-        'dataset_name': 'SURREAL_augShapes_mass_signNet_remeshed_10_0.2_0.8',
+        'dataset_name': 'SURREAL_pair_augShapes_signNet_remeshed_10_0.2_0.8',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
         

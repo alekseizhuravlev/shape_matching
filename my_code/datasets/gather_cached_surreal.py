@@ -4,6 +4,11 @@ import os
 
 def gather_files(data_dir, prefix):
     
+    # if f'{data_dir}/{prefix}.txt' exists, remove it
+    if os.path.exists(f'{data_dir}/{prefix}.txt'):
+        print('Removing', f'{data_dir}/{prefix}.txt')
+        os.remove(f'{data_dir}/{prefix}.txt')
+    
     # get all files in dir in alphabetical order
     files = os.listdir(data_dir)
     files = sorted(files)
@@ -41,8 +46,9 @@ def gather_files(data_dir, prefix):
     
 
 if __name__ == '__main__':
-    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_augShapes_mass_signNet_remeshed_10_0.2_0.8/train'
-    gather_files(data_dir, 'evals')
+    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_pair_augShapes_signNet_remeshed_4b_mass_10_0.2_0.8/train'
+    gather_files(data_dir, 'evals_first')
+    gather_files(data_dir, 'evals_second')
     
     gather_files(data_dir, 'C_gt_xy')
 

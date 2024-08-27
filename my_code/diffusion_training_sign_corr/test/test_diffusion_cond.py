@@ -12,14 +12,8 @@ import os
 from my_code.models.diag_conditional import DiagConditionedUnet
 from diffusers import DDPMScheduler
 
-# training / evaluation
-from torch.utils.tensorboard import SummaryWriter
-from my_code.diffusion_training_sign_corr.train_model import train_epoch
-from my_code.diffusion_training_sign_corr.validate_model import validate_epoch
-
 import my_code.diffusion_training_sign_corr.data_loading as data_loading
 
-from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
 import networks.diffusion_network as diffusion_network
 import matplotlib.pyplot as plt
 import my_code.utils.plotting_utils as plotting_utils
@@ -27,6 +21,9 @@ import utils.fmap_util as fmap_util
 import metrics.geodist_metric as geodist_metric
 from my_code.sign_canonicalization.training import predict_sign_change
 import argparse
+from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
+import my_code.utils.zoomout_custom as zoomout_custom
+
 tqdm._instances.clear()
 
 
@@ -71,7 +68,7 @@ if __name__ == '__main__':
         # cache_dir=None,
         # input_type=config["net_input_type"],
         # k_eig=128,
-        # n_block=2
+        # n_block=2 
         
     sign_corr_net.load_state_dict(torch.load(
             f'{config["sign_net"]["net_path"]}/{config["sign_net"]["n_iter"]}.pth'
@@ -87,10 +84,10 @@ if __name__ == '__main__':
     dataset_name = args.dataset_name
     split = args.split
 
-    test_dataset = data_loading.get_val_dataset(
-        dataset_name, split, 128, preload=False, return_evecs=True
-        )[1]
-    sign_corr_net.cache_dir = test_dataset.lb_cache_dir
+    single_dataset, test_dataset = data_loading.get_val_dataset(
+        dataset_name, split, 200, preload=False, return_evecs=True
+        )
+    sign_corr_net.cache_dir = single_dataset.lb_cache_dir
 
 
     num_evecs = config["model_params"]["sample_size"]
@@ -111,6 +108,7 @@ if __name__ == '__main__':
 
     ratios = []
     geo_errs = []
+    geo_errs_zo = []
 
     Cxy_est_list = []
     C_gt_xy_corr_list = []
@@ -160,7 +158,8 @@ if __name__ == '__main__':
                 mass_mat=mass_mat_first, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
-                evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
+                evals=data['first']['evals'][:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
+                evecs=data['first']['evecs'][:,:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
                 gradX=data['first']['gradX'].unsqueeze(0), gradY=data['first']['gradY'].unsqueeze(0)
                 )
             sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
@@ -168,7 +167,8 @@ if __name__ == '__main__':
                 mass_mat=mass_mat_second, input_type=sign_corr_net.input_type,
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
-                evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
+                evals=data['second']['evals'][:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
+                evecs=data['second']['evecs'][:,:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
                 gradX=data['second']['gradX'].unsqueeze(0), gradY=data['second']['gradY'].unsqueeze(0)
                 )
 
@@ -185,7 +185,16 @@ if __name__ == '__main__':
 
 
         # product with support
-        if config["sign_net"]["with_mass"]:
+        # if config["sign_net"]["with_mass"]:
+        if config["sign_net"]['cond_mass_normalize']:
+            
+            mass_mat_first = torch.diag_embed(
+                data['first']['mass'].unsqueeze(0)
+                ).to(device)
+            mass_mat_second = torch.diag_embed(
+                data['second']['mass'].unsqueeze(0)
+                ).to(device)
+            
             evecs_cond_first = torch.nn.functional.normalize(
                 support_vector_norm_first[0].cpu().transpose(0, 1) \
                     @ mass_mat_first[0].cpu(),
@@ -266,6 +275,37 @@ if __name__ == '__main__':
         Cxy_est = x_sampled[0][0].cpu()
         
         ###############################################
+        # Zoomout
+        ###############################################
+        
+        evecs_first_zo = torch.cat(
+            [evecs_first_corrected,
+             data['first']['evecs'][:, num_evecs:]], 1)
+        evecs_second_zo = torch.cat(
+            [evecs_second_corrected,
+             data['second']['evecs'][:, num_evecs:]], 1)
+        
+        # assert (evecs_first_zo.shape[1] - num_evecs) % 8 == 0, f'Number of evecs {evecs_first_zo.shape[1] - num_evecs} must be divisible by 8'
+        
+        # C_xy_est_zo = torch.tensor(zoomout_refine(
+        #         FM_12=Cxy_est.numpy(), 
+        #         evects1=evecs_first_zo.numpy(), 
+        #         evects2=evecs_second_zo.numpy(),
+        #         nit=8, step=(evecs_first_zo.shape[1] - num_evecs) // 8,
+        #         verbose=False
+        #     ))
+        
+        C_xy_est_zo = zoomout_custom.zoomout(
+            FM_12=Cxy_est.to(device), 
+            evects1=evecs_first_zo.to(device), 
+            evects2=evecs_second_zo.to(device),
+            nit=evecs_first_zo.shape[1] - num_evecs, step=1,
+            # nit=8, step=(evecs_first_zo.shape[1] - num_evecs) // 8,
+        ).cpu()
+        
+        
+        
+        ###############################################
         # Evaluation
         ###############################################  
         
@@ -285,6 +325,11 @@ if __name__ == '__main__':
             evecs_x=evecs_first_corrected,
             evecs_y=evecs_second_corrected,
             )
+        p2p_est_zo = fmap_util.fmap2pointmap(
+            C_xy_est_zo,
+            evecs_x=evecs_first_zo,
+            evecs_y=evecs_second_zo,
+            )
         
         # distance matrices
         dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
@@ -300,6 +345,9 @@ if __name__ == '__main__':
         geo_err_est = geodist_metric.calculate_geodesic_error(
             dist_x, data['first']['corr'], data['second']['corr'], p2p_est, return_mean=False
             )
+        geo_err_est_zo = geodist_metric.calculate_geodesic_error(
+            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_zo, return_mean=False
+            )
         
         # mse between sampled and corrected fmap
         # mse_fmap = torch.nn.functional.mse_loss(C_gt_xy_corr, Cxy_est)
@@ -307,24 +355,28 @@ if __name__ == '__main__':
         mse_abs_fmap = torch.sum((C_gt_xy_corr.abs() - Cxy_est.abs()) ** 2)
         
         
-        fig, axs = plt.subplots(1, 7, figsize=(20, 3))
+        fig, axs = plt.subplots(1, 8, figsize=(20, 3))
         
         l = 0
         h = 32
 
         plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
-                                f'Pred', l, h, show_grid=False, show_colorbar=False)
+                                f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[1], C_gt_xy_corr,
-                                f'GT corrected', l, h, show_grid=False, show_colorbar=False)
+                                f'GT corrected, {geo_err_corr_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[2], C_gt_xy,
-                                f'GT orig', l, h, show_grid=False, show_colorbar=False)
+                                f'GT orig, {geo_err_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[3], Cxy_est - C_gt_xy_corr,
                                 f'Error', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[4], Cxy_est.abs() - C_gt_xy_corr.abs(),
-                                f'Error abs', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[5], evecs_cond_first,
+        plotting_utils.plot_Cxy(fig, axs[4], C_xy_est_zo[:num_evecs, :num_evecs],
+                                f'After ZO, {geo_err_est_zo.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
+        plotting_utils.plot_Cxy(fig, axs[5], C_xy_est_zo[:num_evecs, :num_evecs] - C_gt_xy_corr,
+                                f'Error ZO', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est.abs() - C_gt_xy_corr.abs(),
+        #                         f'Error abs', l, h, show_grid=False, show_colorbar=False)
+        plotting_utils.plot_Cxy(fig, axs[6], evecs_cond_first,
                                 f'evecs cond first', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[6], evecs_cond_second,
+        plotting_utils.plot_Cxy(fig, axs[7], evecs_cond_second,
                                 f'evecs cond second', l, h, show_grid=False, show_colorbar=False)
         
         # replace code above with writing to log file
@@ -333,6 +385,7 @@ if __name__ == '__main__':
             f.write(f'Geo error GT: {geo_err_gt.mean() * 100:.2f}\n')
             f.write(f'Geo error GT corr: {geo_err_corr_gt.mean() * 100:.2f}\n')
             f.write(f'Geo error est: {geo_err_est.mean() * 100:.2f}\n')
+            f.write(f'Geo error est zo: {geo_err_est_zo.mean() * 100:.2f}\n')
             f.write(f'MSE fmap: {mse_fmap:.3f}\n')
             f.write(f'MSE abs fmap: {mse_abs_fmap:.3f}\n')
             f.write('-----------------------------------\n')
@@ -348,6 +401,7 @@ if __name__ == '__main__':
         
         ratios.append(ratio_curr)
         geo_errs.append(geo_err_curr)
+        geo_errs_zo.append(geo_err_est_zo.mean() * 100)
         Cxy_est_list.append(Cxy_est)
         C_gt_xy_corr_list.append(C_gt_xy_corr)
         
@@ -363,11 +417,17 @@ if __name__ == '__main__':
 
     ratios = torch.tensor(ratios)
     geo_errs = torch.tensor(geo_errs)
+    geo_errs_zo = torch.tensor(geo_errs_zo)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
         f.write('-----------------------------------\n')
         f.write('Total statistics\n')
+        f.write('-----------------------------------\n')
+        f.write(f'Zoomout geo err mean: {geo_errs_zo.mean():.2f}\n')
+        f.write(f'Zoomout geo err median: {geo_errs_zo.median():.2f}\n')
+        f.write(f'Zoomout geo err min: {geo_errs_zo.min():.2f}\n')
+        f.write(f'Zoomout geo err max: {geo_errs_zo.max():.2f}\n')        
         f.write('-----------------------------------\n')
         f.write(f'Mean geo err: {geo_errs.mean():.2f}\n')
         f.write(f'Median geo err: {geo_errs.median():.2f}\n')
