@@ -46,11 +46,12 @@ def gather_files(data_dir, prefix):
     
 
 if __name__ == '__main__':
-    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_pair_augShapes_signNet_remeshed_4b_mass_10_0.2_0.8/train'
-    gather_files(data_dir, 'evals_first')
-    gather_files(data_dir, 'evals_second')
+    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8/train'
+    # gather_files(data_dir, 'evals_first')
+    # gather_files(data_dir, 'evals_second')
     
-    gather_files(data_dir, 'C_gt_xy')
+    # gather_files(data_dir, 'C_gt_xy')
+    gather_files(data_dir, 'C_gt_yx')
 
     gather_files(data_dir, 'evecs_cond_first')
     gather_files(data_dir, 'evecs_cond_second')

@@ -3,14 +3,17 @@ import numpy as np
 
 
 class SurrealTrainDataset(torch.utils.data.Dataset):
-    def __init__(self, base_folder, fmap_input_type, conditioning_types):
+    def __init__(self, base_folder, fmap_direction, fmap_input_type, conditioning_types):
         super(SurrealTrainDataset, self).__init__()
         
         self.fmap_input_type = fmap_input_type
         self.conditioning_types = conditioning_types
         
         # load the functional maps
-        self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt')       
+        if fmap_direction == 'xy':
+            self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt')       
+        elif fmap_direction == 'yx':
+            self.fmaps = np.loadtxt(f'{base_folder}/C_gt_yx.txt')
     
         # reshape the functional maps
         fmap_dim = int(np.sqrt(self.fmaps.shape[1]))

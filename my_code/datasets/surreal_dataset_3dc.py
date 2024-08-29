@@ -25,7 +25,6 @@ class TemplateSurrealDataset3DC(Dataset):
     def __init__(self,
                  shape_path,
                  num_evecs,
-                 use_cuda,
                  cache_lb_dir,
                  return_evecs,
                  mmap,
@@ -36,7 +35,6 @@ class TemplateSurrealDataset3DC(Dataset):
 
         self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
-        self.use_cuda = use_cuda
         self.cache_lb_dir = cache_lb_dir
         self.return_evecs = return_evecs
         self.augmentations = augmentations
@@ -73,7 +71,7 @@ class TemplateSurrealDataset3DC(Dataset):
     def get_functional_map(self, data_x, data_y):
 
         # calculate the map
-        device = 'cuda' if self.use_cuda and torch.cuda.is_available() else 'cpu'
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         
         C_gt_xy = torch.linalg.lstsq(
             data_y['evecs'][data_y['corr']].to(device),
@@ -105,16 +103,17 @@ class TemplateSurrealDataset3DC(Dataset):
             faces_orig = item['faces']
             
             # sample the simplification percent
-            simplify_percent = np.random.uniform(
-                self.augmentations['remesh']['simplify_percent_min'],
-                self.augmentations['remesh']['simplify_percent_max'],
+            simplify_strength = np.random.uniform(
+                self.augmentations['remesh']['simplify_strength_min'],
+                self.augmentations['remesh']['simplify_strength_max'],
                 )
             # remesh and simplify the shape
-            item['verts'], item['faces'] = remesh.remesh_simplify(
+            item['verts'], item['faces'] = remesh.remesh_simplify_iso(
                 verts_orig,
                 faces_orig,
                 n_remesh_iters=self.augmentations['remesh']['n_remesh_iters'],
-                simplify_percent=simplify_percent,
+                remesh_targetlen=self.augmentations['remesh']['remesh_targetlen'],
+                simplify_strength=simplify_strength,
             )
             # correspondence by a nearest neighbor search
             item['corr'] = fmap_util.nn_query(

@@ -28,23 +28,25 @@ import my_code.datasets.template_dataset as template_dataset
 from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
     
     
-def visualize_before_after(data, C_xy_corr, evecs_cond_first, evecs_cond_second, figures_folder, idx):
+def visualize_before_after(data, C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second, figures_folder, idx):
         l = 0
         h = 32
 
-        fig, axs = plt.subplots(1, 5, figsize=(18, 5))
+        fig, axs = plt.subplots(1, 6, figsize=(18, 5))
 
         plotting_utils.plot_Cxy(fig, axs[0], data['second']['C_gt_xy'],
                                 'before', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[1], C_xy_corr,
                                 'after', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[2], data['second']['C_gt_xy'][l:h, l:h] - C_xy_corr,
-                        'diff', l, h, show_grid=False, show_colorbar=False)
+        plotting_utils.plot_Cxy(fig, axs[2], C_yx_corr,
+                                'C_yx', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[3], data['second']['C_gt_xy'][l:h, l:h] - C_xy_corr,
+        #                 'diff', l, h, show_grid=False, show_colorbar=False)
         plotting_utils.plot_Cxy(fig, axs[3], data['second']['C_gt_xy'][l:h, l:h].abs() - C_xy_corr.abs(),
                         'abs diff', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[3], evecs_cond_first,
+        plotting_utils.plot_Cxy(fig, axs[4], evecs_cond_first,
                         'evecs_cond_first', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[4], evecs_cond_second,
+        plotting_utils.plot_Cxy(fig, axs[5], evecs_cond_second,
                         'evecs_cond_second', l, h, show_grid=False, show_colorbar=False)
 
         # save the figure
@@ -101,30 +103,30 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
             )
 
     # correct the evecs
-    evecs_first_corrected = evecs_first.cpu()[0] * torch.sign(sign_pred_first).cpu()
+    evecs_first_corrected = evecs_first[0] * torch.sign(sign_pred_first)
     evecs_first_corrected = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
     
-    evecs_second_corrected = evecs_second.cpu()[0] * torch.sign(sign_pred_second).cpu()
+    evecs_second_corrected = evecs_second[0] * torch.sign(sign_pred_second)
     evecs_second_corrected = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
     
     
     # product with support
     if with_mass:
         evecs_cond_first = torch.nn.functional.normalize(
-            support_vector_norm_first[0].cpu().transpose(0, 1) \
-                @ mass_mat_first[0].cpu(),
+            support_vector_norm_first[0].transpose(0, 1) \
+                @ mass_mat_first[0],
             p=2, dim=1) \
                 @ evecs_first_corrected
         
         evecs_cond_second = torch.nn.functional.normalize(
-            support_vector_norm_second[0].cpu().transpose(0, 1) \
-                @ mass_mat_second[0].cpu(),
+            support_vector_norm_second[0].transpose(0, 1) \
+                @ mass_mat_second[0],
             p=2, dim=1) \
                 @ evecs_second_corrected 
         
     else:
-        evecs_cond_first = support_vector_norm_first[0].cpu().transpose(0, 1) @ evecs_first_corrected
-        evecs_cond_second = support_vector_norm_second[0].cpu().transpose(0, 1) @ evecs_second_corrected
+        evecs_cond_first = support_vector_norm_first[0].transpose(0, 1) @ evecs_first_corrected
+        evecs_cond_second = support_vector_norm_second[0].transpose(0, 1) @ evecs_second_corrected
     
     # wrong order?
     # evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ support_vector_norm_first[0].cpu()
@@ -135,12 +137,17 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
 
     # correct the functional map
     C_xy_pred = torch.linalg.lstsq(
-        evecs_second.cpu()[0, corr_second] * torch.sign(sign_pred_second).cpu(),
+        evecs_second[0, corr_second] * torch.sign(sign_pred_second),
         # evecs_first.cpu()[0, corr_first].cpu()
-        evecs_first.cpu()[0, corr_first] * torch.sign(sign_pred_first).cpu()
+        evecs_first[0, corr_first] * torch.sign(sign_pred_first),
+        ).solution
+    
+    C_yx_pred = torch.linalg.lstsq(
+        evecs_first[0, corr_first] * torch.sign(sign_pred_first),
+        evecs_second[0, corr_second] * torch.sign(sign_pred_second),
         ).solution
 
-    return C_xy_pred, evecs_cond_first, evecs_cond_second
+    return C_xy_pred.cpu(), C_yx_pred.cpu(), evecs_cond_first.cpu(), evecs_cond_second.cpu()
     
     
     
@@ -163,30 +170,35 @@ def save_train_dataset(
     os.makedirs(figures_folder, exist_ok=True)
 
     evals_file = os.path.join(train_folder, f'evals_{start_idx}_{end_idx}.txt')
-    fmaps_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
+    fmaps_xy_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
+    fmaps_yx_file = os.path.join(train_folder, f'C_gt_yx_{start_idx}_{end_idx}.txt')
     evecs_cond_first_file = os.path.join(train_folder, f'evecs_cond_first_{start_idx}_{end_idx}.txt')
     evecs_cond_second_file = os.path.join(train_folder, f'evecs_cond_second_{start_idx}_{end_idx}.txt')
     
     # remove if exists    
-    for file_type in [evals_file, fmaps_file, evecs_cond_first_file, evecs_cond_second_file]:
+    for file_type in [evals_file, fmaps_xy_file, evecs_cond_first_file, evecs_cond_second_file]:
         if os.path.exists(file_type):
             print(f'Removing {file_type}')
             os.remove(file_type)
     
-    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_file}', f'evecs_cond to {evecs_cond_first_file}')
+    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_xy_file}', f'evecs_cond to {evecs_cond_first_file}')
     
     for i, idx in enumerate(train_indices):
         data = dataset[idx]
         
         evals = data['second']['evals'][:num_evecs]
-        C_xy_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
+        C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
             data=data,
             num_evecs=num_evecs,
             **net_params
         )
                 
-        with open(fmaps_file, 'ab') as f:
+        with open(fmaps_xy_file, 'ab') as f:
             np.savetxt(f, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
+            f.write(b'\n')
+            
+        with open(fmaps_yx_file, 'ab') as f:
+            np.savetxt(f, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
             f.write(b'\n')
             
         with open(evals_file, 'ab') as f:
@@ -209,7 +221,7 @@ def save_train_dataset(
             
         if i < 5 or i % 1000 == 0:
             visualize_before_after(
-                data, C_xy_corr,
+                data, C_xy_corr,C_yx_corr, 
                 evecs_cond_first, evecs_cond_second,
                 figures_folder, idx)
 
@@ -231,7 +243,7 @@ def parse_args():
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_4b_mass_10_0.5_1 --dataset_name SURREAL_augShapes_mass_signNet_remeshed_10_0.5_1
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8
     
     return args
          
@@ -251,8 +263,9 @@ if __name__ == '__main__':
     augmentations = {
         'remesh': {
             'n_remesh_iters': 10,
-            'simplify_percent_min': 0.2,
-            'simplify_percent_max': 0.8,
+            'simplify_strength_min': 0.2,
+            'simplify_strength_max': 0.8,
+            'remesh_targetlen': 1,
         }
     }
     
@@ -260,7 +273,6 @@ if __name__ == '__main__':
         # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
         shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
         num_evecs=128,
-        use_cuda=False,
         cache_lb_dir=None,
         return_evecs=True,
         mmap=True,

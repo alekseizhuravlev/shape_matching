@@ -81,9 +81,10 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'pair_augShapes_signNet_remeshed_10_0.2_0.8',
+        'experiment_name': 'single_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
         
-        'dataset_name': 'SURREAL_pair_augShapes_signNet_remeshed_10_0.2_0.8',
+        'dataset_name': 'SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'fmap_direction': 'yx',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
         
@@ -134,6 +135,7 @@ if __name__ == '__main__':
     ### Train dataset with dataloader
     dataset_train = SurrealTrainDataset(
         f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
+        fmap_direction=config["fmap_direction"],
         fmap_input_type=config["fmap_type"],
         conditioning_types=config["conditioning_types"]
         )

@@ -73,6 +73,11 @@ class SingleShapeDataset(Dataset):
 
         if self.return_corr:
             assert self._size == len(self.corr_files)
+            
+        self.additional_data = []
+        for i in range(self._size):
+            self.additional_data.append(dict())
+            
 
     def _init_data(self):
         # check the data path contains .off files
@@ -137,6 +142,10 @@ class SingleShapeDataset(Dataset):
         if self.return_corr:
             corr = np.loadtxt(self.corr_files[index], dtype=np.int32) - 1  # minus 1 to start from 0
             item['corr'] = torch.from_numpy(corr).long()
+            
+        # if additional data is provided at index, add it to the item
+        if len(self.additional_data) > index:
+            item.update(self.additional_data[index])
 
         return item
 

@@ -8,6 +8,8 @@ import my_code.diffusion_training_sign_corr.data_loading as data_loading
 import yaml
 import my_code.datasets.preprocessing as preprocessing
 import trimesh
+import argparse
+    
 
 
 def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
@@ -31,8 +33,8 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
         
         mesh_anis_remeshed = trimesh.Trimesh(verts, faces)
         # apply laplacian smoothing
-        trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        # trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        # trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
         
         train_shape = {
             'verts': torch.tensor(mesh_anis_remeshed.vertices).float(),
@@ -164,7 +166,20 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
 
 if __name__ == '__main__':
         
-    exp_name = 'signNet_remeshed_4b_mass_10_0.2_0.8' 
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--exp_name', type=str, required=True)
+    parser.add_argument('--remesh_targetlen', type=float)
+    parser.add_argument('--smoothing_iter', type=int)
+    
+    args = parser.parse_args()
+    
+    exp_name = args.exp_name
+    remesh_targetlen = args.remesh_targetlen    
+    smoothing_iter = args.smoothing_iter
+        
+    # exp_name = 'signNet_remeshed_4b_mass_10_0.2_0.8' 
+    # exp_name = 'signNet_orig' 
     # exp_name = 'signNet_remeshed_10_0.5_1' 
     
     
@@ -173,8 +188,8 @@ if __name__ == '__main__':
     with open(f'{exp_dir}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
         
-    remesh_targetlen = 1
-    smoothing_iter = 2
+    # remesh_targetlen = None
+    # smoothing_iter = 0
     # remesh_targetlen = config['dataset']['remesh']['isotropic']['remesh_targetlen']
         
     start_dim = config['start_dim']
@@ -191,8 +206,8 @@ if __name__ == '__main__':
     input_type = config['net_params']['input_type']
     
     
-    # log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_taubinSmooth_{smoothing_iter}.txt'
-    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_laplaceSmooth_{smoothing_iter}.txt'
+    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_taubinSmooth_{smoothing_iter}.txt'
+    # log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_laplaceSmooth_{smoothing_iter}.txt'
     # log_file = f'{exp_dir}/log_10ep_noRemesh_Shrec19R.txt'
     
     # log_file = f'{exp_dir}/logs_shrec/log_10ep_laplaceSmooth_{smoothing_iter}.txt'
@@ -213,6 +228,9 @@ if __name__ == '__main__':
             ('FAUST_orig', 'test'), 
             ('FAUST_r', 'train'), 
             ('FAUST_orig', 'train'), 
+            ('SCAPE_r_pair', 'test'),
+            ('SCAPE_a_pair', 'test'),
+            ('SCAPE_r_pair', 'train'),
             ]:
             
             if dataset_name == config["train_folder"]:
@@ -229,7 +247,7 @@ if __name__ == '__main__':
                     dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
                     )[0]
                 
-                if remesh_targetlen is not None:
+                if remesh_targetlen is not None and remesh_targetlen > 0:
                     test_dataset_curr = remesh_dataset(
                         test_dataset_curr, dataset_name,
                         remesh_targetlen, num_evecs=net.k_eig,
