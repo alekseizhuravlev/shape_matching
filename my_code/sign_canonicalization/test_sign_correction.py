@@ -9,6 +9,7 @@ import yaml
 import my_code.datasets.preprocessing as preprocessing
 import trimesh
 import argparse
+import utils.fmap_util as fmap_util
     
 
 
@@ -36,7 +37,15 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
         # trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
         trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
         
+        corr_orig_to_remeshed = fmap_util.nn_query(
+            verts,
+            verts_orig, 
+            )
+        
         train_shape = {
+            'verts_orig': verts_orig,
+            'faces_orig': faces_orig,
+            'corr_orig_to_remeshed': corr_orig_to_remeshed,
             'verts': torch.tensor(mesh_anis_remeshed.vertices).float(),
             'faces': torch.tensor(mesh_anis_remeshed.faces).int(),
         }

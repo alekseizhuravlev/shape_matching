@@ -243,7 +243,7 @@ def parse_args():
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8
     
     return args
          
@@ -260,13 +260,34 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
+    # augmentations = {
+    #     'remesh': {
+    #         'n_remesh_iters': 10,
+    #         'simplify_strength_min': 0.2,
+    #         'simplify_strength_max': 0.8,
+    #         'remesh_targetlen': 1,
+    #     }
+    # }
+    
     augmentations = {
-        'remesh': {
-            'n_remesh_iters': 10,
-            'simplify_strength_min': 0.2,
-            'simplify_strength_max': 0.8,
-            'remesh_targetlen': 1,
-        }
+        "remesh": {
+            "isotropic": {
+                "n_remesh_iters": 10,
+                "remesh_targetlen": 1,
+                "simplify_strength_min": 0.2,
+                "simplify_strength_max": 0.8,
+            },
+            "anisotropic": {
+                "probability": 0.35,
+                    
+                "n_remesh_iters": 10,
+                "fraction_to_simplify_min": 0.2,
+                "fraction_to_simplify_max": 0.6,
+                "simplify_strength_min": 0.2,
+                "simplify_strength_max": 0.5,
+                "weighted_by": "face_count",
+            },
+        },
     }
     
     dataset = TemplateSurrealDataset3DC(

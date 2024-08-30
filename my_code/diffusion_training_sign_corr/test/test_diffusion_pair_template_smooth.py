@@ -25,6 +25,8 @@ from my_code.sign_canonicalization.training import predict_sign_change
 import argparse
 from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
 import my_code.utils.zoomout_custom as zoomout_custom
+import my_code.sign_canonicalization.test_sign_correction as test_sign_correction
+
 
 tqdm._instances.clear()
 
@@ -70,11 +72,9 @@ if __name__ == '__main__':
             f'{config["sign_net"]["net_path"]}/{config["sign_net"]["n_iter"]}.pth'
             ))
 
-
     ### sample the model
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000, beta_schedule='squaredcos_cap_v2',
-                                    clip_sample=True) 
-
+                                    clip_sample=True)
 
     ### test dataset
     dataset_name = args.dataset_name
@@ -83,11 +83,18 @@ if __name__ == '__main__':
     single_dataset, test_dataset = data_loading.get_val_dataset(
         dataset_name, split, 200, preload=False, return_evecs=True
         )
-    sign_corr_net.cache_dir = single_dataset.lb_cache_dir
+    # sign_corr_net.cache_dir = single_dataset.lb_cache_dir
+
+    single_dataset_remeshed = test_sign_correction.remesh_dataset(
+        dataset=single_dataset, 
+        name=dataset_name,
+        remesh_targetlen=1,
+        smoothing_iter=5,
+        num_evecs=200,
+    )
 
 
     num_evecs = config["model_params"]["sample_size"]
-
 
     ##########################################
     # Template
@@ -95,7 +102,7 @@ if __name__ == '__main__':
 
     template_shape = template_dataset.get_template(
         template_path='data/SURREAL_full/template/template.ply',
-        num_evecs=single_dataset.num_evecs,
+        num_evecs=200,
         template_corr=list(range(6890)),
         centering='bbox',
         )    
@@ -110,17 +117,17 @@ if __name__ == '__main__':
     fig_dir = f'{log_dir}/figs'
     os.makedirs(fig_dir, exist_ok=True)
 
-    log_file_name = f'{log_dir}/log.txt'
+    log_file_name = f'{log_dir}/log_smooth.txt'
 
     ##########################################
     # Template stage
     ##########################################
 
-    data_range = tqdm(range(len(single_dataset)), desc='Calculating fmaps to template')
+    data_range = tqdm(range(len(single_dataset_remeshed)), desc='Calculating fmaps to template')
 
     for i in data_range:
 
-        data = single_dataset[i]
+        data = single_dataset_remeshed[i]
         
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -263,44 +270,62 @@ if __name__ == '__main__':
         Cyx_est = x_sampled[0][0].cpu()
         
         ###############################################
+        # Correct the original evecs
+        ###############################################
+        
+        data_orig = single_dataset[i]
+        evecs_second_orig = data_orig['evecs'][:, :num_evecs]
+        
+        prod_evecs_orig_remesh_corrected = evecs_second_orig.transpose(0, 1) @ evecs_second_corrected[data['corr_orig_to_remeshed']].cpu()
+
+        evecs_orig_signs = torch.sign(torch.diagonal(prod_evecs_orig_remesh_corrected, dim1=0, dim2=1))
+        evecs_second_corrected_orig = evecs_second_orig * evecs_orig_signs
+        
+        ###############################################
         # Zoomout
         ###############################################
         
         evecs_first_zo = torch.cat(
             [evecs_first_corrected,
                 template_shape['evecs'][:, num_evecs:]], 1)
-        evecs_second_zo = torch.cat(
-            [evecs_second_corrected,
-                data['evecs'][:, num_evecs:]], 1)
         
+        evecs_second_orig_zo = torch.cat(
+            [evecs_second_corrected_orig,
+                data_orig['evecs'][:, num_evecs:]], 1)
+
         
         Cyx_est_zo = zoomout_custom.zoomout(
             FM_12=Cyx_est.to(device), 
-            evects1=evecs_second_zo.to(device), 
+            evects1=evecs_second_orig_zo.to(device), 
             evects2=evecs_first_zo.to(device),
             nit=evecs_first_zo.shape[1] - num_evecs, step=1,
         ).cpu()
-        
-        p2p_est = fmap_util.fmap2pointmap(
+
+        p2p_remeshed = fmap_util.fmap2pointmap(
             C12=Cyx_est.to(device),
             evecs_x=evecs_second_corrected.to(device),
             evecs_y=evecs_first_corrected.to(device),
             ).cpu()
         
+        p2p_est = fmap_util.fmap2pointmap(
+            C12=Cyx_est.to(device),
+            evecs_x=evecs_second_corrected_orig.to(device),
+            evecs_y=evecs_first_corrected.to(device),
+            ).cpu()
+        
         p2p_est_zo = fmap_util.fmap2pointmap(
             C12=Cyx_est_zo.to(device),
-            evecs_x=evecs_second_zo.to(device),
+            evecs_x=evecs_second_orig_zo.to(device),
             evecs_y=evecs_first_zo.to(device),
             ).cpu()
         
         single_dataset.additional_data[i]['Cyx_est'] = Cyx_est
         single_dataset.additional_data[i]['Cyx_est_zo'] = Cyx_est_zo
-        single_dataset.additional_data[i]['evecs_zo'] = evecs_second_zo
+        single_dataset.additional_data[i]['evecs_zo'] = evecs_second_orig_zo
         
         single_dataset.additional_data[i]['p2p_est'] = p2p_est
         single_dataset.additional_data[i]['p2p_est_zo'] = p2p_est_zo
-    
-    
+        
     ##########################################
     # Pairwise stage
     ##########################################

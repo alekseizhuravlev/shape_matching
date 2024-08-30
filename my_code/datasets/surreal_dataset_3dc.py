@@ -102,19 +102,46 @@ class TemplateSurrealDataset3DC(Dataset):
             verts_orig = item['verts']
             faces_orig = item['faces']
             
-            # sample the simplification percent
-            simplify_strength = np.random.uniform(
-                self.augmentations['remesh']['simplify_strength_min'],
-                self.augmentations['remesh']['simplify_strength_max'],
+            # # sample the simplification percent
+            # simplify_strength = np.random.uniform(
+            #     self.augmentations['remesh']['simplify_strength_min'],
+            #     self.augmentations['remesh']['simplify_strength_max'],
+            #     )
+            # # remesh and simplify the shape
+            # item['verts'], item['faces'] = remesh.remesh_simplify_iso(
+            #     verts_orig,
+            #     faces_orig,
+            #     n_remesh_iters=self.augmentations['remesh']['n_remesh_iters'],
+            #     remesh_targetlen=self.augmentations['remesh']['remesh_targetlen'],
+            #     simplify_strength=simplify_strength,
+            # )
+            
+            # randomly choose the remeshing type
+            remesh_type = np.random.choice(['isotropic', 'anisotropic'], p=[1-self.augmentations["remesh"]["anisotropic"]["probability"], self.augmentations["remesh"]["anisotropic"]["probability"]])
+            
+            if remesh_type == 'isotropic':
+                simplify_strength = np.random.uniform(self.augmentations["remesh"]["isotropic"]["simplify_strength_min"], self.augmentations["remesh"]["isotropic"]["simplify_strength_max"])
+                item['verts'], item['faces'] = remesh.remesh_simplify_iso(
+                    verts_orig,
+                    faces_orig,
+                    n_remesh_iters=self.augmentations["remesh"]["isotropic"]["n_remesh_iters"],
+                    remesh_targetlen=self.augmentations["remesh"]["isotropic"]["remesh_targetlen"],
+                    simplify_strength=simplify_strength,
                 )
-            # remesh and simplify the shape
-            item['verts'], item['faces'] = remesh.remesh_simplify_iso(
-                verts_orig,
-                faces_orig,
-                n_remesh_iters=self.augmentations['remesh']['n_remesh_iters'],
-                remesh_targetlen=self.augmentations['remesh']['remesh_targetlen'],
-                simplify_strength=simplify_strength,
-            )
+            else:
+                fraction_to_simplify = np.random.uniform(self.augmentations["remesh"]["anisotropic"]["fraction_to_simplify_min"], self.augmentations["remesh"]["anisotropic"]["fraction_to_simplify_max"])
+                simplify_strength = np.random.uniform(self.augmentations["remesh"]["anisotropic"]["simplify_strength_min"], self.augmentations["remesh"]["anisotropic"]["simplify_strength_max"])
+                
+                item['verts'], item['faces'] = remesh.remesh_simplify_anis(
+                    verts_orig,
+                    faces_orig,
+                    n_remesh_iters=self.augmentations["remesh"]["anisotropic"]["n_remesh_iters"],
+                    fraction_to_simplify=fraction_to_simplify,
+                    simplify_strength=simplify_strength,
+                    weighted_by=self.augmentations["remesh"]["anisotropic"]["weighted_by"]
+                )
+                
+            
             # correspondence by a nearest neighbor search
             item['corr'] = fmap_util.nn_query(
                 item['verts'],
