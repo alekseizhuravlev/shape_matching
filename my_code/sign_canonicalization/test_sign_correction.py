@@ -264,15 +264,18 @@ if __name__ == '__main__':
                 
                 mean_incorrect_signs, max_incorrect_signs = test_on_dataset(
                     net, test_dataset_curr,
-                    with_mass=config['with_mass'], n_epochs=10)
+                    with_mass=config['with_mass'], n_epochs=100)
     
             
-            print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs:.2f} max_incorrect_signs {max_incorrect_signs}')
+            print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')
             
             with open(log_file, 'a') as f:
-                f.write(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs:.2f} max_incorrect_signs {max_incorrect_signs}\n')
+                f.write(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} Max {max_incorrect_signs})\n')
             
         with open(log_file, 'a') as f:
                 f.write(f'\n')
+                
+    with open(log_file, 'a') as f:
+        f.write(f'\n')
             
 

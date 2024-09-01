@@ -81,9 +81,11 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'single_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        # 'experiment_name': 'single_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'experiment_name': 'single_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
         
-        'dataset_name': 'SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/',
+        'dataset_name': 'SURREAL_augShapes_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
         'fmap_direction': 'yx',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
@@ -121,7 +123,7 @@ if __name__ == '__main__':
     os.makedirs(f'{experiment_folder}/checkpoints')
     
     # sign net config
-    with open(f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/config.yaml', 'r') as f:
+    with open(f'{config["dataset_base_dir"]}/{config["dataset_name"]}/config.yaml', 'r') as f:
         sign_net_config = yaml.load(f, Loader=yaml.FullLoader)
         
     # add the sign net config to the main config
@@ -134,7 +136,8 @@ if __name__ == '__main__':
     
     ### Train dataset with dataloader
     dataset_train = SurrealTrainDataset(
-        f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
+        # f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
+        f'{config["dataset_base_dir"]}/{config["dataset_name"]}/train',
         fmap_direction=config["fmap_direction"],
         fmap_input_type=config["fmap_type"],
         conditioning_types=config["conditioning_types"]

@@ -19,7 +19,7 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='single_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+experiment_name='single_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
 checkpoint_name='checkpoint_99.pt'
 
 # put all dataset names and splits in a list
@@ -50,7 +50,6 @@ split=$(echo $current_job | cut -d ' ' -f 2)
 echo "Running job $worker_id: dataset_name=$dataset_name, split=$split"
 
 # run the job
-# srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
 srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
 

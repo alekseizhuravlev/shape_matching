@@ -30,7 +30,7 @@ from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
     
 def visualize_before_after(data, C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second, figures_folder, idx):
         l = 0
-        h = 32
+        h = num_evecs
 
         fig, axs = plt.subplots(1, 6, figsize=(18, 5))
 
@@ -169,61 +169,100 @@ def save_train_dataset(
     figures_folder = f'{train_folder}/figures'
     os.makedirs(figures_folder, exist_ok=True)
 
-    evals_file = os.path.join(train_folder, f'evals_{start_idx}_{end_idx}.txt')
+    evals_first_file = os.path.join(train_folder, f'evals_first_{start_idx}_{end_idx}.txt')
+    evals_second_file = os.path.join(train_folder, f'evals_second_{start_idx}_{end_idx}.txt')
     fmaps_xy_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
     fmaps_yx_file = os.path.join(train_folder, f'C_gt_yx_{start_idx}_{end_idx}.txt')
     evecs_cond_first_file = os.path.join(train_folder, f'evecs_cond_first_{start_idx}_{end_idx}.txt')
     evecs_cond_second_file = os.path.join(train_folder, f'evecs_cond_second_{start_idx}_{end_idx}.txt')
     
     # remove if exists    
-    for file_type in [evals_file, fmaps_xy_file, evecs_cond_first_file, evecs_cond_second_file]:
-        if os.path.exists(file_type):
-            print(f'Removing {file_type}')
-            os.remove(file_type)
+    # for file_type in [evals_first_file, evals_second_file, fmaps_xy_file, fmaps_yx_file, evecs_cond_first_file, evecs_cond_second_file]:
+    #     if os.path.exists(file_type):
+    #         print(f'Removing {file_type}')
+    #         os.remove(file_type)
     
-    print(f'Saving evals to {evals_file}', f'fmaps to {fmaps_xy_file}', f'evecs_cond to {evecs_cond_first_file}')
+    print(f'Saving evals to {evals_second_file}', f'fmaps to {fmaps_xy_file}', f'evecs_cond to {evecs_cond_first_file}')
     
-    for i, idx in enumerate(train_indices):
-        data = dataset[idx]
-        
-        evals = data['second']['evals'][:num_evecs]
-        C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
-            data=data,
-            num_evecs=num_evecs,
-            **net_params
-        )
+    # open the files
+    evals_first_file = open(evals_first_file, 'wb')
+    evals_second_file = open(evals_second_file, 'wb')
+    fmaps_xy_file = open(fmaps_xy_file, 'wb')
+    fmaps_yx_file = open(fmaps_yx_file, 'wb')
+    evecs_cond_first_file = open(evecs_cond_first_file, 'wb')
+    evecs_cond_second_file = open(evecs_cond_second_file, 'wb')
+    
+    
+    try:
+        for i, idx in enumerate(train_indices):
+            data = dataset[idx]
+            
+            evals_first = data['first']['evals'][:num_evecs]
+            evals_second = data['second']['evals'][:num_evecs]
+            C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
+                data=data,
+                num_evecs=num_evecs,
+                **net_params
+            )
+                    
+            # with open(fmaps_xy_file, 'ab') as f:
+            #     np.savetxt(f, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
+            #     f.write(b'\n')
                 
-        with open(fmaps_xy_file, 'ab') as f:
-            np.savetxt(f, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
-            f.write(b'\n')
+            # with open(fmaps_yx_file, 'ab') as f:
+            #     np.savetxt(f, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
+            #     f.write(b'\n')
+                
+            # with open(evals_file, 'ab') as f:
+            #     np.savetxt(f, evals.numpy().astype(np.float32), newline=" ")
+            #     f.write(b'\n')
+                
+            # with open(evecs_cond_first_file, 'ab') as f:
+            #     np.savetxt(f, evecs_cond_first.numpy().flatten().astype(np.float32), newline=" ")
+            #     f.write(b'\n')
+                
+            # with open(evecs_cond_second_file, 'ab') as f:
+            #     np.savetxt(f, evecs_cond_second.numpy().flatten().astype(np.float32), newline=" ")
+            #     f.write(b'\n')
             
-        with open(fmaps_yx_file, 'ab') as f:
-            np.savetxt(f, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
-            f.write(b'\n')
+            np.savetxt(fmaps_xy_file, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
+            fmaps_xy_file.write(b'\n')
             
-        with open(evals_file, 'ab') as f:
-            np.savetxt(f, evals.numpy().astype(np.float32), newline=" ")
-            f.write(b'\n')
+            np.savetxt(fmaps_yx_file, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
+            fmaps_yx_file.write(b'\n')
             
-        with open(evecs_cond_first_file, 'ab') as f:
-            np.savetxt(f, evecs_cond_first.numpy().flatten().astype(np.float32), newline=" ")
-            f.write(b'\n')
+            np.savetxt(evals_first_file, evals_first.numpy().astype(np.float32), newline=" ")
+            evals_first_file.write(b'\n')
             
-        with open(evecs_cond_second_file, 'ab') as f:
-            np.savetxt(f, evecs_cond_second.numpy().flatten().astype(np.float32), newline=" ")
-            f.write(b'\n')
-        
+            np.savetxt(evals_second_file, evals_second.numpy().astype(np.float32), newline=" ")
+            evals_second_file.write(b'\n')
             
-        if i % 100 == 0 or i == 25:
-            time_elapsed = time.time() - curr_time
-            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
-                  flush=True)
+            np.savetxt(evecs_cond_first_file, evecs_cond_first.numpy().flatten().astype(np.float32), newline=" ")
+            evecs_cond_first_file.write(b'\n')
             
-        if i < 5 or i % 1000 == 0:
-            visualize_before_after(
-                data, C_xy_corr,C_yx_corr, 
-                evecs_cond_first, evecs_cond_second,
-                figures_folder, idx)
+            np.savetxt(evecs_cond_second_file, evecs_cond_second.numpy().flatten().astype(np.float32), newline=" ")
+            evecs_cond_second_file.write(b'\n')
+            
+                
+            if i % 100 == 0 or i == 25:
+                time_elapsed = time.time() - curr_time
+                print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
+                    flush=True)
+                
+            if i < 5 or i % 1000 == 0:
+                visualize_before_after(
+                    data, C_xy_corr,C_yx_corr, 
+                    evecs_cond_first, evecs_cond_second,
+                    figures_folder, idx)
+                
+    # close the files
+    finally:
+        evals_first_file.close()
+        evals_second_file.close()
+        fmaps_xy_file.close()
+        fmaps_yx_file.close()
+        evecs_cond_first_file.close()
+        evecs_cond_second_file.close()
 
 
 def parse_args():
@@ -243,7 +282,7 @@ def parse_args():
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 64 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_anisRemesh_signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8
     
     return args
          
@@ -308,7 +347,8 @@ if __name__ == '__main__':
     
     # folder to store the dataset
     dataset_name = args.dataset_name
-    dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
+    # dataset_folder = f'/home/{user_name}/shape_matching/data/SURREAL_full/full_datasets/{dataset_name}'
+    dataset_folder = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}'
     os.makedirs(dataset_folder, exist_ok=True)
     
     

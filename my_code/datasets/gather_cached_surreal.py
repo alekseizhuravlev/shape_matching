@@ -46,7 +46,7 @@ def gather_files(data_dir, prefix):
     
 
 if __name__ == '__main__':
-    data_dir = '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/full_datasets/SURREAL_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8/train'
+    data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/SURREAL_augShapes_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8/train'
     # gather_files(data_dir, 'evals_first')
     # gather_files(data_dir, 'evals_second')
     
