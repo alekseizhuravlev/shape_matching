@@ -40,6 +40,9 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--split', type=str)
     
+    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'])
+    parser.add_argument('--smoothing_iter', type=int)
+    
     args = parser.parse_args()
     return args
 
@@ -89,7 +92,8 @@ if __name__ == '__main__':
         dataset=single_dataset, 
         name=dataset_name,
         remesh_targetlen=1,
-        smoothing_iter=5,
+        smoothing_type=args.smoothing_type,
+        smoothing_iter=args.smoothing_iter,
         num_evecs=200,
     )
 
@@ -111,13 +115,13 @@ if __name__ == '__main__':
     # Logging
     ##########################################
 
-    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}-template'
+    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}-template-{args.smoothing_type}-{args.smoothing_iter}'
     os.makedirs(log_dir, exist_ok=True)
 
     fig_dir = f'{log_dir}/figs'
     os.makedirs(fig_dir, exist_ok=True)
 
-    log_file_name = f'{log_dir}/log_smooth.txt'
+    log_file_name = f'{log_dir}/log_smooth_{args.smoothing_type}_{args.smoothing_iter}.txt'
 
     ##########################################
     # Template stage
@@ -507,23 +511,24 @@ if __name__ == '__main__':
         Cxy_est_zo = Cxy_est_zo.cpu()
         # Cxy_est_pairzo = Cxy_est_pairzo.cpu()
 
-        fig, axs = plt.subplots(1, 6, figsize=(20, 3))
+        # fig, axs = plt.subplots(1, 6, figsize=(20, 3))
         
-        l = 0
-        h = 32
+        # l = 0
+        # h = num_evecs
 
-        plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
-                                f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[1], C_gt_xy_corr,
-                                f'GT corrected, {geo_err_corr_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[2], C_gt_xy,
-                                f'GT orig, {geo_err_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[3], Cxy_est - C_gt_xy_corr[:num_evecs,:num_evecs],
-                                f'Error', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[4], Cxy_est_zo[:num_evecs, :num_evecs],
-                                f'After ZO, {geo_err_est_zo.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        plotting_utils.plot_Cxy(fig, axs[5], Cxy_est_zo[:num_evecs, :num_evecs] - C_gt_xy_corr[:num_evecs,:num_evecs],
-                                f'Error ZO', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
+        #                         f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[1], C_gt_xy_corr,
+        #                         f'GT corrected, {geo_err_corr_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[2], C_gt_xy,
+        #                         f'GT orig, {geo_err_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[3], Cxy_est - C_gt_xy_corr[:num_evecs,:num_evecs],
+        #                         f'Error', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est_zo[:num_evecs, :num_evecs],
+        #                         f'After ZO, {geo_err_est_zo.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
+        # plotting_utils.plot_Cxy(fig, axs[5], Cxy_est_zo[:num_evecs, :num_evecs] - C_gt_xy_corr[:num_evecs,:num_evecs],
+        #                         f'Error ZO', l, h, show_grid=False, show_colorbar=False)
+        
         # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est.abs() - C_gt_xy_corr.abs(),
         #                         f'Error abs', l, h, show_grid=False, show_colorbar=False)
         # plotting_utils.plot_Cxy(fig, axs[6], Cxy_est_zo_first,
@@ -546,8 +551,8 @@ if __name__ == '__main__':
             f.write('-----------------------------------\n')
         
         # break
-        plt.savefig(f'{fig_dir}/{i}.png')
-        plt.close()
+        # plt.savefig(f'{fig_dir}/{i}.png')
+        # plt.close()
         
         # print the stats instead of writing to file
         # print(f'{i}')

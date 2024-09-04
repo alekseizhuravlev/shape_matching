@@ -279,15 +279,18 @@ class SingleSmalDataset(SingleShapeDataset):
 
 
 class SingleDT4DDataset(SingleShapeDataset):
-    def __init__(self, data_root, phase='train',
-                 return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
+    def __init__(self, phase='train', **kwargs):
+                
+                #  return_faces=True,
+                #  return_evecs=True, num_evecs=200,
+                #  return_corr=True, return_dist=False
+
         self.phase = phase
         self.ignored_categories = ['pumpkinhulk']
-        super(SingleDT4DDataset, self).__init__(data_root, return_faces,
-                                                return_evecs, num_evecs,
-                                                return_corr, return_dist)
+        super(SingleDT4DDataset, self).__init__(**kwargs)
+            # data_root, return_faces,
+            # return_evecs, num_evecs,
+            # return_corr, return_dist)
 
     def _init_data(self):
         with open(os.path.join(self.data_root, f'{self.phase}.txt'), 'r') as f:
@@ -561,14 +564,16 @@ class PairSmalDataset(PairShapeDataset):
 
 
 class PairDT4DDataset(PairShapeDataset):
-    def __init__(self, data_root, phase='train',
-                 inter_class=False, return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
-        dataset = SingleDT4DDataset(data_root, phase, return_faces,
-                                    return_evecs, num_evecs,
-                                    return_corr, return_dist)
-        super(PairDT4DDataset, self).__init__(dataset=dataset)
+    def __init__(self, dataset, inter_class=False, **kwargs):
+                #  data_root, phase='train',
+                #  return_faces=True,
+                #  return_evecs=True, num_evecs=200,
+                #  return_corr=True, return_dist=False
+
+        # dataset = SingleDT4DDataset(data_root, phase, return_faces,
+        #                             return_evecs, num_evecs,
+        #                             return_corr, return_dist)
+        super(PairDT4DDataset, self).__init__(dataset=dataset, **kwargs)
         self.inter_class = inter_class
         self.combinations = []
         if self.inter_class:
@@ -602,6 +607,21 @@ class PairDT4DDataset(PairShapeDataset):
             corr = np.loadtxt(os.path.join(self.dataset.data_root, 'corres', 'cross_category_corres',
                                            f'{first_cat}_{second_cat}.vts'), dtype=np.int32) - 1
             item['second']['corr'] = item['second']['corr'][corr]
+
+
+        C_gt_xy_lstsq = torch.linalg.lstsq(
+            item['second']['evecs'][item['second']['corr']],
+            item['first']['evecs'][item['first']['corr']]
+            ).solution.unsqueeze(0)
+        
+        # Fx @ Cyx = Fy
+        C_gt_yx_lstsq = torch.linalg.lstsq(
+            item['first']['evecs'][item['first']['corr']],
+            item['second']['evecs'][item['second']['corr']]
+            ).solution.unsqueeze(0)
+        
+        item['second']['C_gt_xy'] = C_gt_xy_lstsq
+        item['second']['C_gt_yx'] = C_gt_yx_lstsq
 
         return item
 

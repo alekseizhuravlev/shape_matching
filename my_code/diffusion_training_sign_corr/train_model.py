@@ -1,7 +1,6 @@
 import torch
 from tqdm import tqdm
 
-
 def train_epoch(model, is_unconditional,
                 train_dataloader, noise_scheduler,
                 opt, loss_fn):
@@ -10,7 +9,7 @@ def train_epoch(model, is_unconditional,
     losses = []
 
     # The training loop
-    for x, y in tqdm(train_dataloader, total=len(train_dataloader)):
+    for x, y in tqdm(train_dataloader, total=len(train_dataloader), disable=True):
 
         # Unpack the batch
         x = x.to(model.device()) 

@@ -2,8 +2,50 @@ import pymeshlab
 import torch
 import trimesh
 import numpy as np
+import utils.fmap_util as fmap_util
 
 ms = pymeshlab.MeshSet()
+
+
+def augmentation_pipeline(verts_orig, faces_orig, augmentations):
+    
+    # randomly choose the remeshing type
+    remesh_type = np.random.choice(['isotropic', 'anisotropic'], p=[1-augmentations["remesh"]["anisotropic"]["probability"], augmentations["remesh"]["anisotropic"]["probability"]])
+    
+    if remesh_type == 'isotropic':
+        
+        # isotropic remeshing
+        simplify_strength = np.random.uniform(augmentations["remesh"]["isotropic"]["simplify_strength_min"], augmentations["remesh"]["isotropic"]["simplify_strength_max"])
+        verts, faces = remesh_simplify_iso(
+            verts_orig,
+            faces_orig,
+            n_remesh_iters=augmentations["remesh"]["isotropic"]["n_remesh_iters"],
+            remesh_targetlen=augmentations["remesh"]["isotropic"]["remesh_targetlen"],
+            simplify_strength=simplify_strength,
+        )
+    else:
+        
+        # anisotropic remeshing
+        fraction_to_simplify = np.random.uniform(augmentations["remesh"]["anisotropic"]["fraction_to_simplify_min"], augmentations["remesh"]["anisotropic"]["fraction_to_simplify_max"])
+        simplify_strength = np.random.uniform(augmentations["remesh"]["anisotropic"]["simplify_strength_min"], augmentations["remesh"]["anisotropic"]["simplify_strength_max"])
+        
+        verts, faces = remesh_simplify_anis(
+            verts_orig,
+            faces_orig,
+            n_remesh_iters=augmentations["remesh"]["anisotropic"]["n_remesh_iters"],
+            fraction_to_simplify=fraction_to_simplify,
+            simplify_strength=simplify_strength,
+            weighted_by=augmentations["remesh"]["anisotropic"]["weighted_by"]
+        )
+        
+    # correspondence by a nearest neighbor search
+    corr = fmap_util.nn_query(
+        verts,
+        verts_orig, 
+        )
+    
+    return verts, faces, corr
+
 
 def remesh_simplify_iso(
     verts,

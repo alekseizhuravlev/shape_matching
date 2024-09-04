@@ -81,11 +81,10 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        # 'experiment_name': 'single_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
-        'experiment_name': 'single_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'experiment_name': 'single_96_anisRemesh_signNet_96_remeshed_mass_6b_1ev_10_0.2_0.8',
         
         'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/',
-        'dataset_name': 'SURREAL_augShapes_anisRemesh_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'dataset_name': 'SURREAL_augShapes_anisRemesh_signNet_96_remeshed_mass_6b_1ev_10_0.2_0.8',
         'fmap_direction': 'yx',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
@@ -98,7 +97,7 @@ if __name__ == '__main__':
         'eval_batch_size': 128,
         
         'model_params': {
-            'sample_size': 32,
+            'sample_size': 96,
             'in_channels': 3,
             'out_channels': 1,
             'layers_per_block': 2,

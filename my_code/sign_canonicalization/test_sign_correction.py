@@ -13,7 +13,7 @@ import utils.fmap_util as fmap_util
     
 
 
-def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
+def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, smoothing_type, num_evecs):
 
     new_dataset = []
 
@@ -34,8 +34,16 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, num_evecs):
         
         mesh_anis_remeshed = trimesh.Trimesh(verts, faces)
         # apply laplacian smoothing
+        
+        if smoothing_type == 'laplacian':
+            trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        elif smoothing_type == 'taubin':
+            trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        else:
+            raise ValueError(f'Unknown smoothing type {smoothing_type}')
+            
         # trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
+        # trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
         
         corr_orig_to_remeshed = fmap_util.nn_query(
             verts,
@@ -179,12 +187,16 @@ if __name__ == '__main__':
     
     parser.add_argument('--exp_name', type=str, required=True)
     parser.add_argument('--remesh_targetlen', type=float)
+    parser.add_argument('--smoothing_type', 
+                        choices=['laplacian', 'taubin'])
+                        
     parser.add_argument('--smoothing_iter', type=int)
     
     args = parser.parse_args()
     
     exp_name = args.exp_name
-    remesh_targetlen = args.remesh_targetlen    
+    remesh_targetlen = args.remesh_targetlen  
+    smoothing_type = args.smoothing_type  
     smoothing_iter = args.smoothing_iter
         
     # exp_name = 'signNet_remeshed_4b_mass_10_0.2_0.8' 
@@ -215,11 +227,11 @@ if __name__ == '__main__':
     input_type = config['net_params']['input_type']
     
     
-    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_taubinSmooth_{smoothing_iter}.txt'
-    # log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_laplaceSmooth_{smoothing_iter}.txt'
+    log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_smooth_{smoothing_type}_{smoothing_iter}.txt'
+    # log_file = f'{exp_dir}/log_10ep_remesh_{remesh_targetlen}_laplacianSmooth_{smoothing_iter}.txt'
     # log_file = f'{exp_dir}/log_10ep_noRemesh_Shrec19R.txt'
     
-    # log_file = f'{exp_dir}/logs_shrec/log_10ep_laplaceSmooth_{smoothing_iter}.txt'
+    # log_file = f'{exp_dir}/logs_shrec/log_10ep_laplacianSmooth_{smoothing_iter}.txt'
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
 
@@ -231,15 +243,22 @@ if __name__ == '__main__':
 
         for dataset_name, split in [
             # (config["train_folder"], 'train'),
-            ('FAUST_a', 'test'),
-            ('SHREC19_r', 'train'), 
-            ('FAUST_r', 'test'),
-            ('FAUST_orig', 'test'), 
-            ('FAUST_r', 'train'), 
-            ('FAUST_orig', 'train'), 
-            ('SCAPE_r_pair', 'test'),
-            ('SCAPE_a_pair', 'test'),
-            ('SCAPE_r_pair', 'train'),
+            
+            # ('FAUST_a', 'test'),
+            # ('SHREC19_r', 'train'), 
+            # ('FAUST_r', 'test'),
+            # ('FAUST_orig', 'test'), 
+            # ('FAUST_r', 'train'), 
+            # ('FAUST_orig', 'train'), 
+            # ('SCAPE_r_pair', 'test'),
+            # ('SCAPE_a_pair', 'test'),
+            # ('SCAPE_r_pair', 'train'),
+            
+            ('DT4D_intra_pair', 'test'),
+            # ('DT4D_intra_pair', 'train'),
+            # ('DT4D_inter_pair', 'test'),
+            # ('DT4D_inter_pair', 'train'),
+            
             ]:
             
             if dataset_name == config["train_folder"]:
@@ -260,11 +279,13 @@ if __name__ == '__main__':
                     test_dataset_curr = remesh_dataset(
                         test_dataset_curr, dataset_name,
                         remesh_targetlen, num_evecs=net.k_eig,
-                        smoothing_iter=smoothing_iter)
+                        smoothing_iter=smoothing_iter,
+                        smoothing_type=smoothing_type
+                        )
                 
                 mean_incorrect_signs, max_incorrect_signs = test_on_dataset(
                     net, test_dataset_curr,
-                    with_mass=config['with_mass'], n_epochs=100)
+                    with_mass=config['with_mass'], n_epochs=25)
     
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')

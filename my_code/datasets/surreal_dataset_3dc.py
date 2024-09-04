@@ -8,12 +8,12 @@ from tqdm import tqdm
 
 import sys
 import os
-curr_dir = os.getcwd()
-if 's94zalek_hpc' in curr_dir:
-    user_name = 's94zalek_hpc'
-else:
-    user_name = 's94zalek'
-sys.path.append(f'/home/{user_name}/shape_matching')
+# curr_dir = os.getcwd()
+# if 's94zalek_hpc' in curr_dir:
+#     user_name = 's94zalek_hpc'
+# else:
+#     user_name = 's94zalek'
+# sys.path.append(f'/home/{user_name}/shape_matching')
 
 import my_code.datasets.preprocessing as preprocessing
 # from my_code.datasets.surreal_legacy.surreal_dataset import get_spectral_ops
@@ -29,11 +29,10 @@ class TemplateSurrealDataset3DC(Dataset):
                  return_evecs,
                  mmap,
                  augmentations,
+                 template_path,
+                 template_corr,
                  ):
         
-        # raise RuntimeError("Use regular TemplateDataset")
-
-        self.data_root = f'/home/{user_name}/shape_matching/data/SURREAL_full'
         self.num_evecs = num_evecs
         self.cache_lb_dir = cache_lb_dir
         self.return_evecs = return_evecs
@@ -42,9 +41,15 @@ class TemplateSurrealDataset3DC(Dataset):
         # load the shapes from 3D-coded
         self.shapes = torch.load(shape_path, mmap=mmap)
         
-        
         # load template mesh
-        self.template_mesh = trimesh.load(f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply')
+        self.template_mesh = trimesh.load(
+            template_path
+        )
+        self.mesh_3dc = trimesh.load(
+            '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/3DC/template.ply'
+        )
+        self.faces = torch.tensor(self.mesh_3dc.faces).int()
+        # f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply'
 
         # sanity check
         assert len(self.shapes) > 0, f'No shapes found'
@@ -54,8 +59,9 @@ class TemplateSurrealDataset3DC(Dataset):
         self.template = {
             'id': torch.tensor(-1),
             'verts': torch.tensor(self.template_mesh.vertices).float(),
-            'faces': torch.tensor(self.template_mesh.faces).long(),
-            'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
+            'faces': torch.tensor(self.template_mesh.faces).int(),
+            'corr': torch.tensor(template_corr),
+            # 'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
         }
         # center the template
         # self.template['verts'] = preprocessing.center(self.template['verts'])[0]
@@ -90,63 +96,21 @@ class TemplateSurrealDataset3DC(Dataset):
         
         item = dict()
         
-        # print(index, type(index))
         item['id'] = torch.tensor(index)        
         item['verts'] = self.shapes[index]
-        item['faces'] = self.template['faces']
+        # item['faces'] = self.mesh_3dc['faces']
+        item['faces'] = self.faces
         
-
         # augmentations
         if self.augmentations is not None and 'remesh' in self.augmentations:
-            
             verts_orig = item['verts']
             faces_orig = item['faces']
-            
-            # # sample the simplification percent
-            # simplify_strength = np.random.uniform(
-            #     self.augmentations['remesh']['simplify_strength_min'],
-            #     self.augmentations['remesh']['simplify_strength_max'],
-            #     )
-            # # remesh and simplify the shape
-            # item['verts'], item['faces'] = remesh.remesh_simplify_iso(
-            #     verts_orig,
-            #     faces_orig,
-            #     n_remesh_iters=self.augmentations['remesh']['n_remesh_iters'],
-            #     remesh_targetlen=self.augmentations['remesh']['remesh_targetlen'],
-            #     simplify_strength=simplify_strength,
-            # )
-            
-            # randomly choose the remeshing type
-            remesh_type = np.random.choice(['isotropic', 'anisotropic'], p=[1-self.augmentations["remesh"]["anisotropic"]["probability"], self.augmentations["remesh"]["anisotropic"]["probability"]])
-            
-            if remesh_type == 'isotropic':
-                simplify_strength = np.random.uniform(self.augmentations["remesh"]["isotropic"]["simplify_strength_min"], self.augmentations["remesh"]["isotropic"]["simplify_strength_max"])
-                item['verts'], item['faces'] = remesh.remesh_simplify_iso(
-                    verts_orig,
-                    faces_orig,
-                    n_remesh_iters=self.augmentations["remesh"]["isotropic"]["n_remesh_iters"],
-                    remesh_targetlen=self.augmentations["remesh"]["isotropic"]["remesh_targetlen"],
-                    simplify_strength=simplify_strength,
-                )
-            else:
-                fraction_to_simplify = np.random.uniform(self.augmentations["remesh"]["anisotropic"]["fraction_to_simplify_min"], self.augmentations["remesh"]["anisotropic"]["fraction_to_simplify_max"])
-                simplify_strength = np.random.uniform(self.augmentations["remesh"]["anisotropic"]["simplify_strength_min"], self.augmentations["remesh"]["anisotropic"]["simplify_strength_max"])
-                
-                item['verts'], item['faces'] = remesh.remesh_simplify_anis(
-                    verts_orig,
-                    faces_orig,
-                    n_remesh_iters=self.augmentations["remesh"]["anisotropic"]["n_remesh_iters"],
-                    fraction_to_simplify=fraction_to_simplify,
-                    simplify_strength=simplify_strength,
-                    weighted_by=self.augmentations["remesh"]["anisotropic"]["weighted_by"]
-                )
-                
-            
-            # correspondence by a nearest neighbor search
-            item['corr'] = fmap_util.nn_query(
-                item['verts'],
-                verts_orig, 
-                )
+                        
+            item['verts'], item['faces'], item['corr'] = remesh.augmentation_pipeline(
+                verts_orig,
+                faces_orig,
+                self.augmentations,
+            )       
         else:
             # 1 to 1 correspondence
             item['corr'] = torch.tensor(list(range(len(item['verts']))))        

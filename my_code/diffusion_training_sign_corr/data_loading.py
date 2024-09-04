@@ -206,14 +206,35 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             cache_base_dataset=preload,
         )
         
+    elif name == 'DT4D_intra_pair':
+        dataset_single = shape_dataset.SingleDT4DDataset(
+            phase=phase,
+            data_root = 'data/DT4D_r',
+            centering = 'bbox',
+            num_evecs=num_evecs,
+            lb_cache_dir=f'data/DT4D_r/diffusion',
+            return_evecs=return_evecs,
+            )
+        dataset_pair = shape_dataset.PairDT4DDataset(
+            dataset=dataset_single,
+            inter_class=False,
+            cache_base_dataset=preload,
+            )
         
-        
-        
-        
-        
-        
-        
-        
+    elif name == 'DT4D_inter_pair':
+        dataset_single = shape_dataset.SingleDT4DDataset(
+            phase=phase,
+            data_root='data/DT4D_r',
+            centering='bbox',
+            num_evecs=num_evecs,
+            lb_cache_dir=f'data/DT4D_r/diffusion',
+            return_evecs=return_evecs,
+            )
+        dataset_pair = shape_dataset.PairDT4DDataset(
+            dataset=dataset_single,
+            inter_class=True,
+            cache_base_dataset=preload,
+        )
         
         
         

@@ -31,8 +31,9 @@ exp_name=${job_list[$worker_id]}
 echo "Running job $worker_id: exp_name=$exp_name"
 
 # run the job
-srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_iter 5
-srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 0 --smoothing_iter 0
+srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_type laplacian --smoothing_iter 3
+srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_type laplacian --smoothing_iter 5
+# srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 0 --smoothing_iter 0
 
 
 

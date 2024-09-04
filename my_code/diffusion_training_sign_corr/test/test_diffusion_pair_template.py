@@ -485,7 +485,7 @@ if __name__ == '__main__':
         fig, axs = plt.subplots(1, 6, figsize=(20, 3))
         
         l = 0
-        h = 32
+        h = num_evecs
 
         plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
                                 f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)

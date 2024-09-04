@@ -169,100 +169,66 @@ def save_train_dataset(
     figures_folder = f'{train_folder}/figures'
     os.makedirs(figures_folder, exist_ok=True)
 
-    evals_first_file = os.path.join(train_folder, f'evals_first_{start_idx}_{end_idx}.txt')
-    evals_second_file = os.path.join(train_folder, f'evals_second_{start_idx}_{end_idx}.txt')
-    fmaps_xy_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.txt')
-    fmaps_yx_file = os.path.join(train_folder, f'C_gt_yx_{start_idx}_{end_idx}.txt')
-    evecs_cond_first_file = os.path.join(train_folder, f'evecs_cond_first_{start_idx}_{end_idx}.txt')
-    evecs_cond_second_file = os.path.join(train_folder, f'evecs_cond_second_{start_idx}_{end_idx}.txt')
+    # evals_first_file = os.path.join(train_folder, f'evals_first_{start_idx}_{end_idx}.pt')
+    # evals_second_file = os.path.join(train_folder, f'evals_second_{start_idx}_{end_idx}.pt')
+    # fmaps_xy_file = os.path.join(train_folder, f'C_gt_xy_{start_idx}_{end_idx}.pt')
+    # fmaps_yx_file = os.path.join(train_folder, f'C_gt_yx_{start_idx}_{end_idx}.pt')
+    # evecs_cond_first_file = os.path.join(train_folder, f'evecs_cond_first_{start_idx}_{end_idx}.pt')
+    # evecs_cond_second_file = os.path.join(train_folder, f'evecs_cond_second_{start_idx}_{end_idx}.pt')
     
-    # remove if exists    
-    # for file_type in [evals_first_file, evals_second_file, fmaps_xy_file, fmaps_yx_file, evecs_cond_first_file, evecs_cond_second_file]:
-    #     if os.path.exists(file_type):
-    #         print(f'Removing {file_type}')
-    #         os.remove(file_type)
+    # print(f'Saving evals to {evals_second_file}', f'fmaps to {fmaps_xy_file}', f'evecs_cond to {evecs_cond_first_file}')
     
-    print(f'Saving evals to {evals_second_file}', f'fmaps to {fmaps_xy_file}', f'evecs_cond to {evecs_cond_first_file}')
+    evals_first_tensor = torch.tensor([])
+    evals_second_tensor = torch.tensor([])
+    fmaps_xy_tensor = torch.tensor([])
+    fmaps_yx_tensor = torch.tensor([])
+    evecs_cond_first_tensor = torch.tensor([])
+    evecs_cond_second_tensor = torch.tensor([])
+
+
+    for i, idx in enumerate(train_indices):
+        
+        data = dataset[idx]
+        
+        evals_first = data['first']['evals'][:num_evecs]
+        evals_second = data['second']['evals'][:num_evecs]
+        C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
+            data=data,
+            num_evecs=num_evecs,
+            **net_params
+        )
+        # assert the tensors have the correct shapes
+        assert C_xy_corr.shape == (num_evecs, num_evecs) and C_yx_corr.shape == (num_evecs, num_evecs), f'{C_xy_corr.shape}, {C_yx_corr.shape}'
+        assert evecs_cond_first.shape == (num_evecs, num_evecs) and evecs_cond_second.shape == (num_evecs, num_evecs), f'{evecs_cond_first.shape}, {evecs_cond_second.shape}'
+        assert evals_first.shape == (num_evecs,) and evals_second.shape == (num_evecs,), f'{evals_first.shape}, {evals_second.shape}'
+
+        # append to the tensors
+        evals_first_tensor = torch.cat((evals_first_tensor, evals_first.unsqueeze(0)), dim=0)
+        evals_second_tensor = torch.cat((evals_second_tensor, evals_second.unsqueeze(0)), dim=0)
+        fmaps_xy_tensor = torch.cat((fmaps_xy_tensor, C_xy_corr.unsqueeze(0)), dim=0)
+        fmaps_yx_tensor = torch.cat((fmaps_yx_tensor, C_yx_corr.unsqueeze(0)), dim=0)
+        evecs_cond_first_tensor = torch.cat((evecs_cond_first_tensor, evecs_cond_first.unsqueeze(0)), dim=0)
+        evecs_cond_second_tensor = torch.cat((evecs_cond_second_tensor, evecs_cond_second.unsqueeze(0)), dim=0)
+        
+            
+        if i % 100 == 0 or i == 25:
+            time_elapsed = time.time() - curr_time
+            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
+                flush=True)
+            
+        if i < 5 or i % 1000 == 0:
+            visualize_before_after(
+                data, C_xy_corr,C_yx_corr, 
+                evecs_cond_first, evecs_cond_second,
+                figures_folder, idx)
+            
+    torch.save(evals_first_tensor, f'{train_folder}/evals_first_{start_idx}_{end_idx}.pt')
+    torch.save(evals_second_tensor, f'{train_folder}/evals_second_{start_idx}_{end_idx}.pt')
+    torch.save(fmaps_xy_tensor, f'{train_folder}/C_gt_xy_{start_idx}_{end_idx}.pt')
+    torch.save(fmaps_yx_tensor, f'{train_folder}/C_gt_yx_{start_idx}_{end_idx}.pt')
+    torch.save(evecs_cond_first_tensor, f'{train_folder}/evecs_cond_first_{start_idx}_{end_idx}.pt')
+    torch.save(evecs_cond_second_tensor, f'{train_folder}/evecs_cond_second_{start_idx}_{end_idx}.pt')
     
-    # open the files
-    evals_first_file = open(evals_first_file, 'wb')
-    evals_second_file = open(evals_second_file, 'wb')
-    fmaps_xy_file = open(fmaps_xy_file, 'wb')
-    fmaps_yx_file = open(fmaps_yx_file, 'wb')
-    evecs_cond_first_file = open(evecs_cond_first_file, 'wb')
-    evecs_cond_second_file = open(evecs_cond_second_file, 'wb')
-    
-    
-    try:
-        for i, idx in enumerate(train_indices):
-            data = dataset[idx]
-            
-            evals_first = data['first']['evals'][:num_evecs]
-            evals_second = data['second']['evals'][:num_evecs]
-            C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
-                data=data,
-                num_evecs=num_evecs,
-                **net_params
-            )
-                    
-            # with open(fmaps_xy_file, 'ab') as f:
-            #     np.savetxt(f, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
-            #     f.write(b'\n')
-                
-            # with open(fmaps_yx_file, 'ab') as f:
-            #     np.savetxt(f, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
-            #     f.write(b'\n')
-                
-            # with open(evals_file, 'ab') as f:
-            #     np.savetxt(f, evals.numpy().astype(np.float32), newline=" ")
-            #     f.write(b'\n')
-                
-            # with open(evecs_cond_first_file, 'ab') as f:
-            #     np.savetxt(f, evecs_cond_first.numpy().flatten().astype(np.float32), newline=" ")
-            #     f.write(b'\n')
-                
-            # with open(evecs_cond_second_file, 'ab') as f:
-            #     np.savetxt(f, evecs_cond_second.numpy().flatten().astype(np.float32), newline=" ")
-            #     f.write(b'\n')
-            
-            np.savetxt(fmaps_xy_file, C_xy_corr.numpy().flatten().astype(np.float32), newline=" ")
-            fmaps_xy_file.write(b'\n')
-            
-            np.savetxt(fmaps_yx_file, C_yx_corr.numpy().flatten().astype(np.float32), newline=" ")
-            fmaps_yx_file.write(b'\n')
-            
-            np.savetxt(evals_first_file, evals_first.numpy().astype(np.float32), newline=" ")
-            evals_first_file.write(b'\n')
-            
-            np.savetxt(evals_second_file, evals_second.numpy().astype(np.float32), newline=" ")
-            evals_second_file.write(b'\n')
-            
-            np.savetxt(evecs_cond_first_file, evecs_cond_first.numpy().flatten().astype(np.float32), newline=" ")
-            evecs_cond_first_file.write(b'\n')
-            
-            np.savetxt(evecs_cond_second_file, evecs_cond_second.numpy().flatten().astype(np.float32), newline=" ")
-            evecs_cond_second_file.write(b'\n')
-            
-                
-            if i % 100 == 0 or i == 25:
-                time_elapsed = time.time() - curr_time
-                print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
-                    flush=True)
-                
-            if i < 5 or i % 1000 == 0:
-                visualize_before_after(
-                    data, C_xy_corr,C_yx_corr, 
-                    evecs_cond_first, evecs_cond_second,
-                    figures_folder, idx)
-                
-    # close the files
-    finally:
-        evals_first_file.close()
-        evals_second_file.close()
-        fmaps_xy_file.close()
-        fmaps_yx_file.close()
-        evecs_cond_first_file.close()
-        evecs_cond_second_file.close()
 
 
 def parse_args():
@@ -280,9 +246,11 @@ def parse_args():
     
     parser.add_argument('--dataset_name', type=str)
     
+    parser.add_argument('--template_type', type=str)
+    
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 1 --current_worker 0 --num_evecs 64 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name SURREAL_augShapes_anisRemesh_signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 100000 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name test_pt --template_type remeshed
     
     return args
          
@@ -329,15 +297,28 @@ if __name__ == '__main__':
         },
     }
     
+    # dataset = TemplateSurrealDataset3DC(
+    #     # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
+    #     shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
+    #     num_evecs=128,
+    #     cache_lb_dir=None,
+    #     return_evecs=True,
+    #     mmap=True,
+    #     augmentations=augmentations
+    # )   
+    
     dataset = TemplateSurrealDataset3DC(
-        # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
         shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
         num_evecs=128,
         cache_lb_dir=None,
         return_evecs=True,
         mmap=True,
-        augmentations=augmentations
-    )    
+        augmentations=augmentations,
+        template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/template.off',
+        template_corr=np.loadtxt(
+            f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
+            dtype=np.int32) - 1
+    )   
     
     print('Dataset created')
     
@@ -372,6 +353,7 @@ if __name__ == '__main__':
     # update the config
     sign_net_config['net_path'] = args.net_path
     sign_net_config['augmentations'] = augmentations
+    sign_net_config['template_type'] = args.template_type
     
     # save the config to the dataset folder
     if not os.path.exists(f'{dataset_folder}/config.yaml'):
