@@ -13,16 +13,17 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
         if fmap_direction == 'xy':
             # self.fmaps = np.loadtxt(f'{base_folder}/C_gt_xy.txt') 
             
-            self.fmaps = torch.load(f'{base_folder}/C_gt_xy.pt', mmap=True)
+            self.fmaps = torch.load(f'{base_folder}/C_gt_xy.pt', mmap=False)
             
         elif fmap_direction == 'yx':
             # self.fmaps = np.loadtxt(f'{base_folder}/C_gt_yx.txt')
             
-            self.fmaps = torch.load(f'{base_folder}/C_gt_yx.pt', mmap=True)
+            self.fmaps = torch.load(f'{base_folder}/C_gt_yx.pt', mmap=False)
     
-        # reshape the functional maps
-        self.fmap_dim = int(np.sqrt(self.fmaps.shape[1]))
-        print('Train dataset, functional map dimension:', self.fmap_dim)
+        assert self.fmaps.dtype == torch.float32, f'fmaps dtype: {self.fmaps.dtype}'
+        
+        self.fmap_dim = int(self.fmaps.shape[1])
+        print('Train dataset, functional map dimension:', self.fmap_dim, 'fmaps shape:', self.fmaps.shape)
         # self.fmaps = torch.tensor(self.fmaps, dtype=torch.float32).reshape(len(self.fmaps), fmap_dim, fmap_dim)
         
         # optional: take the absolute value
@@ -33,7 +34,9 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
             # self.evals = np.loadtxt(f'{base_folder}/evals.txt')
             # self.evals = torch.tensor(self.evals, dtype=torch.float32)
             
-            self.evals = torch.load(f'{base_folder}/evals.pt', mmap=True)
+            self.evals = torch.load(f'{base_folder}/evals.pt', mmap=False)
+            
+            assert self.evals.dtype == torch.float32, f'evals dtype: {self.evals.dtype}'
 
         if 'evecs' in conditioning_types:
             
@@ -47,9 +50,11 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
             # self.evecs_cond_second = torch.tensor(self.evecs_cond_second, dtype=torch.float32)
             # self.evecs_cond_second = self.evecs_cond_second.reshape(len(self.evecs_cond_second), fmap_dim, fmap_dim)
             
-            self.evecs_cond_first = torch.load(f'{base_folder}/evecs_cond_first.pt', mmap=True)
-            self.evecs_cond_second = torch.load(f'{base_folder}/evecs_cond_second.pt', mmap=True)
+            self.evecs_cond_first = torch.load(f'{base_folder}/evecs_cond_first.pt', mmap=False)
+            self.evecs_cond_second = torch.load(f'{base_folder}/evecs_cond_second.pt', mmap=False)
     
+            assert self.evecs_cond_first.dtype == torch.float32, f'evecs_cond_first dtype: {self.evecs_cond_first.dtype}'
+            assert self.evecs_cond_second.dtype == torch.float32, f'evecs_cond_second dtype: {self.evecs_cond_second.dtype}'
         
         
     
@@ -58,10 +63,10 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
     
     def __getitem__(self, idx):
         fmap = self.fmaps[idx]
-        fmap = fmap.reshape(1, self.fmap_dim, self.fmap_dim).float()
         
-        # fmap = self.fmaps[idx].unsqueeze(0)
-        
+        fmap = self.fmaps[idx].unsqueeze(0)      
+        # fmap = fmap.reshape(1, self.fmap_dim, self.fmap_dim).float()
+                
         # normalize to [0, 1] and to [-1, 1]
         if self.fmap_input_type == 'abs':
             fmap = fmap / fmap.max()
@@ -70,26 +75,26 @@ class SurrealTrainDataset(torch.utils.data.Dataset):
         conditioning = torch.tensor([])
         
         if 'evals' in self.conditioning_types:
-            eval = self.evals[idx].unsqueeze(0).float()
+            eval = self.evals[idx].unsqueeze(0)
             eval = torch.diag_embed(eval)
             conditioning = torch.cat((conditioning, eval), 0)
         
         if 'evals_inv' in self.conditioning_types:
-            eval_inv = 1 / self.evals[idx].unsqueeze(0).float()
+            eval_inv = 1 / self.evals[idx].unsqueeze(0)
             # replace elements > 1 with 1
             eval_inv[eval_inv > 1] = 1
             eval_inv = torch.diag_embed(eval_inv)
             conditioning = torch.cat((conditioning, eval_inv), 0)
         
         if 'evecs' in self.conditioning_types:
-            # evecs_cond_first = self.evecs_cond_first[idx].unsqueeze(0)            
-            # evecs_cond_second = self.evecs_cond_second[idx].unsqueeze(0)
+            evecs_cond_first = self.evecs_cond_first[idx].unsqueeze(0)            
+            evecs_cond_second = self.evecs_cond_second[idx].unsqueeze(0)
             
-            evecs_cond_first = self.evecs_cond_first[idx]
-            evecs_cond_first = evecs_cond_first.reshape(1, self.fmap_dim, self.fmap_dim).float()
+            # evecs_cond_first = self.evecs_cond_first[idx]
+            # evecs_cond_first = evecs_cond_first.reshape(1, self.fmap_dim, self.fmap_dim).float()
             
-            evecs_cond_second = self.evecs_cond_second[idx]
-            evecs_cond_second = evecs_cond_second.reshape(1, self.fmap_dim, self.fmap_dim).float()
+            # evecs_cond_second = self.evecs_cond_second[idx]
+            # evecs_cond_second = evecs_cond_second.reshape(1, self.fmap_dim, self.fmap_dim).float()
             
             evecs = torch.cat((evecs_cond_first, evecs_cond_second), 0)
             conditioning = torch.cat((conditioning, evecs), 0)

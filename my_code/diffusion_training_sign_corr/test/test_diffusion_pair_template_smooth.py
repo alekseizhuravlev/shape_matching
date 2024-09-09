@@ -105,10 +105,15 @@ if __name__ == '__main__':
     ##########################################
 
     template_shape = template_dataset.get_template(
-        template_path='data/SURREAL_full/template/template.ply',
+        # template_path='data/SURREAL_full/template/template.ply',
         num_evecs=200,
-        template_corr=list(range(6890)),
+        # template_corr=list(range(6890)),
         centering='bbox',
+        
+        template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/template.off',
+        template_corr=np.loadtxt(
+            f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/corr.txt',
+            dtype=np.int32) - 1
         )    
 
     ##########################################

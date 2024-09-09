@@ -9,7 +9,7 @@ def train_epoch(model, is_unconditional,
     losses = []
 
     # The training loop
-    for x, y in tqdm(train_dataloader, total=len(train_dataloader), disable=True):
+    for x, y in tqdm(train_dataloader, total=len(train_dataloader), disable=False):
 
         # Unpack the batch
         x = x.to(model.device()) 

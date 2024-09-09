@@ -27,6 +27,7 @@ class TemplateSurrealDataset3DC(Dataset):
                  num_evecs,
                  cache_lb_dir,
                  return_evecs,
+                 return_fmap,
                  mmap,
                  augmentations,
                  template_path,
@@ -36,6 +37,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.num_evecs = num_evecs
         self.cache_lb_dir = cache_lb_dir
         self.return_evecs = return_evecs
+        self.return_fmap = return_fmap
         self.augmentations = augmentations
 
         # load the shapes from 3D-coded
@@ -130,7 +132,7 @@ class TemplateSurrealDataset3DC(Dataset):
             'second': item,
         }
         
-        if self.return_evecs:
+        if self.return_fmap:
             payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
                 self.get_functional_map(payload['first'], payload['second'])
         

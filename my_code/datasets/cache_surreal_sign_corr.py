@@ -104,10 +104,10 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
 
     # correct the evecs
     evecs_first_corrected = evecs_first[0] * torch.sign(sign_pred_first)
-    evecs_first_corrected = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
+    evecs_first_corrected_norm = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
     
     evecs_second_corrected = evecs_second[0] * torch.sign(sign_pred_second)
-    evecs_second_corrected = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
+    evecs_second_corrected_norm = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
     
     
     # product with support
@@ -116,17 +116,17 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
             support_vector_norm_first[0].transpose(0, 1) \
                 @ mass_mat_first[0],
             p=2, dim=1) \
-                @ evecs_first_corrected
+                @ evecs_first_corrected_norm
         
         evecs_cond_second = torch.nn.functional.normalize(
             support_vector_norm_second[0].transpose(0, 1) \
                 @ mass_mat_second[0],
             p=2, dim=1) \
-                @ evecs_second_corrected 
+                @ evecs_second_corrected_norm 
         
     else:
-        evecs_cond_first = support_vector_norm_first[0].transpose(0, 1) @ evecs_first_corrected
-        evecs_cond_second = support_vector_norm_second[0].transpose(0, 1) @ evecs_second_corrected
+        evecs_cond_first = support_vector_norm_first[0].transpose(0, 1) @ evecs_first_corrected_norm
+        evecs_cond_second = support_vector_norm_second[0].transpose(0, 1) @ evecs_second_corrected_norm
     
     # wrong order?
     # evecs_cond_first = evecs_first_corrected.transpose(0, 1) @ support_vector_norm_first[0].cpu()
@@ -137,17 +137,22 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
 
     # correct the functional map
     C_xy_pred = torch.linalg.lstsq(
-        evecs_second[0, corr_second] * torch.sign(sign_pred_second),
-        # evecs_first.cpu()[0, corr_first].cpu()
-        evecs_first[0, corr_first] * torch.sign(sign_pred_first),
+        # evecs_second[0, corr_second] * torch.sign(sign_pred_second),
+        # evecs_first[0, corr_first] * torch.sign(sign_pred_first),
+        evecs_second_corrected[corr_second],
+        evecs_first_corrected[corr_first],
         ).solution
     
     C_yx_pred = torch.linalg.lstsq(
-        evecs_first[0, corr_first] * torch.sign(sign_pred_first),
-        evecs_second[0, corr_second] * torch.sign(sign_pred_second),
+        # evecs_first[0, corr_first] * torch.sign(sign_pred_first),
+        # evecs_second[0, corr_second] * torch.sign(sign_pred_second),
+        evecs_first_corrected[corr_first],
+        evecs_second_corrected[corr_second],
         ).solution
 
-    return C_xy_pred.cpu(), C_yx_pred.cpu(), evecs_cond_first.cpu(), evecs_cond_second.cpu()
+    return C_xy_pred.cpu(), C_yx_pred.cpu(), evecs_cond_first.cpu(), evecs_cond_second.cpu(), \
+        evecs_first_corrected.cpu(), evecs_second_corrected.cpu(), \
+            corr_first.cpu(), corr_second.cpu()
     
     
     
@@ -158,6 +163,8 @@ def save_train_dataset(
         start_idx,
         end_idx,
         num_evecs,
+        pair_type,
+        n_pairs,
         **net_params
     ):
     
@@ -184,41 +191,116 @@ def save_train_dataset(
     fmaps_yx_tensor = torch.tensor([])
     evecs_cond_first_tensor = torch.tensor([])
     evecs_cond_second_tensor = torch.tensor([])
+    
+    # evecs_first_corrected_tensor = torch.tensor([])
+    # evecs_second_corrected_tensor = torch.tensor([])
+    # corr_first_tensor = torch.tensor([])
+    # corr_second_tensor = torch.tensor([])
+    
+    evecs_first_with_corr_tensor = torch.tensor([])
+    evecs_second_with_corr_tensor = torch.tensor([])
 
 
     for i, idx in enumerate(train_indices):
+           
+        data_first_idx = dataset[idx]
+        second_indices = set()
         
-        data = dataset[idx]
-        
-        evals_first = data['first']['evals'][:num_evecs]
-        evals_second = data['second']['evals'][:num_evecs]
-        C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second = get_corrected_data(
-            data=data,
-            num_evecs=num_evecs,
-            **net_params
-        )
-        # assert the tensors have the correct shapes
-        assert C_xy_corr.shape == (num_evecs, num_evecs) and C_yx_corr.shape == (num_evecs, num_evecs), f'{C_xy_corr.shape}, {C_yx_corr.shape}'
-        assert evecs_cond_first.shape == (num_evecs, num_evecs) and evecs_cond_second.shape == (num_evecs, num_evecs), f'{evecs_cond_first.shape}, {evecs_cond_second.shape}'
-        assert evals_first.shape == (num_evecs,) and evals_second.shape == (num_evecs,), f'{evals_first.shape}, {evals_second.shape}'
+        for curr_pair_j in range(n_pairs):
+                    
+            if pair_type == 'template':
+                # first shape is the template
+                data = data_first_idx
+                
+            elif pair_type == 'pair':
 
-        # append to the tensors
-        evals_first_tensor = torch.cat((evals_first_tensor, evals_first.unsqueeze(0)), dim=0)
-        evals_second_tensor = torch.cat((evals_second_tensor, evals_second.unsqueeze(0)), dim=0)
-        fmaps_xy_tensor = torch.cat((fmaps_xy_tensor, C_xy_corr.unsqueeze(0)), dim=0)
-        fmaps_yx_tensor = torch.cat((fmaps_yx_tensor, C_yx_corr.unsqueeze(0)), dim=0)
-        evecs_cond_first_tensor = torch.cat((evecs_cond_first_tensor, evecs_cond_first.unsqueeze(0)), dim=0)
-        evecs_cond_second_tensor = torch.cat((evecs_cond_second_tensor, evecs_cond_second.unsqueeze(0)), dim=0)
-        
+                # select the second shape
+                second_idx = np.random.randint(len(dataset))
+                
+                # second shape != first and wasn't selected before
+                while second_idx == idx or second_idx in second_indices:
+                    second_idx = np.random.randint(len(dataset))
+                second_indices.add(second_idx)
+                    
+                # get the second shape and fill the data
+                data_second_idx = dataset[second_idx]
+                data = {
+                    'first': data_first_idx['second'],
+                    'second': data_second_idx['second']
+                }
+                
+            # get the evals
+            evals_first = data['first']['evals'][:num_evecs]
+            evals_second = data['second']['evals'][:num_evecs]
             
-        if i % 100 == 0 or i == 25:
+            # correct the evecs and fmaps
+            C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second, evecs_first_corrected, evecs_second_corrected, corr_first, corr_second = get_corrected_data(
+                data=data,
+                num_evecs=num_evecs,
+                **net_params
+            )
+            # assert the tensors have the correct shapes
+            assert C_xy_corr.shape == (num_evecs, num_evecs) and C_yx_corr.shape == (num_evecs, num_evecs), f'{C_xy_corr.shape}, {C_yx_corr.shape}'
+            assert evecs_cond_first.shape == (num_evecs, num_evecs) and evecs_cond_second.shape == (num_evecs, num_evecs), f'{evecs_cond_first.shape}, {evecs_cond_second.shape}'
+            assert evals_first.shape == (num_evecs,) and evals_second.shape == (num_evecs,), f'{evals_first.shape}, {evals_second.shape}'
+
+            # append to the tensors
+            evals_first_tensor = torch.cat((evals_first_tensor, evals_first.unsqueeze(0)), dim=0)
+            evals_second_tensor = torch.cat((evals_second_tensor, evals_second.unsqueeze(0)), dim=0)
+            fmaps_xy_tensor = torch.cat((fmaps_xy_tensor, C_xy_corr.unsqueeze(0)), dim=0)
+            fmaps_yx_tensor = torch.cat((fmaps_yx_tensor, C_yx_corr.unsqueeze(0)), dim=0)
+            evecs_cond_first_tensor = torch.cat((evecs_cond_first_tensor, evecs_cond_first.unsqueeze(0)), dim=0)
+            evecs_cond_second_tensor = torch.cat((evecs_cond_second_tensor, evecs_cond_second.unsqueeze(0)), dim=0)
+        
+        
+            # pad the evecs and corr to 7000
+            # evecs_first_corrected = torch.cat((evecs_first_corrected, -1 * torch.ones(7000 - evecs_first_corrected.shape[0], num_evecs)))
+            # corr_first = torch.cat((corr_first, -2 * torch.ones(7000 - corr_first.shape[0]))) + 1
+            
+            # evecs_second_corrected = torch.cat((evecs_second_corrected, -1 * torch.ones(7000 - evecs_second_corrected.shape[0], num_evecs)))
+            # corr_second = torch.cat((corr_second, -2 * torch.ones(7000 - corr_second.shape[0]))) + 1
+
+
+            evecs_first_with_corr = evecs_first_corrected[corr_first]
+            evecs_second_with_corr = evecs_second_corrected[corr_second]
+            
+            evecs_first_with_corr_tensor = torch.cat((evecs_first_with_corr_tensor, evecs_first_with_corr.unsqueeze(0)), dim=0)
+            evecs_second_with_corr_tensor = torch.cat((evecs_second_with_corr_tensor, evecs_second_with_corr.unsqueeze(0)), dim=0)
+        
+        
+        
+            # evecs_first_corrected_tensor = torch.cat((evecs_first_corrected_tensor, evecs_first_corrected.unsqueeze(0)), dim=0)
+            # corr_first_tensor = torch.cat((corr_first_tensor, corr_first.unsqueeze(0)), dim=0)
+            # evecs_second_corrected_tensor = torch.cat((evecs_second_corrected_tensor, evecs_second_corrected.unsqueeze(0)), dim=0)
+            # corr_second_tensor = torch.cat((corr_second_tensor, corr_second.unsqueeze(0)), dim=0)
+            
+            # print('evecs_first_corrected_tensor', evecs_first_corrected_tensor.shape)
+            # print('evecs_second_corrected_tensor', evecs_second_corrected_tensor.shape)
+            # print('corr_first_tensor', corr_first_tensor.shape)
+            # print('corr_second_tensor', corr_second_tensor.shape)
+            
+            # print('evecs_first_corrected', evecs_first_corrected.shape)
+            # print('evecs_second_corrected', evecs_second_corrected.shape)
+            # print('corr_first', corr_first.shape)
+            # print('corr_second', corr_second.shape)
+            
+            # print('evecs_first_with_corr', evecs_first_with_corr.shape)
+            # print('evecs_second_with_corr', evecs_second_with_corr.shape)
+            # print()
+            
+            
+        if pair_type == 'pair' or i % 100 == 0 or i == 15:
             time_elapsed = time.time() - curr_time
-            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}',
+            print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}, second_indices: {second_indices}',
                 flush=True)
             
-        if i < 5 or i % 1000 == 0:
+        # if i < 5 or i % 1000 == 0:
+        if i % 1000 == 0:
+            data['second']['C_gt_xy'], data['second']['C_gt_yx'] =\
+                dataset.get_functional_map(data['first'], data['second'])
+            
             visualize_before_after(
-                data, C_xy_corr,C_yx_corr, 
+                data, C_xy_corr, C_yx_corr, 
                 evecs_cond_first, evecs_cond_second,
                 figures_folder, idx)
             
@@ -228,6 +310,14 @@ def save_train_dataset(
     torch.save(fmaps_yx_tensor, f'{train_folder}/C_gt_yx_{start_idx}_{end_idx}.pt')
     torch.save(evecs_cond_first_tensor, f'{train_folder}/evecs_cond_first_{start_idx}_{end_idx}.pt')
     torch.save(evecs_cond_second_tensor, f'{train_folder}/evecs_cond_second_{start_idx}_{end_idx}.pt')
+    
+    # torch.save(evecs_first_corrected_tensor, f'{train_folder}/evecs_first_corrected_{start_idx}_{end_idx}.pt')
+    # torch.save(evecs_second_corrected_tensor, f'{train_folder}/evecs_second_corrected_{start_idx}_{end_idx}.pt')
+    # torch.save(corr_first_tensor, f'{train_folder}/corr_first_{start_idx}_{end_idx}.pt')
+    # torch.save(corr_second_tensor, f'{train_folder}/corr_second_{start_idx}_{end_idx}.pt')
+    
+    torch.save(evecs_first_with_corr_tensor, f'{train_folder}/evecs_first_with_corr_{start_idx}_{end_idx}.pt')
+    torch.save(evecs_second_with_corr_tensor, f'{train_folder}/evecs_second_with_corr_{start_idx}_{end_idx}.pt')
     
 
 
@@ -246,11 +336,16 @@ def parse_args():
     
     parser.add_argument('--dataset_name', type=str)
     
+    parser.add_argument('--pair_type', choices=['template', 'pair'])
+    parser.add_argument('--n_pairs', type=int, required=False, default=1)
+    
     parser.add_argument('--template_type', type=str)
+    
+    
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 100000 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name test_pt --template_type remeshed
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 20000 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name test_evecs_corrected --template_type original --pair_type template --n_pairs 1
     
     return args
          
@@ -312,6 +407,7 @@ if __name__ == '__main__':
         num_evecs=128,
         cache_lb_dir=None,
         return_evecs=True,
+        return_fmap=False,
         mmap=True,
         augmentations=augmentations,
         template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/template.off',
@@ -350,10 +446,19 @@ if __name__ == '__main__':
         f'{args.net_path}/{sign_net_config["n_iter"]}.pth',
         map_location=device))
     
+    
+    ####################################################  
     # update the config
+    ####################################################
+    
     sign_net_config['net_path'] = args.net_path
     sign_net_config['augmentations'] = augmentations
     sign_net_config['template_type'] = args.template_type
+    sign_net_config['pair_type'] = args.pair_type
+    sign_net_config['n_pairs'] = args.n_pairs
+    
+    if args.pair_type == 'template':
+        assert args.n_pairs == 1, 'n_pairs must be 1 for template pair type'
     
     # save the config to the dataset folder
     if not os.path.exists(f'{dataset_folder}/config.yaml'):
@@ -394,6 +499,8 @@ if __name__ == '__main__':
         start_idx=start,
         end_idx=end,
         num_evecs=num_evecs,
+        pair_type=args.pair_type,
+        n_pairs=args.n_pairs,
         
         # sign corr net parameters
         net=net,

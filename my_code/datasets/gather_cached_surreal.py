@@ -11,8 +11,9 @@ def gather_files(data_dir, prefix):
     #     os.remove(f'{data_dir}/{prefix}.txt')
     
     if os.path.exists(f'{data_dir}/{prefix}.pt'):
-        print('Removing', f'{data_dir}/{prefix}.pt')
-        os.remove(f'{data_dir}/{prefix}.pt')
+        raise RuntimeError(f'{data_dir}/{prefix}.pt already exists')
+        # print('Removing', f'{data_dir}/{prefix}.pt')
+        # os.remove(f'{data_dir}/{prefix}.pt')
     
     # get all files in dir in alphabetical order
     files = os.listdir(data_dir)
@@ -54,8 +55,11 @@ def gather_files(data_dir, prefix):
 
     for file in sorted_files:
         # read the file as numpy array
-        data_i = np.loadtxt(f'{data_dir}/{file["file"]}')
-        data_i = torch.tensor(data_i)
+        # data_i = np.loadtxt(f'{data_dir}/{file["file"]}')
+        # data_i = torch.tensor(data_i)
+        
+        # read the file as torch tensor
+        data_i = torch.load(f'{data_dir}/{file["file"]}')
         
         data_pt = torch.cat((data_pt, data_i), dim=0)
         
@@ -70,7 +74,11 @@ def gather_files(data_dir, prefix):
     
 
 if __name__ == '__main__':
-    data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/SURREAL_augShapes_anisRemesh_signNet_96_remeshed_mass_6b_1ev_10_0.2_0.8/train'
+    
+    dataset_name = 'SURREAL_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
+    
+    
     # gather_files(data_dir, 'evals_first')
     # gather_files(data_dir, 'evals_second')
     
