@@ -81,11 +81,11 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'single_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'experiment_name': 'pair_10_xy',
         
-        'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/',
-        'dataset_name': 'SURREAL_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
-        'fmap_direction': 'yx',
+        'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair',
+        'dataset_name': 'pair_10_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'fmap_direction': 'xy',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
         
@@ -118,6 +118,18 @@ if __name__ == '__main__':
     # experiment setup
     experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/ddpm/{config["experiment_name"]}'
     # shutil.rmtree(experiment_folder, ignore_errors=True)
+    
+    
+    if os.path.exists(experiment_folder):
+        # make a prompt to remove the directory
+        print(f'{experiment_folder} already exists')
+        print('Press y to remove, any other key to exit')
+        
+        user_input = input()
+        if user_input == 'y':
+            print('Removing', experiment_folder)
+            shutil.rmtree(experiment_folder)
+    
     os.makedirs(experiment_folder)
     os.makedirs(f'{experiment_folder}/checkpoints')
     
@@ -136,7 +148,7 @@ if __name__ == '__main__':
     ### Train dataset with dataloader
     dataset_train = SurrealTrainDataset(
         # f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
-        f'{config["dataset_base_dir"]}/{config["dataset_name"]}/train',
+        f'{config["dataset_base_dir"]}/{config["dataset_name"]}',
         fmap_direction=config["fmap_direction"],
         fmap_input_type=config["fmap_type"],
         conditioning_types=config["conditioning_types"]

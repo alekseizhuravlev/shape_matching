@@ -3,7 +3,7 @@ import os
 import torch
 import time
 
-def gather_files(data_dir, prefix):
+def gather_files(data_dir, prefix, remove_after):
     
     # if f'{data_dir}/{prefix}.txt' exists, remove it
     # if os.path.exists(f'{data_dir}/{prefix}.txt'):
@@ -69,23 +69,32 @@ def gather_files(data_dir, prefix):
             
     # save the data to a .pt file
     torch.save(data_pt, f'{data_dir}/{prefix}.pt')
+    
+    # remove the files
+    if remove_after:
+        for file in sorted_files:
+            print('Removing', f'{file["file"]}')
+            os.remove(f'{data_dir}/{file["file"]}')
             
             
     
 
 if __name__ == '__main__':
     
-    dataset_name = 'SURREAL_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
-    data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
+    # dataset_name = 'SURREAL_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    # data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
     
+    data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    
+    remove_after = True
     
     # gather_files(data_dir, 'evals_first')
     # gather_files(data_dir, 'evals_second')
     
-    # gather_files(data_dir, 'C_gt_xy')
-    gather_files(data_dir, 'C_gt_yx')
+    gather_files(data_dir, 'C_gt_xy', remove_after)
+    # gather_files(data_dir, 'C_gt_yx')
 
-    gather_files(data_dir, 'evecs_cond_first')
-    gather_files(data_dir, 'evecs_cond_second')
+    gather_files(data_dir, 'evecs_cond_first', remove_after)
+    gather_files(data_dir, 'evecs_cond_second', remove_after)
     
     

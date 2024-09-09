@@ -24,6 +24,8 @@ import argparse
 from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
 import my_code.utils.zoomout_custom as zoomout_custom
 
+import accelerate
+
 tqdm._instances.clear()
 
 
@@ -55,8 +57,13 @@ if __name__ == '__main__':
 
 
     ### model
-    model = DiagConditionedUnet(config["model_params"]).to('cuda')
-    model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+    model = DiagConditionedUnet(config["model_params"])
+    
+    if "accelerate" in config and config["accelerate"]:
+        accelerate.load_checkpoint_in_model(model, f"{exp_base_folder}/checkpoints/{checkpoint_name}/model.safetensors")
+    else:
+        model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+    
     model = model.to('cuda')
     
     ### Sign correction network
@@ -70,6 +77,7 @@ if __name__ == '__main__':
         # k_eig=128,
         # n_block=2 
         
+
     sign_corr_net.load_state_dict(torch.load(
             f'{config["sign_net"]["net_path"]}/{config["sign_net"]["n_iter"]}.pth'
             ))
@@ -185,8 +193,8 @@ if __name__ == '__main__':
 
 
         # product with support
-        # if config["sign_net"]["with_mass"]:
-        if config["sign_net"]['cond_mass_normalize']:
+        if config["sign_net"]["with_mass"]:
+        # if config["sign_net"]['cond_mass_normalize']:
             
             mass_mat_first = torch.diag_embed(
                 data['first']['mass'].unsqueeze(0)

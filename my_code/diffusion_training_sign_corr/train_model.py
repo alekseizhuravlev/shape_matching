@@ -3,23 +3,31 @@ from tqdm import tqdm
 
 def train_epoch(model, is_unconditional,
                 train_dataloader, noise_scheduler,
-                opt, loss_fn):
+                opt, loss_fn, accelerator=None):
     
     # Keeping a record of the losses for later viewing
     losses = []
 
     # The training loop
-    for x, y in tqdm(train_dataloader, total=len(train_dataloader), disable=False):
+    for x, y in tqdm(train_dataloader, total=len(train_dataloader), disable=accelerator is None or not accelerator.is_local_main_process):
 
         # Unpack the batch
-        x = x.to(model.device()) 
-        y = y.to(model.device())
+        
+        if accelerator is None:
+            x = x.to(model.device()) 
+            y = y.to(model.device())
         
         # sample the noise and the timesteps
         noise = torch.randn_like(x)
-        timesteps = torch.randint(
-            0, noise_scheduler.config.num_train_timesteps,
-            (x.shape[0],)).long().to(model.device())
+        
+        if accelerator is None:
+            timesteps = torch.randint(
+                0, noise_scheduler.config.num_train_timesteps,
+                (x.shape[0],)).long().to(model.device())
+        else:
+            timesteps = torch.randint(
+                0, noise_scheduler.config.num_train_timesteps,
+                (x.shape[0],)).long().to(accelerator.device)
         
         # Add the noise to the input
         noisy_x = noise_scheduler.add_noise(x, noise, timesteps)
@@ -35,7 +43,12 @@ def train_epoch(model, is_unconditional,
 
         # Backprop and update the params:
         opt.zero_grad()
-        loss.backward()
+        
+        if accelerator is not None:
+            accelerator.backward(loss)
+        else:
+            loss.backward()
+            
         opt.step()
 
         # Store the loss for later
