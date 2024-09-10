@@ -5,6 +5,8 @@ import torch
 import os
 import time
 
+import yaml
+
 def process_evecs(evecs_second_with_corr, evecs_cond, n_pairs):
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -18,7 +20,22 @@ def process_evecs(evecs_second_with_corr, evecs_cond, n_pairs):
         # select the first evecs
         evecs_first = evecs_second_with_corr[first_idx]
         
-        for curr_pair in range(n_pairs):
+        # for curr_pair in range(n_pairs):
+        
+        curr_n_pairs = n_pairs
+        
+        while curr_n_pairs > 0:
+            
+            # if curr_n_pairs is a whole number, proceed
+            # if it is 0 < curr_n_pairs < 1, sample with probability curr_n_pairs
+            # if 0, skip
+            if 0 < curr_n_pairs < 1:
+                if torch.rand(1).item() > curr_n_pairs:
+                    break
+            elif curr_n_pairs <= 0:
+                break
+            
+            curr_n_pairs -= 1
             
             # sample a random second_idx
             second_idx = torch.randint(evecs_second_with_corr.shape[0], (1,)).item()
@@ -74,44 +91,27 @@ def get_files_with_prefix(data_dir_in, prefix):
 
 def full_pipeline(data_dir_in, data_dir_out, dataset_name, n_pairs, curr_worker):
 
-    # if os.path.exists(f'{data_dir_out}/{dataset_name}'):
-    #     # raise RuntimeError(f'{data_dir_out}/{dataset_name} already exists')
-        
-    #     # make a prompt to remove the directory
-    #     print(f'{data_dir_out}/{dataset_name} already exists')
-    #     print('Press y to remove, any other key to exit')
-        
-    #     user_input = input()
-        
-    #     if user_input == 'y':
-    #         print('Removing', f'{data_dir_out}/{dataset_name}')
-    #         shutil.rmtree(f'{data_dir_out}/{dataset_name}')
-    
     os.makedirs(f'{data_dir_out}/{dataset_name}', exist_ok=True)
     
+    # copy the config.yaml from data_dir_in to data_dir_out
+    if curr_worker == 0: 
+        with open(f'{data_dir_in}/config.yaml', 'r') as f:
+            config = yaml.load(f, Loader=yaml.FullLoader)
+            
+        config['n_pairs'] = n_pairs
+            
+        with open(f'{data_dir_out}/{dataset_name}/config.yaml', 'w') as f:
+            yaml.dump(config, f, sort_keys=False)
+    
+    data_dir_in = f'{data_dir_in}/train'
+    
+    # get the files with the prefix
     files_evecs_second_with_corr = get_files_with_prefix(
         data_dir_in, 'evecs_second_with_corr')
     files_evecs_cond = get_files_with_prefix(
         data_dir_in, 'evecs_cond_second')
     
-    # data_sizes = []
-    # for i in range(len(files_evecs_second_with_corr)):
-    #     assert files_evecs_second_with_corr[i]['start_idx'] == files_evecs_cond[i]['start_idx']
-    #     assert files_evecs_second_with_corr[i]['end_idx'] == files_evecs_cond[i]['end_idx']
-        
-        # data_sizes.append(files_evecs_second_with_corr[i]['end_idx'] - files_evecs_second_with_corr[i]['start_idx'])
-    
-    # assert the data sizes are the same
-    # assert len(set(data_sizes)) == 1, f'Data sizes are not the same: {data_sizes}'
-    
-    # time_start = time.time()
-    
-    # C_xy_evecs_full = []
-    # evecs_cond_first_full = []
-    # evecs_cond_second_full = []
-
-    # for i in range(len(files_evecs_second_with_corr)):
-        
+ 
     print(f'{curr_worker}) Processing indices',
             files_evecs_second_with_corr[curr_worker]['start_idx'], files_evecs_second_with_corr[curr_worker]['end_idx'])
     
@@ -154,7 +154,7 @@ def parse_args():
     
     parser.add_argument('--dataset_name', type=str)
     
-    parser.add_argument('--n_pairs', type=int)
+    parser.add_argument('--n_pairs', type=float)
     
     args = parser.parse_args()
     

@@ -84,7 +84,7 @@ if __name__ == '__main__':
     # dataset_name = 'SURREAL_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
     # data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
     
-    data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
     
     remove_after = True
     

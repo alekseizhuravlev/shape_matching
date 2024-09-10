@@ -35,11 +35,11 @@ def main():
     
     # configuration
     config = {
-        'experiment_name': 'pair_5_xy_distributed',
+        'experiment_name': 'pair_0.5_xy_distributed',
         'accelerate': True,
         
         'dataset_base_dir': '/tmp',
-        'dataset_name': 'pair_5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'dataset_name': 'pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
         
         'fmap_direction': 'xy',
         'fmap_type': 'orig',
@@ -47,7 +47,7 @@ def main():
         
         'n_epochs': 100,
         'validate_every': 5,
-        'checkpoint_every': 1,
+        'checkpoint_every': 5,
         
         'batch_size': 128,
         'eval_batch_size': 128,

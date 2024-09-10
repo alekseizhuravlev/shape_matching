@@ -104,7 +104,7 @@ if __name__ == '__main__':
     # Logging
     ##########################################
 
-    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}'
+    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}/no_smoothing'
     os.makedirs(log_dir, exist_ok=True)
 
     fig_dir = f'{log_dir}/figs'

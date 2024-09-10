@@ -19,8 +19,8 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='pair_10_xy_distributed'
-checkpoint_name='epoch_40'
+experiment_name='pair_5_xy_distributed'
+checkpoint_name='epoch_99'
 
 # experiment_name='single_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
 # checkpoint_name='checkpoint_99.pt'
@@ -58,6 +58,9 @@ echo "Running job $worker_id: dataset_name=$dataset_name, split=$split"
 
 # run the job
 
+
+# with template
+
 # no smoothing
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
 
@@ -67,7 +70,14 @@ echo "Running job $worker_id: dataset_name=$dataset_name, split=$split"
 # laplacian 3
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type laplacian --smoothing_iter 3
 
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
+
+# pairwise
+
+# no smoothing
+# srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
+
+# taubin 5
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5
 
 
 # python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name pair_10_xy_distributed --checkpoint_name epoch_40 --dataset_name FAUST_r_pair --split test
