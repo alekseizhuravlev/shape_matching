@@ -26,7 +26,8 @@ import argparse
 from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
 import my_code.utils.zoomout_custom as zoomout_custom
 import my_code.sign_canonicalization.test_sign_correction as test_sign_correction
-
+from utils.shape_util import compute_geodesic_distmat
+        
 
 tqdm._instances.clear()
 
@@ -479,8 +480,13 @@ if __name__ == '__main__':
             ).cpu()
         
         # distance matrices
-        dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
-        dist_y = torch.cdist(data['second']['verts'], data['second']['verts'])
+        # dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
+        # dist_y = torch.cdist(data['second']['verts'], data['second']['verts'])
+
+
+        dist_x = torch.tensor(
+            compute_geodesic_distmat(data['first']['verts'].numpy(), data['first']['faces'].numpy())    
+        )
 
         # geodesic error
         geo_err_gt = geodist_metric.calculate_geodesic_error(

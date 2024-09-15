@@ -1,3 +1,4 @@
+import sqlite3
 import torch
 import numpy as np
 import os
@@ -29,6 +30,11 @@ import my_code.sign_canonicalization.test_sign_correction as test_sign_correctio
 
 import accelerate
 
+from utils.shape_util import compute_geodesic_distmat
+from my_code.utils.median_p2p_map import get_median_p2p_map
+
+
+
 tqdm._instances.clear()
 
 
@@ -43,6 +49,8 @@ def parse_args():
     
     parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'])
     parser.add_argument('--smoothing_iter', type=int)
+    
+    parser.add_argument('--num_iters_avg', type=int)
     
     args = parser.parse_args()
     return args
@@ -244,10 +252,11 @@ if __name__ == '__main__':
         
     ratios = []
     geo_errs = []
-    geo_errs_zo = []
     geo_errs_pairzo = []
-    geo_errs_zo_32 = []
-    geo_errs_zo_64 = []
+    
+    geo_errs_median = []
+    geo_errs_pairzo_median = []
+    geo_errs_pairzo_median_p2p = []
 
     Cxy_est_list = []
     C_gt_xy_corr_list = []
@@ -255,7 +264,8 @@ if __name__ == '__main__':
         
     data_range_pair = tqdm(range(len(test_dataset)), desc='Calculating pair fmaps')
 
-    # data_range_pair = tqdm(range(5))
+    # data_range_pair = tqdm(range(2))
+    # print('!!!!! WARNING: only 5 meshes are processed !!!!!')
 
     for i in data_range_pair:
         
@@ -297,10 +307,15 @@ if __name__ == '__main__':
         # Sample the model
         ###############################################
         
-        x_sampled = torch.rand(1, 1, model.model.sample_size, model.model.sample_size).to(device)
+        # x_sampled = torch.rand(1, 1, model.model.sample_size, model.model.sample_size).to(device)
+        # y = torch.cat(
+        #     (conditioning_first, conditioning_second),
+        #               0).unsqueeze(0).to(device)    
+        
+        x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
         y = torch.cat(
             (conditioning_first, conditioning_second),
-                      0).unsqueeze(0).to(device)    
+                    0).unsqueeze(0).repeat(args.num_iters_avg, 1, 1, 1).to(device)
          
         # Sampling loop
         for t in noise_scheduler.timesteps:
@@ -314,144 +329,130 @@ if __name__ == '__main__':
             # Update sample with step
             x_sampled = noise_scheduler.step(residual, t, x_sampled).prev_sample
 
-        Cxy_est = x_sampled[0][0]
-        
         ###############################################
         
-        C_gt_xy = torch.linalg.lstsq(
-            evecs_second[corr_second],
-            evecs_first[corr_first]
-            ).solution
-        
-        C_gt_xy_corr = torch.linalg.lstsq(
-            evecs_second_zo[corr_second],
-            evecs_first_zo[corr_first]
-            ).solution
-        
-        Cxy_est_pairzo = zoomout_custom.zoomout(
-            FM_12=Cxy_est, 
-            evects1=evecs_first_zo, 
-            evects2=evecs_second_zo,
-            nit=evecs_first_zo.shape[1] - num_evecs, step=1,
+        dist_x = torch.tensor(
+            compute_geodesic_distmat(data['first']['verts'].numpy(), data['first']['faces'].numpy())    
         )
-        
-        ###############################################
-        # Evaluation
-        ###############################################  
-        
-        # hard correspondence 
-        p2p_gt = fmap_util.fmap2pointmap(
-            C12=C_gt_xy,
-            evecs_x=evecs_first,
-            evecs_y=evecs_second,
-            ).cpu()
-        p2p_corr_gt = fmap_util.fmap2pointmap(
-            C12=C_gt_xy_corr,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        p2p_est = fmap_util.fmap2pointmap(
-            Cxy_est,
-            evecs_x=evecs_first_zo[:, :num_evecs],
-            evecs_y=evecs_second_zo[:, :num_evecs],
-            ).cpu()
-        p2p_est_pairzo = fmap_util.fmap2pointmap(
-            Cxy_est_pairzo,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        
-        # distance matrices
-        dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
-        dist_y = torch.cdist(data['second']['verts'], data['second']['verts'])
 
-        # geodesic error
-        geo_err_gt = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_gt, return_mean=False
-            )  
-        geo_err_corr_gt = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_corr_gt, return_mean=False
-            )
-        geo_err_est = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est, return_mean=False
-            )
-        geo_err_est_pairzo = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_pairzo, return_mean=False
-            )
+        geo_err_est_sampled = []
+        geo_err_est_pairzo_sampled = []
+        p2p_est_pairzo_sampled = []
         
-        mse_fmap = torch.sum((C_gt_xy_corr[:num_evecs,:num_evecs] - Cxy_est) ** 2).cpu()
-        mse_abs_fmap = torch.sum((C_gt_xy_corr[:num_evecs,:num_evecs].abs() - Cxy_est.abs()) ** 2).cpu()
-        
-        
-        # put the data to cpu
-        Cxy_est = Cxy_est.cpu()
-        C_gt_xy_corr = C_gt_xy_corr.cpu()
-        C_gt_xy = C_gt_xy.cpu()
-        # Cxy_est_zo = Cxy_est_zo.cpu()
-        Cxy_est_pairzo = Cxy_est_pairzo.cpu()
+        for k in range(args.num_iters_avg):
 
-        # fig, axs = plt.subplots(1, 6, figsize=(20, 3))
-        
-        # l = 0
-        # h = num_evecs
+            Cxy_est_k = x_sampled[k][0]
+            
+            ###############################################
+            
+            C_gt_xy = torch.linalg.lstsq(
+                evecs_second[corr_second],
+                evecs_first[corr_first]
+                ).solution
+            
+            C_gt_xy_corr = torch.linalg.lstsq(
+                evecs_second_zo[corr_second],
+                evecs_first_zo[corr_first]
+                ).solution
+            
+            Cxy_est_pairzo_k = zoomout_custom.zoomout(
+                FM_12=Cxy_est_k, 
+                evects1=evecs_first_zo, 
+                evects2=evecs_second_zo,
+                nit=evecs_first_zo.shape[1] - num_evecs, step=1,
+            )
+            
+            ###############################################
+            # Evaluation
+            ###############################################  
+            
+            # hard correspondence 
+            p2p_gt = fmap_util.fmap2pointmap(
+                C12=C_gt_xy,
+                evecs_x=evecs_first,
+                evecs_y=evecs_second,
+                ).cpu()
+            p2p_corr_gt = fmap_util.fmap2pointmap(
+                C12=C_gt_xy_corr,
+                evecs_x=evecs_first_zo,
+                evecs_y=evecs_second_zo,
+                ).cpu()
+            p2p_est_k = fmap_util.fmap2pointmap(
+                Cxy_est_k,
+                evecs_x=evecs_first_zo[:, :num_evecs],
+                evecs_y=evecs_second_zo[:, :num_evecs],
+                ).cpu()
+            p2p_est_pairzo_k = fmap_util.fmap2pointmap(
+                Cxy_est_pairzo_k,
+                evecs_x=evecs_first_zo,
+                evecs_y=evecs_second_zo,
+                ).cpu()
+            
+            # distance matrices
+            # dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
+            # dist_y = torch.cdist(data['second']['verts'], data['second']['verts'])
+            
+                
+            # geodesic error
+            geo_err_gt = geodist_metric.calculate_geodesic_error(
+                dist_x, data['first']['corr'], data['second']['corr'], p2p_gt, return_mean=False
+                )  
+            geo_err_corr_gt = geodist_metric.calculate_geodesic_error(
+                dist_x, data['first']['corr'], data['second']['corr'], p2p_corr_gt, return_mean=False
+                )
+            geo_err_est_k = geodist_metric.calculate_geodesic_error(
+                dist_x, data['first']['corr'], data['second']['corr'], p2p_est_k, return_mean=False
+                )
+            geo_err_est_pairzo_k = geodist_metric.calculate_geodesic_error(
+                dist_x, data['first']['corr'], data['second']['corr'], p2p_est_pairzo_k, return_mean=False
+                )
+            
+            geo_err_est_sampled.append(geo_err_est_k.mean())
+            geo_err_est_pairzo_sampled.append(geo_err_est_pairzo_k.mean())
+            p2p_est_pairzo_sampled.append(p2p_est_pairzo_k)
+            
 
-        # plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
-        #                         f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[1], C_gt_xy_corr,
-        #                         f'GT corrected, {geo_err_corr_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[2], C_gt_xy,
-        #                         f'GT orig, {geo_err_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[3], Cxy_est - C_gt_xy_corr[:num_evecs,:num_evecs],
-        #                         f'Error', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est_zo[:num_evecs, :num_evecs],
-        #                         f'After ZO, {geo_err_est_zo.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[5], Cxy_est_zo[:num_evecs, :num_evecs] - C_gt_xy_corr[:num_evecs,:num_evecs],
-        #                         f'Error ZO', l, h, show_grid=False, show_colorbar=False)
+        geo_err_est_sampled = torch.tensor(geo_err_est_sampled)
+        geo_err_est_pairzo_sampled = torch.tensor(geo_err_est_pairzo_sampled)
         
-        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est.abs() - C_gt_xy_corr.abs(),
-        #                         f'Error abs', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[6], Cxy_est_zo_first,
-        #                         f'Cxy_est_zo_first', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[7], Cxy_est_zo_second,
-        #                         f'Cxy_est_zo_second', l, h, show_grid=False, show_colorbar=False)
+        # median p2p map
+        p2p_est_pairzo_sampled = torch.stack(p2p_est_pairzo_sampled)
+        p2p_median = get_median_p2p_map(p2p_est_pairzo_sampled, dist_x)
         
+        geo_err_est_pairzo_median = geodist_metric.calculate_geodesic_error(
+            dist_x, data['first']['corr'], data['second']['corr'], p2p_median, return_mean=True
+                )
+
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
             f.write(f'{i}\n')
             f.write(f'Geo error GT: {geo_err_gt.mean() * 100:.2f}\n')
             f.write(f'Geo error GT corr: {geo_err_corr_gt.mean() * 100:.2f}\n')
-            f.write(f'Geo error est: {geo_err_est.mean() * 100:.2f}\n')
-            f.write(f'Geo error est pairzo: {geo_err_est_pairzo.mean() * 100:.2f}\n')
-            f.write(f'MSE fmap: {mse_fmap:.3f}\n')
-            f.write(f'MSE abs fmap: {mse_abs_fmap:.3f}\n')
+            # f.write(f'Geo error est: {geo_err_est_sampled.mean() * 100:.2f}\n')
+            # f.write(f'Geo error est pairzo: {geo_err_est_pairzo_sampled.mean() * 100:.2f}\n')
+            # f.write('-----------------------------------\n')
+            
+            f.write(f'Geo error est mean: {geo_err_est_sampled.mean() * 100:.2f}, \n'+\
+            f'Geo error est median: {geo_err_est_sampled.median() * 100:.2f}, \n'+\
+            f'Geo error est: {geo_err_est_sampled * 100}, \n'
+            f'Geo error est zo mean: {geo_err_est_pairzo_sampled.mean() * 100:.2f}, \n'+\
+            f'Geo error est zo median: {geo_err_est_pairzo_sampled.median() * 100:.2f}\n'
+            f'Geo error est zo: {geo_err_est_pairzo_sampled * 100}\n'
+            f'Geo error est p2p zo median: {geo_err_est_pairzo_median * 100:.2f}\n'
+            )
             f.write('-----------------------------------\n')
         
-        # break
-        # plt.savefig(f'{fig_dir}/{i}.png')
-        # plt.close()
         
-        # print the stats instead of writing to file
-        # print(f'{i}')
-        # print(f'Geo error GT: {geo_err_gt.mean() * 100:.2f}')
-        # print(f'Geo error GT corr: {geo_err_corr_gt.mean() * 100:.2f}')
-        # print(f'Geo error est: {geo_err_est.mean() * 100:.2f}')
-        # print(f'Geo error est zo: {geo_err_est_zo.mean() * 100:.2f}')
-        # print(f'MSE fmap: {mse_fmap:.3f}')
-        # print(f'MSE abs fmap: {mse_abs_fmap:.3f}')
-        # print('-----------------------------------')
         
-        # plt.show()
-        # plt.close()
-        
-        # print(f'{i:2d}) ratio {geo_err_est.mean() / geo_err_corr_gt.mean():.2f}')
-        
-        ratio_curr = geo_err_est.mean() / geo_err_corr_gt.mean()
+        ratio_curr = geo_err_est_sampled.mean() / geo_err_corr_gt.mean()
         
         ratios.append(ratio_curr)
-        geo_errs.append(geo_err_est.mean() * 100)
-        geo_errs_pairzo.append(geo_err_est_pairzo.mean() * 100)
-        # Cxy_est_list.append(Cxy_est)
-        # C_gt_xy_corr_list.append(C_gt_xy_corr)
+        geo_errs.append(geo_err_est_sampled.mean() * 100)
+        geo_errs_pairzo.append(geo_err_est_pairzo_sampled.mean() * 100)
+        
+        geo_errs_median.append(geo_err_est_sampled.median() * 100)
+        geo_errs_pairzo_median.append(geo_err_est_pairzo_sampled.median() * 100)
+        geo_errs_pairzo_median_p2p.append(geo_err_est_pairzo_median * 100)
         
         # if i % 10 == 0:
         data_range_pair.set_description(
@@ -463,6 +464,10 @@ if __name__ == '__main__':
     ratios = torch.tensor(ratios)
     geo_errs = torch.tensor(geo_errs)
     geo_errs_pairzo = torch.tensor(geo_errs_pairzo)
+    
+    geo_errs_median = torch.tensor(geo_errs_median)
+    geo_errs_pairzo_median = torch.tensor(geo_errs_pairzo_median)
+    geo_errs_pairzo_median_p2p = torch.tensor(geo_errs_pairzo_median_p2p)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -477,10 +482,42 @@ if __name__ == '__main__':
         f.write(f'Median geo err: {geo_errs.median():.2f}\n')
         f.write(f'Min geo err: {geo_errs.min():.2f}\n')
         f.write(f'Max geo err: {geo_errs.max():.2f}\n')
-        f.write('\n')
-        f.write(f'Mean ratio: {ratios.mean():.2f}\n')
-        f.write(f'Median ratio: {ratios.median():.2f}\n')
-        f.write(f'Min ratio: {ratios.min():.2f}\n')
-        f.write(f'Max ratio: {ratios.max():.2f}\n')
-        f.write('\n')
         f.write('-----------------------------------\n')
+        f.write(f'Medians\n')
+        f.write(f'Mean geo err: {geo_errs_median.mean():.2f}\n')
+        f.write(f'Pairzoomout geo err mean: {geo_errs_pairzo_median.mean():.2f}\n')
+        f.write('\n')
+        f.write(f'geo_errs_pairzo_median_p2p: {geo_errs_pairzo_median_p2p.mean():.2f}\n')
+        f.write('-----------------------------------\n')
+        
+        
+    
+    # log to database    
+    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median.db")
+    cur = con.cursor()
+    
+    data = [(
+        args.experiment_name,
+        args.checkpoint_name, 
+        f'{args.smoothing_type}-{args.smoothing_iter}', 
+        args.dataset_name,
+        args.split, 
+        # p2p median
+        geo_errs_pairzo_median_p2p.mean().item(),
+        # zoomout
+        geo_errs_pairzo.mean().item(), geo_errs_pairzo_median.median().item(),
+        # pred
+        geo_errs.mean().item(), geo_errs_median.median().item()
+        ),]
+    
+    # if an entry with the same first 5 entries exists, delete it
+    
+    if cur.execute(f"SELECT * FROM ddpm WHERE experiment_name='{args.experiment_name}' AND checkpoint_name='{args.checkpoint_name}' AND smoothing='{args.smoothing_type}-{args.smoothing_iter}' AND dataset_name='{args.dataset_name}' AND split='{args.split}'").fetchone():
+        print('Deleting existing entry')
+        cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{args.experiment_name}' AND checkpoint_name='{args.checkpoint_name}' AND smoothing='{args.smoothing_type}-{args.smoothing_iter}' AND dataset_name='{args.dataset_name}' AND split='{args.split}'")
+        
+    
+    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    con.commit()
+    
+    con.close()

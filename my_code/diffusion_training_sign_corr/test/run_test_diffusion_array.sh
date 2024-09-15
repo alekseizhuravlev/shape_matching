@@ -19,8 +19,9 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='pair_5_xy_distributed'
+experiment_name='pair_10_xy_64_64_128_128'
 checkpoint_name='epoch_99'
+num_iters_avg=32
 
 # experiment_name='single_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
 # checkpoint_name='checkpoint_99.pt'
@@ -74,12 +75,14 @@ echo "Running job $worker_id: dataset_name=$dataset_name, split=$split"
 # pairwise
 
 # no smoothing
-# srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg
+
+# write the line above ,with values instead of variables
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name pair_5_xy_distributed --checkpoint_name epoch_99 --dataset_name SHREC19_r_pair --split test --num_iters_avg 16
+
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name pair_5_xy_distributed --checkpoint_name epoch_99 --dataset_name SHREC19_r_pair --split test --num_iters_avg 16 --smoothing_type taubin --smoothing_iter 5
 
 # taubin 5
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5
-
-
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name pair_10_xy_distributed --checkpoint_name epoch_40 --dataset_name FAUST_r_pair --split test
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg
 
 

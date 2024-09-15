@@ -1,9 +1,9 @@
 #!/bin/bash
 
 #SBATCH -n 1
-#SBATCH -t 7-00:00:00
-#SBATCH --gres=gpu:1
-#SBATCH --partition=mlgpu_long
+#SBATCH -t 24:00:00
+#SBATCH --gres=gpu:8
+#SBATCH --partition=mlgpu_medium
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/train_diffusion_%j.out
 #SBATCH --error=/home/s94zalek_hpc/shape_matching/SLURM_logs/train_diffusion_%j.err

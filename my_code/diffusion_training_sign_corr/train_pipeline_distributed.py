@@ -35,11 +35,11 @@ def main():
     
     # configuration
     config = {
-        'experiment_name': 'pair_0.5_xy_distributed',
+        'experiment_name': 'pair_10_xy_64_128_128_256',
         'accelerate': True,
         
         'dataset_base_dir': '/tmp',
-        'dataset_name': 'pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'dataset_name': 'pair_10_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
         
         'fmap_direction': 'xy',
         'fmap_type': 'orig',
@@ -57,13 +57,15 @@ def main():
             'in_channels': 3,
             'out_channels': 1,
             'layers_per_block': 2,
-            'block_out_channels': (32, 64, 64),
+            'block_out_channels': (64, 128, 128, 256),
             'down_block_types': (
                 "DownBlock2D",
                 "AttnDownBlock2D",
                 "AttnDownBlock2D",
+                "AttnDownBlock2D",
             ),
             'up_block_types': (
+                "AttnUpBlock2D",
                 "AttnUpBlock2D",
                 "AttnUpBlock2D",
                 "UpBlock2D",
