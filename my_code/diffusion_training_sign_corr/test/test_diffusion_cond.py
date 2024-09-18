@@ -28,13 +28,13 @@ import accelerate
 import sqlite3
 
 from utils.shape_util import compute_geodesic_distmat
-from my_code.utils.median_p2p_map import get_median_p2p_map
+from my_code.utils.median_p2p_map import get_median_p2p_map, dirichlet_energy
 
 tqdm._instances.clear()
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Train the model')
+    parser = argparse.ArgumentParser(description='Test the model')
     
     parser.add_argument('--experiment_name', type=str)
     parser.add_argument('--checkpoint_name', type=str)
@@ -42,14 +42,84 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--split', type=str)
     
+    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'], required=False)
+    parser.add_argument('--smoothing_iter', type=int, required=False)
+    
+    
     parser.add_argument('--num_iters_avg', type=int)
     
     args = parser.parse_args()
     return args
 
 
-if __name__ == '__main__':
+def select_p2p_map_dirichlet(p2p_est_zo_sampled, verts_first, L_second, dist_first):
 
+    # dirichlet energy for each p2p map
+    dirichlet_energy_list = []
+    for n in range(p2p_est_zo_sampled.shape[0]):
+        dirichlet_energy_list.append(
+            dirichlet_energy(p2p_est_zo_sampled[n], verts_first, L_second).item(),
+            )
+    dirichlet_energy_list = torch.tensor(dirichlet_energy_list)
+
+    # sort by dirichlet energy, get the arguments
+    _, sorted_idx_dirichlet = torch.sort(dirichlet_energy_list)
+    
+    # map with the lowest dirichlet energy
+    p2p_dirichlet = p2p_est_zo_sampled[sorted_idx_dirichlet[0]]
+    
+    # median p2p map, using 3 maps with lowest dirichlet energy
+    p2p_median = get_median_p2p_map(
+        p2p_est_zo_sampled[
+            sorted_idx_dirichlet[:int(round(p2p_est_zo_sampled.shape[0] / 10))]
+            ],
+        dist_first
+        )
+    
+    return p2p_dirichlet, p2p_median, dirichlet_energy_list
+
+
+def log_to_database(data):
+    
+    # data = [(
+    #     args.experiment_name,
+    #     args.checkpoint_name, 
+    #     'no', 
+    #     args.dataset_name,
+    #     args.split, 
+    #     # dirichlet
+    #     geo_errs_dirichlet.mean().item(),
+    #     # median p2p
+    #     geo_errs_median_p2p.mean().item(),
+    #     # zoomout
+    #     geo_errs_zo.mean().item(), geo_errs_zo_median.mean().item(),
+    #     # pred
+    #     geo_errs.mean().item(), geo_errs_median.mean().item()
+    #     ),]
+    
+    assert len(data) == 1
+    assert len(data[0]) == 11
+    
+    # log to database    
+    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median_dirichlet.db")
+    cur = con.cursor()
+    
+    # if an entry with the same first 5 entries exists, delete it
+    
+    if cur.execute(f"SELECT * FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'").fetchone():
+        print('Deleting existing entry')
+        cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'")
+        
+    
+    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    con.commit()
+    
+    con.close() 
+    
+    
+
+
+def run():
     args = parse_args()
 
     # configuration
@@ -127,6 +197,7 @@ if __name__ == '__main__':
     geo_errs_median = []
     geo_errs_zo_median = []
     geo_errs_median_p2p = []
+    geo_errs_dirichlet = []
 
     Cxy_est_list = []
     C_gt_xy_corr_list = []
@@ -385,16 +456,25 @@ if __name__ == '__main__':
             
         geo_err_est_sampled = torch.tensor(geo_err_est_sampled)
         geo_err_est_zo_sampled = torch.tensor(geo_err_est_zo_sampled)
-        
-        
-        # median p2p map
         p2p_est_zo_sampled = torch.stack(p2p_est_zo_sampled)
-        p2p_median = get_median_p2p_map(p2p_est_zo_sampled, dist_x)
+        
+        ##########################################################
+        # p2p map selection
+        ##########################################################
+        
+        p2p_dirichlet, p2p_median, dirichlet_energy_list = select_p2p_map_dirichlet(
+            p2p_est_zo_sampled, verts_first[0].cpu(), data['second']['L'], dist_x
+            )
+        
         
         geo_err_est_zo_median = geodist_metric.calculate_geodesic_error(
             dist_x, data['first']['corr'], data['second']['corr'], p2p_median, return_mean=True
                 )
+        geo_err_est_zo_dirichlet = geodist_metric.calculate_geodesic_error(
+            dist_x, data['first']['corr'], data['second']['corr'], p2p_dirichlet, return_mean=True
+                )
         
+        sorted_idxs_geo_err_zo = torch.argsort(geo_err_est_zo_sampled)
             
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
@@ -410,11 +490,13 @@ if __name__ == '__main__':
             
             f.write(f'Geo error est mean: {geo_err_est_sampled.mean() * 100:.2f}, \n'+\
             f'Geo error est median: {geo_err_est_sampled.median() * 100:.2f}, \n'+\
-            f'Geo error est: {geo_err_est_sampled * 100}, \n'
+            f'Geo error est: {geo_err_est_sampled[sorted_idxs_geo_err_zo] * 100}, \n'
             f'Geo error est zo mean: {geo_err_est_zo_sampled.mean() * 100:.2f}, \n'+\
             f'Geo error est zo median: {geo_err_est_zo_sampled.median() * 100:.2f}\n'
-            f'Geo error est zo: {geo_err_est_zo_sampled * 100}\n'
+            f'Geo error est zo: {geo_err_est_zo_sampled[sorted_idxs_geo_err_zo] * 100}\n'
             f'Geo error est p2p zo median: {geo_err_est_zo_median * 100:.2f}\n'
+            f'Geo error est p2p zo dirichlet: {geo_err_est_zo_dirichlet * 100:.2f}\n'
+            f'Dirichlet energy: {dirichlet_energy_list[sorted_idxs_geo_err_zo]}\n'
             )
             f.write('-----------------------------------\n')
             
@@ -436,6 +518,7 @@ if __name__ == '__main__':
         geo_errs_zo_median.append(geo_err_est_zo_sampled.median() * 100)
         
         geo_errs_median_p2p.append(geo_err_est_zo_median * 100)
+        geo_errs_dirichlet.append(geo_err_est_zo_dirichlet * 100)
         
         # Cxy_est_list.append(Cxy_est)
         # C_gt_xy_corr_list.append(C_gt_xy_corr)
@@ -458,6 +541,7 @@ if __name__ == '__main__':
     geo_errs_zo_median = torch.tensor(geo_errs_zo_median)
     
     geo_errs_median_p2p = torch.tensor(geo_errs_median_p2p)
+    geo_errs_dirichlet = torch.tensor(geo_errs_dirichlet)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -480,18 +564,21 @@ if __name__ == '__main__':
         f.write(f'Max ratio: {ratios.max():.2f}\n')
         f.write('\n')
         f.write(f'Mean geo err p2p median: {geo_errs_median_p2p.mean():.2f}\n')
+        f.write(f'Mean geo err dirichlet: {geo_errs_dirichlet.mean():.2f}\n')
         f.write('-----------------------------------\n')
     
-    # log to database    
-    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median.db")
-    cur = con.cursor()
     
+    
+    
+
     data = [(
         args.experiment_name,
         args.checkpoint_name, 
         'no', 
         args.dataset_name,
         args.split, 
+        # dirichlet
+        geo_errs_dirichlet.mean().item(),
         # median p2p
         geo_errs_median_p2p.mean().item(),
         # zoomout
@@ -500,14 +587,9 @@ if __name__ == '__main__':
         geo_errs.mean().item(), geo_errs_median.mean().item()
         ),]
     
-    # if an entry with the same first 5 entries exists, delete it
+    log_to_database(data)
     
-    if cur.execute(f"SELECT * FROM ddpm WHERE experiment_name='{args.experiment_name}' AND checkpoint_name='{args.checkpoint_name}' AND smoothing='no' AND dataset_name='{args.dataset_name}' AND split='{args.split}'").fetchone():
-        print('Deleting existing entry')
-        cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{args.experiment_name}' AND checkpoint_name='{args.checkpoint_name}' AND smoothing='no' AND dataset_name='{args.dataset_name}' AND split='{args.split}'")
-        
+
     
-    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
-    con.commit()
-    
-    con.close() 
+if __name__ == '__main__':
+    run()

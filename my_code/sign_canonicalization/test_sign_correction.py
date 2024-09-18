@@ -32,7 +32,7 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, smoothing_ty
             simplify_strength=1,
         )
         
-        mesh_anis_remeshed = trimesh.Trimesh(verts, faces)
+        mesh_anis_remeshed = trimesh.Trimesh(verts, faces, process=False)
         # apply laplacian smoothing
         
         if smoothing_type == 'laplacian':

@@ -33,3 +33,18 @@ def get_median_p2p_map(p2p_maps, dist_x):
     return median_p2p_map
     
     
+def dirichlet_energy(p2p_12, X_2, W_1):
+    """
+    p2p_12: point-to-point map from mesh 1 to mesh 2
+    X_2: vertices of mesh 2
+    W_1: Laplacian of mesh 1
+    """
+ 
+    assert len(p2p_12.shape) == 1
+    assert len(X_2.shape) == 2
+    assert len(W_1.shape) == 2
+    
+    mapped_verts = X_2[p2p_12]
+    
+    return torch.trace(mapped_verts.transpose(0, 1) @ W_1 @ mapped_verts)
+    

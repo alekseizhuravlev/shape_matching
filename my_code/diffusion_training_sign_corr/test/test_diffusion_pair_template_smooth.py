@@ -27,28 +27,15 @@ from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
 import my_code.utils.zoomout_custom as zoomout_custom
 import my_code.sign_canonicalization.test_sign_correction as test_sign_correction
 from utils.shape_util import compute_geodesic_distmat
-        
+from my_code.diffusion_training_sign_corr.test.test_diffusion_cond import select_p2p_map_dirichlet, log_to_database, parse_args
+from my_code.diffusion_training_sign_corr.test.test_diffusion_pair_template import get_geo_error
+  
 
 tqdm._instances.clear()
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train the model')
-    
-    parser.add_argument('--experiment_name', type=str)
-    parser.add_argument('--checkpoint_name', type=str)
-    
-    parser.add_argument('--dataset_name', type=str)
-    parser.add_argument('--split', type=str)
-    
-    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'])
-    parser.add_argument('--smoothing_iter', type=int)
-    
-    args = parser.parse_args()
-    return args
 
-
-if __name__ == '__main__':
+def run():
 
     args = parse_args()
 
@@ -121,19 +108,25 @@ if __name__ == '__main__':
     # Logging
     ##########################################
 
-    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}-template-{args.smoothing_type}-{args.smoothing_iter}'
+    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}/{args.smoothing_type}-{args.smoothing_iter}'
     os.makedirs(log_dir, exist_ok=True)
 
     fig_dir = f'{log_dir}/figs'
     os.makedirs(fig_dir, exist_ok=True)
 
-    log_file_name = f'{log_dir}/log_smooth_{args.smoothing_type}_{args.smoothing_iter}.txt'
+    log_file_name = f'{log_dir}/log_{args.smoothing_type}-{args.smoothing_iter}.txt'
+
 
     ##########################################
     # Template stage
     ##########################################
 
     data_range = tqdm(range(len(single_dataset_remeshed)), desc='Calculating fmaps to template')
+
+    # data_range = tqdm(range(2))
+    
+    # print('!!! WARNING: only 2 samples are processed !!!')
+
 
     for i in data_range:
 
@@ -260,8 +253,8 @@ if __name__ == '__main__':
         # Sample the model
         ###############################################
         
-        x_sampled = torch.rand(1, 1, model.model.sample_size, model.model.sample_size).to(device)
-        y = conditioning.unsqueeze(0).to(device)    
+        x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
+        y = conditioning.unsqueeze(0).repeat(args.num_iters_avg, 1, 1, 1).to(device)    
         
         # print(x_sampled.shape, y.shape)
             
@@ -277,8 +270,6 @@ if __name__ == '__main__':
             # Update sample with step
             x_sampled = noise_scheduler.step(residual, t, x_sampled).prev_sample
 
-        Cyx_est = x_sampled[0][0].cpu()
-        
         ###############################################
         # Correct the original evecs
         ###############################################
@@ -302,63 +293,74 @@ if __name__ == '__main__':
         evecs_second_orig_zo = torch.cat(
             [evecs_second_corrected_orig,
                 data_orig['evecs'][:, num_evecs:]], 1)
-
         
-        Cyx_est_zo = zoomout_custom.zoomout(
-            FM_12=Cyx_est.to(device), 
-            evects1=evecs_second_orig_zo.to(device), 
-            evects2=evecs_first_zo.to(device),
-            nit=evecs_first_zo.shape[1] - num_evecs, step=1,
-        ).cpu()
-
-        p2p_remeshed = fmap_util.fmap2pointmap(
-            C12=Cyx_est.to(device),
-            evecs_x=evecs_second_corrected.to(device),
-            evecs_y=evecs_first_corrected.to(device),
-            ).cpu()
-        
-        p2p_est = fmap_util.fmap2pointmap(
-            C12=Cyx_est.to(device),
-            evecs_x=evecs_second_corrected_orig.to(device),
-            evecs_y=evecs_first_corrected.to(device),
-            ).cpu()
-        
-        p2p_est_zo = fmap_util.fmap2pointmap(
-            C12=Cyx_est_zo.to(device),
-            evecs_x=evecs_second_orig_zo.to(device),
-            evecs_y=evecs_first_zo.to(device),
-            ).cpu()
-        
-        single_dataset.additional_data[i]['Cyx_est'] = Cyx_est
-        single_dataset.additional_data[i]['Cyx_est_zo'] = Cyx_est_zo
         single_dataset.additional_data[i]['evecs_zo'] = evecs_second_orig_zo
         
-        single_dataset.additional_data[i]['p2p_est'] = p2p_est
-        single_dataset.additional_data[i]['p2p_est_zo'] = p2p_est_zo
+        ##########################################################
+        # Sampled p2p maps
+        ##########################################################
         
+        single_dataset.additional_data[i]['p2p_est'] = []
+
+        for k in range(args.num_iters_avg):
+            Cyx_est_k = x_sampled[k][0].cpu()
+        
+            p2p_est_k = fmap_util.fmap2pointmap(
+                C12=Cyx_est_k.to(device),
+                evecs_x=evecs_second_corrected_orig.to(device),
+                evecs_y=evecs_first_corrected.to(device),
+                ).cpu()
+
+            single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)  
+            
+        single_dataset.additional_data[i]['p2p_est'] = torch.stack(single_dataset.additional_data[i]['p2p_est'])
+            
+        ##########################################################
+        # p2p map selection
+        ##########################################################
+        
+        verts_second_orig = data_orig['verts']
+        faces_second_orig = data_orig['faces']
+        
+        dist_second = torch.tensor(
+            compute_geodesic_distmat(
+                verts_second_orig.numpy(),
+                faces_second_orig.numpy())    
+        )
+        
+        p2p_dirichlet, p2p_median, dirichlet_energy_list = select_p2p_map_dirichlet(
+            single_dataset.additional_data[i]['p2p_est'],
+            verts_second_orig,
+            template_shape['L'], 
+            dist_second
+            )
+        
+        single_dataset.additional_data[i]['p2p_dirichlet'] = p2p_dirichlet
+        single_dataset.additional_data[i]['p2p_median'] = p2p_median
+
+    
     ##########################################
     # Pairwise stage
     ##########################################
         
     test_dataset.dataset = single_dataset
         
-    ratios = []
-    geo_errs = []
-    geo_errs_zo = []
+    geo_errs_gt = []
+    geo_errs_corr_gt = []
     geo_errs_pairzo = []
-    geo_errs_zo_32 = []
-    geo_errs_zo_64 = []
-
-    Cxy_est_list = []
-    C_gt_xy_corr_list = []
-
+    geo_errs_dirichlet = []
+    geo_errs_median = []
+    
         
     data_range_pair = tqdm(range(len(test_dataset)), desc='Calculating pair fmaps')
 
+    # data_range_pair = tqdm(range(2))
+    
+    # print('!!! WARNING: only 2 samples are processed !!!')
+
     for i in data_range_pair:
         
-        data = test_dataset[i]
-        
+        data = test_dataset[i]        
         
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # device = 'cpu'
@@ -369,9 +371,6 @@ if __name__ == '__main__':
         faces_first = data['first']['faces'].to(device)
         faces_second = data['second']['faces'].to(device)
 
-        # evecs_first = data['first']['evecs'][:, :num_evecs].unsqueeze(0).to(device)
-        # evecs_second = data['second']['evecs'][:, :num_evecs].unsqueeze(0).to(device)
-        
         evecs_first = data['first']['evecs'][:, :].to(device)
         evecs_second = data['second']['evecs'][:, :].to(device)
         
@@ -391,258 +390,132 @@ if __name__ == '__main__':
         p2p_est_first = data['first']['p2p_est'].to(device)
         p2p_est_second = data['second']['p2p_est'].to(device)
         
-        p2p_est_zo_first = data['first']['p2p_est_zo'].to(device)
-        p2p_est_zo_second = data['second']['p2p_est_zo'].to(device)
+        p2p_dirichlet_first = data['first']['p2p_dirichlet'].to(device)
+        p2p_dirichlet_second = data['second']['p2p_dirichlet'].to(device)
         
+        p2p_median_first = data['first']['p2p_median'].to(device)
+        p2p_median_second = data['second']['p2p_median'].to(device)
         
-        C_gt_xy = torch.linalg.lstsq(
-            evecs_second[corr_second],
-            evecs_first[corr_first]
-            ).solution
-        
-        C_gt_xy_corr = torch.linalg.lstsq(
-            evecs_second_zo[corr_second],
-            evecs_first_zo[corr_first]
-            ).solution
-        
-        # fmap with zoomout
-        Cxy_est_zo = torch.linalg.lstsq(
-            evecs_second_zo[p2p_est_zo_second],
-            evecs_first_zo[p2p_est_zo_first]
-            ).solution
-        
-        # fmap without zoomout
-        Cxy_est = torch.linalg.lstsq(
-            evecs_second_zo[:, :num_evecs][p2p_est_second],
-            evecs_first_zo[:, :num_evecs][p2p_est_first]
-            ).solution
-        
-        Cxy_est_pairzo = zoomout_custom.zoomout(
-            FM_12=Cxy_est, 
-            evects1=evecs_first_zo, 
-            evects2=evecs_second_zo,
-            nit=evecs_first_zo.shape[1] - num_evecs, step=1,
-        )
-        
-        Cxy_est_zo_32 = zoomout_custom.zoomout(
-            FM_12=Cxy_est_zo[:32, :32],
-            evects1=evecs_first_zo,
-            evects2=evecs_second_zo,
-            nit=evecs_first_zo.shape[1] - 32, step=1,
-        )
-        
-        Cxy_est_zo_64 = zoomout_custom.zoomout(
-            FM_12=Cxy_est_zo[:64, :64],
-            evects1=evecs_first_zo,
-            evects2=evecs_second_zo,
-            nit=evecs_first_zo.shape[1] - 64, step=1,
-        )
-        
-        ###############################################
-        # Evaluation
-        ###############################################  
-        
-        # hard correspondence 
-        p2p_gt = fmap_util.fmap2pointmap(
-            C12=C_gt_xy,
-            evecs_x=evecs_first,
-            evecs_y=evecs_second,
-            ).cpu()
-        p2p_corr_gt = fmap_util.fmap2pointmap(
-            C12=C_gt_xy_corr,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        p2p_est = fmap_util.fmap2pointmap(
-            Cxy_est,
-            evecs_x=evecs_first_zo[:, :num_evecs],
-            evecs_y=evecs_second_zo[:, :num_evecs],
-            ).cpu()
-        p2p_est_zo = fmap_util.fmap2pointmap(
-            Cxy_est_zo,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        p2p_est_pairzo = fmap_util.fmap2pointmap(
-            Cxy_est_pairzo,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        p2p_est_zo_32 = fmap_util.fmap2pointmap(
-            Cxy_est_zo_32,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        p2p_est_zo_64 = fmap_util.fmap2pointmap(
-            Cxy_est_zo_64,
-            evecs_x=evecs_first_zo,
-            evecs_y=evecs_second_zo,
-            ).cpu()
-        
-        # distance matrices
-        # dist_x = torch.cdist(data['first']['verts'], data['first']['verts'])
-        # dist_y = torch.cdist(data['second']['verts'], data['second']['verts'])
-
-
         dist_x = torch.tensor(
             compute_geodesic_distmat(data['first']['verts'].numpy(), data['first']['faces'].numpy())    
         )
+        
+        ###############################################
+        # Geodesic errors
+        ###############################################
+        
+        # GT geo error
+        geo_err_gt = get_geo_error(
+            corr_first, corr_second,
+            evecs_first, evecs_second,
+            corr_first, corr_second,
+            num_evecs, False,
+            dist_x
+            )
+        geo_err_corr_gt = get_geo_error(
+            corr_first, corr_second,
+            evecs_first_zo, evecs_second_zo,
+            corr_first, corr_second,
+            num_evecs, False,
+            dist_x
+            )
+        
+        # mean pred geo error with zoomout
+        geo_err_est_pairzo = []
+        for k in range(args.num_iters_avg):
+            geo_err_est_pairzo.append(
+                get_geo_error(
+                p2p_est_first[k], p2p_est_second[k],
+                evecs_first_zo, evecs_second_zo,
+                corr_first, corr_second,
+                num_evecs, True,
+                dist_x
+                ))
+        geo_err_est_pairzo = torch.tensor(geo_err_est_pairzo)
+        
+        # dirichlet geo error
+        geo_err_est_dirichlet = get_geo_error(
+            p2p_dirichlet_first, p2p_dirichlet_second,
+            evecs_first_zo, evecs_second_zo,
+            corr_first, corr_second,
+            num_evecs, True,
+            dist_x
+            )
+        
+        # median geo error
+        geo_err_est_median = get_geo_error(
+            p2p_median_first, p2p_median_second,
+            evecs_first_zo, evecs_second_zo,
+            corr_first, corr_second,
+            num_evecs, True,
+            dist_x
+            )
 
-        # geodesic error
-        geo_err_gt = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_gt, return_mean=False
-            )  
-        geo_err_corr_gt = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_corr_gt, return_mean=False
-            )
-        geo_err_est = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est, return_mean=False
-            )
-        geo_err_est_zo = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_zo, return_mean=False
-            )
-        geo_err_est_pairzo = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_pairzo, return_mean=False
-            )
-        geo_err_est_zo_32 = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_zo_32, return_mean=False
-            )
-        geo_err_est_zo_64 = geodist_metric.calculate_geodesic_error(
-            dist_x, data['first']['corr'], data['second']['corr'], p2p_est_zo_64, return_mean=False
-            )
-        
-        mse_fmap = torch.sum((C_gt_xy_corr[:num_evecs,:num_evecs] - Cxy_est) ** 2).cpu()
-        mse_abs_fmap = torch.sum((C_gt_xy_corr[:num_evecs,:num_evecs].abs() - Cxy_est.abs()) ** 2).cpu()
-        
-        
-        # put the data to cpu
-        Cxy_est = Cxy_est.cpu()
-        C_gt_xy_corr = C_gt_xy_corr.cpu()
-        C_gt_xy = C_gt_xy.cpu()
-        Cxy_est_zo = Cxy_est_zo.cpu()
-        # Cxy_est_pairzo = Cxy_est_pairzo.cpu()
-
-        # fig, axs = plt.subplots(1, 6, figsize=(20, 3))
-        
-        # l = 0
-        # h = num_evecs
-
-        # plotting_utils.plot_Cxy(fig, axs[0], Cxy_est,
-        #                         f'Pred, {geo_err_est.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[1], C_gt_xy_corr,
-        #                         f'GT corrected, {geo_err_corr_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[2], C_gt_xy,
-        #                         f'GT orig, {geo_err_gt.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[3], Cxy_est - C_gt_xy_corr[:num_evecs,:num_evecs],
-        #                         f'Error', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est_zo[:num_evecs, :num_evecs],
-        #                         f'After ZO, {geo_err_est_zo.mean() * 100:.2f}', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[5], Cxy_est_zo[:num_evecs, :num_evecs] - C_gt_xy_corr[:num_evecs,:num_evecs],
-        #                         f'Error ZO', l, h, show_grid=False, show_colorbar=False)
-        
-        # plotting_utils.plot_Cxy(fig, axs[4], Cxy_est.abs() - C_gt_xy_corr.abs(),
-        #                         f'Error abs', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[6], Cxy_est_zo_first,
-        #                         f'Cxy_est_zo_first', l, h, show_grid=False, show_colorbar=False)
-        # plotting_utils.plot_Cxy(fig, axs[7], Cxy_est_zo_second,
-        #                         f'Cxy_est_zo_second', l, h, show_grid=False, show_colorbar=False)
-        
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
             f.write(f'{i}\n')
-            f.write(f'Geo error GT: {geo_err_gt.mean() * 100:.2f}\n')
-            f.write(f'Geo error GT corr: {geo_err_corr_gt.mean() * 100:.2f}\n')
-            f.write(f'Geo error est: {geo_err_est.mean() * 100:.2f}\n')
-            f.write(f'Geo error est zo: {geo_err_est_zo.mean() * 100:.2f}\n')
-            f.write(f'Geo error est pairzo: {geo_err_est_pairzo.mean() * 100:.2f}\n')
-            f.write(f'Geo error est zo 32: {geo_err_est_zo_32.mean() * 100:.2f}\n')
-            f.write(f'Geo error est zo 64: {geo_err_est_zo_64.mean() * 100:.2f}\n')
-            f.write(f'MSE fmap: {mse_fmap:.3f}\n')
-            f.write(f'MSE abs fmap: {mse_abs_fmap:.3f}\n')
+            f.write(f'Geo error GT: {geo_err_gt:.2f}\n')
+            f.write(f'Geo error GT corr: {geo_err_corr_gt:.2f}\n')
+            f.write(f'Geo error est pairzo: {geo_err_est_pairzo}\n')
+            f.write(f'Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
+            f.write(f'Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
+            f.write(f'Geo error est median: {geo_err_est_median:.2f}\n')
             f.write('-----------------------------------\n')
         
-        # break
-        # plt.savefig(f'{fig_dir}/{i}.png')
-        # plt.close()
-        
-        # print the stats instead of writing to file
-        # print(f'{i}')
-        # print(f'Geo error GT: {geo_err_gt.mean() * 100:.2f}')
-        # print(f'Geo error GT corr: {geo_err_corr_gt.mean() * 100:.2f}')
-        # print(f'Geo error est: {geo_err_est.mean() * 100:.2f}')
-        # print(f'Geo error est zo: {geo_err_est_zo.mean() * 100:.2f}')
-        # print(f'MSE fmap: {mse_fmap:.3f}')
-        # print(f'MSE abs fmap: {mse_abs_fmap:.3f}')
-        # print('-----------------------------------')
-        
-        # plt.show()
-        # plt.close()
-        
-        # print(f'{i:2d}) ratio {geo_err_est.mean() / geo_err_corr_gt.mean():.2f}')
-        
-        ratio_curr = geo_err_est.mean() / geo_err_corr_gt.mean()
-        
-        ratios.append(ratio_curr)
-        geo_errs.append(geo_err_est.mean() * 100)
-        geo_errs_zo.append(geo_err_est_zo.mean() * 100)
-        geo_errs_pairzo.append(geo_err_est_pairzo.mean() * 100)
-        geo_errs_zo_32.append(geo_err_est_zo_32.mean() * 100)
-        geo_errs_zo_64.append(geo_err_est_zo_64.mean() * 100)
-        # Cxy_est_list.append(Cxy_est)
-        # C_gt_xy_corr_list.append(C_gt_xy_corr)
-        
-        if i % 10 == 0:
-            data_range_pair.set_description(
-                f'Mean {torch.tensor(geo_errs).mean():.2f}, '+\
-                f'zo {torch.tensor(geo_errs_zo).mean():.2f}, '+\
-                f'pairzo {torch.tensor(geo_errs_pairzo).mean():.2f}, '+\
-                f'zo 32 {torch.tensor(geo_errs_zo_32).mean():.2f}, '+\
-                f'zo 64 {torch.tensor(geo_errs_zo_64).mean():.2f}'
-                )
-        
-        # data_range.set_description(
-        #     f'Geo error est: {geo_err_curr:.2f}, '+\
-        #     f'Mean {torch.tensor(geo_errs).mean():.2f}, '+\
-        #     f'Median {torch.tensor(geo_errs).median():.2f}, '+\
-        #     f'Ratio: {ratio_curr:.2f}, '+\
-        #     f'Mean: {torch.tensor(ratios).mean():.2f}, '+\
-        #     f'Median: {torch.tensor(ratios).median():.2f}'
-        #     )
+        geo_errs_gt.append(geo_err_gt)
+        geo_errs_corr_gt.append(geo_err_corr_gt)
+        geo_errs_pairzo.append(geo_err_est_pairzo.mean())
+        geo_errs_dirichlet.append(geo_err_est_dirichlet)
+        geo_errs_median.append(geo_err_est_median)
 
 
-    ratios = torch.tensor(ratios)
-    geo_errs = torch.tensor(geo_errs)
-    geo_errs_zo = torch.tensor(geo_errs_zo)
+    geo_errs_gt = torch.tensor(geo_errs_gt)
+    geo_errs_corr_gt = torch.tensor(geo_errs_corr_gt)
     geo_errs_pairzo = torch.tensor(geo_errs_pairzo)
-    geo_errs_zo_32 = torch.tensor(geo_errs_zo_32)
-    geo_errs_zo_64 = torch.tensor(geo_errs_zo_64)
+    geo_errs_dirichlet = torch.tensor(geo_errs_dirichlet)
+    geo_errs_median = torch.tensor(geo_errs_median)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
         f.write('-----------------------------------\n')
         f.write('Total statistics\n')
         f.write('-----------------------------------\n')
-        f.write(f'Zoomout geo err mean: {geo_errs_zo.mean():.2f}\n')
-        f.write(f'Zoomout geo err median: {geo_errs_zo.median():.2f}\n')
-        f.write(f'Zoomout geo err min: {geo_errs_zo.min():.2f}\n')
-        f.write(f'Zoomout geo err max: {geo_errs_zo.max():.2f}\n')
+        f.write(f'GT geo err mean: {geo_errs_gt.mean():.2f}\n')
+        f.write(f'GT corr geo err mean: {geo_errs_corr_gt.mean():.2f}\n')
         f.write('\n')
         f.write(f'Pairzoomout geo err mean: {geo_errs_pairzo.mean():.2f}\n')
         f.write(f'Pairzoomout geo err median: {geo_errs_pairzo.median():.2f}\n')
         f.write(f'Pairzoomout geo err min: {geo_errs_pairzo.min():.2f}\n')
         f.write(f'Pairzoomout geo err max: {geo_errs_pairzo.max():.2f}\n')      
         f.write('\n')
-        f.write(f'Zoomout 32 geo err mean: {geo_errs_zo_32.mean():.2f}\n')
-        f.write(f'Zoomout 64 geo err mean: {geo_errs_zo_64.mean():.2f}\n')
-        f.write('-----------------------------------\n')
-        f.write(f'Mean geo err: {geo_errs.mean():.2f}\n')
-        f.write(f'Median geo err: {geo_errs.median():.2f}\n')
-        f.write(f'Min geo err: {geo_errs.min():.2f}\n')
-        f.write(f'Max geo err: {geo_errs.max():.2f}\n')
+        f.write(f'Dirichlet geo err mean: {geo_errs_dirichlet.mean():.2f}\n')
+        f.write(f'Dirichlet geo err median: {geo_errs_dirichlet.median():.2f}\n')
+        f.write(f'Dirichlet geo err min: {geo_errs_dirichlet.min():.2f}\n')
+        f.write(f'Dirichlet geo err max: {geo_errs_dirichlet.max():.2f}\n')
         f.write('\n')
-        f.write(f'Mean ratio: {ratios.mean():.2f}\n')
-        f.write(f'Median ratio: {ratios.median():.2f}\n')
-        f.write(f'Min ratio: {ratios.min():.2f}\n')
-        f.write(f'Max ratio: {ratios.max():.2f}\n')
-        f.write('\n')
+        f.write(f'Median geo err mean: {geo_errs_median.mean():.2f}\n')
+        f.write(f'Median geo err median: {geo_errs_median.median():.2f}\n')
+        f.write(f'Median geo err min: {geo_errs_median.min():.2f}\n')
+        f.write(f'Median geo err max: {geo_errs_median.max():.2f}\n')
         f.write('-----------------------------------\n')
+        
+    data = [(
+        args.experiment_name,
+        args.checkpoint_name, 
+        f'{args.smoothing_type}-{args.smoothing_iter}', 
+        args.dataset_name,
+        args.split, 
+        # dirichlet
+        geo_errs_dirichlet.mean().item(),
+        # median p2p
+        geo_errs_median.mean().item(),
+        # zoomout
+        geo_errs_pairzo.mean().item(), geo_errs_pairzo.median().item(),
+        # pred
+        0, 0
+        ),]
+    
+    log_to_database(data)
+    
+if __name__ == '__main__':
+    run()

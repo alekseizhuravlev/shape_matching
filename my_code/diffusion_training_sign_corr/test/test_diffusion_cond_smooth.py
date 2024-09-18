@@ -31,7 +31,7 @@ import my_code.sign_canonicalization.test_sign_correction as test_sign_correctio
 import accelerate
 
 from utils.shape_util import compute_geodesic_distmat
-from my_code.utils.median_p2p_map import get_median_p2p_map
+from my_code.utils.median_p2p_map import get_median_p2p_map, dirichlet_energy
 
 
 
@@ -257,6 +257,7 @@ if __name__ == '__main__':
     geo_errs_median = []
     geo_errs_pairzo_median = []
     geo_errs_pairzo_median_p2p = []
+    geo_errs_pairzo_dirichlet = []
 
     Cxy_est_list = []
     C_gt_xy_corr_list = []
@@ -415,13 +416,43 @@ if __name__ == '__main__':
         geo_err_est_sampled = torch.tensor(geo_err_est_sampled)
         geo_err_est_pairzo_sampled = torch.tensor(geo_err_est_pairzo_sampled)
         
+        ###############################################
+        # p2p map selection
+        ###############################################
+        
         # median p2p map
         p2p_est_pairzo_sampled = torch.stack(p2p_est_pairzo_sampled)
-        p2p_median = get_median_p2p_map(p2p_est_pairzo_sampled, dist_x)
+        
+        # dirichlet energy for each p2p map
+        dirichlet_energy_list = []
+        for n in range(p2p_est_pairzo_sampled.shape[0]):
+            dirichlet_energy_list.append(
+                dirichlet_energy(p2p_est_pairzo_sampled[n], verts_first.cpu(), data['second']['L']).item(),
+                )
+        dirichlet_energy_list = torch.tensor(dirichlet_energy_list)
+
+        # sort by dirichlet energy, get the arguments
+        _, sorted_idx_dirichlet = torch.sort(dirichlet_energy_list)
+        
+        # map with the lowest dirichlet energy
+        p2p_dirichlet = p2p_est_pairzo_sampled[sorted_idx_dirichlet[0]]
+        
+        # median p2p map, using 3 maps with lowest dirichlet energy
+        p2p_median = get_median_p2p_map(
+            p2p_est_pairzo_sampled[
+                sorted_idx_dirichlet[:int(round(args.num_iters_avg / 10))]
+                ],
+            dist_x
+            )
         
         geo_err_est_pairzo_median = geodist_metric.calculate_geodesic_error(
             dist_x, data['first']['corr'], data['second']['corr'], p2p_median, return_mean=True
                 )
+        geo_err_est_pairzo_dirichlet = geodist_metric.calculate_geodesic_error(
+            dist_x, data['first']['corr'], data['second']['corr'], p2p_dirichlet, return_mean=True
+                )
+        
+        sorted_idxs_geo_err_zo = torch.argsort(geo_err_est_pairzo_sampled)
 
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
@@ -434,11 +465,13 @@ if __name__ == '__main__':
             
             f.write(f'Geo error est mean: {geo_err_est_sampled.mean() * 100:.2f}, \n'+\
             f'Geo error est median: {geo_err_est_sampled.median() * 100:.2f}, \n'+\
-            f'Geo error est: {geo_err_est_sampled * 100}, \n'
+            f'Geo error est: {geo_err_est_sampled[sorted_idxs_geo_err_zo] * 100}, \n'
             f'Geo error est zo mean: {geo_err_est_pairzo_sampled.mean() * 100:.2f}, \n'+\
             f'Geo error est zo median: {geo_err_est_pairzo_sampled.median() * 100:.2f}\n'
-            f'Geo error est zo: {geo_err_est_pairzo_sampled * 100}\n'
+            f'Geo error est zo: {geo_err_est_pairzo_sampled[sorted_idxs_geo_err_zo] * 100}\n'
             f'Geo error est p2p zo median: {geo_err_est_pairzo_median * 100:.2f}\n'
+            f'Geo error est p2p zo dirichlet: {geo_err_est_pairzo_dirichlet * 100:.2f}\n'
+            f'Dirichlet energy: {dirichlet_energy_list[sorted_idxs_geo_err_zo]}\n'
             )
             f.write('-----------------------------------\n')
         
@@ -453,6 +486,7 @@ if __name__ == '__main__':
         geo_errs_median.append(geo_err_est_sampled.median() * 100)
         geo_errs_pairzo_median.append(geo_err_est_pairzo_sampled.median() * 100)
         geo_errs_pairzo_median_p2p.append(geo_err_est_pairzo_median * 100)
+        geo_errs_pairzo_dirichlet.append(geo_err_est_pairzo_dirichlet * 100)
         
         # if i % 10 == 0:
         data_range_pair.set_description(
@@ -468,6 +502,7 @@ if __name__ == '__main__':
     geo_errs_median = torch.tensor(geo_errs_median)
     geo_errs_pairzo_median = torch.tensor(geo_errs_pairzo_median)
     geo_errs_pairzo_median_p2p = torch.tensor(geo_errs_pairzo_median_p2p)
+    geo_errs_pairzo_dirichlet = torch.tensor(geo_errs_pairzo_dirichlet)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -488,12 +523,13 @@ if __name__ == '__main__':
         f.write(f'Pairzoomout geo err mean: {geo_errs_pairzo_median.mean():.2f}\n')
         f.write('\n')
         f.write(f'geo_errs_pairzo_median_p2p: {geo_errs_pairzo_median_p2p.mean():.2f}\n')
+        f.write(f'geo_errs_pairzo_dirichlet: {geo_errs_pairzo_dirichlet.mean():.2f}\n')
         f.write('-----------------------------------\n')
         
         
     
     # log to database    
-    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median.db")
+    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median_dirichlet.db")
     cur = con.cursor()
     
     data = [(
@@ -502,6 +538,8 @@ if __name__ == '__main__':
         f'{args.smoothing_type}-{args.smoothing_iter}', 
         args.dataset_name,
         args.split, 
+        # dirichlet
+        geo_errs_pairzo_dirichlet.mean().item(),
         # p2p median
         geo_errs_pairzo_median_p2p.mean().item(),
         # zoomout
@@ -517,7 +555,7 @@ if __name__ == '__main__':
         cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{args.experiment_name}' AND checkpoint_name='{args.checkpoint_name}' AND smoothing='{args.smoothing_type}-{args.smoothing_iter}' AND dataset_name='{args.dataset_name}' AND split='{args.split}'")
         
     
-    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
     con.commit()
     
     con.close()
