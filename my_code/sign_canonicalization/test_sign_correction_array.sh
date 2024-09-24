@@ -17,10 +17,9 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 # put all dataset names and splits in a list
 job_list=(
-    'signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    'signNet_24_remeshed_mass_6b_1ev_10_0.2_0.8'
+    'signNet_48_remeshed_mass_6b_1ev_10_0.2_0.8'
     'signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8'
-    'signNet_96_remeshed_mass_6b_1ev_10_0.2_0.8'
-    'signNet_128_remeshed_mass_6b_1ev_10_0.2_0.8'
 )
 
 # worker id = id of the current job in the job list
@@ -31,9 +30,9 @@ exp_name=${job_list[$worker_id]}
 echo "Running job $worker_id: exp_name=$exp_name"
 
 # run the job
-srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_type laplacian --smoothing_iter 3
-srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_type laplacian --smoothing_iter 5
-# srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 0 --smoothing_iter 0
+srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 0 --smoothing_iter 0
+srun python /home/s94zalek_hpc/shape_matching/my_code/sign_canonicalization/test_sign_correction.py --exp_name $exp_name --remesh_targetlen 1 --smoothing_type taubin --smoothing_iter 5
+
 
 
 

@@ -27,7 +27,7 @@ from pyFM_fork.pyFM.refine.zoomout import zoomout_refine
 import my_code.utils.zoomout_custom as zoomout_custom
 from utils.shape_util import compute_geodesic_distmat
 from my_code.diffusion_training_sign_corr.test.test_diffusion_cond import select_p2p_map_dirichlet, log_to_database, parse_args
-        
+import accelerate
 
 tqdm._instances.clear()
 
@@ -82,7 +82,13 @@ def run():
 
     ### model
     model = DiagConditionedUnet(config["model_params"]).to('cuda')
-    model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+
+    if "accelerate" in config and config["accelerate"]:
+        accelerate.load_checkpoint_in_model(model, f"{exp_base_folder}/checkpoints/{checkpoint_name}/model.safetensors")
+    else:
+        model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+    
+    
     model = model.to('cuda')
     
     ### Sign correction network
@@ -372,6 +378,8 @@ def run():
         
         single_dataset.additional_data[i]['p2p_dirichlet'] = p2p_dirichlet
         single_dataset.additional_data[i]['p2p_median'] = p2p_median
+        
+        single_dataset.additional_data[i]['geo_dist'] = dist_second
 
     
     
@@ -431,9 +439,10 @@ def run():
         p2p_median_first = data['first']['p2p_median'].to(device)
         p2p_median_second = data['second']['p2p_median'].to(device)
         
-        dist_x = torch.tensor(
-            compute_geodesic_distmat(data['first']['verts'].numpy(), data['first']['faces'].numpy())    
-        )
+        # dist_x = torch.tensor(
+        #     compute_geodesic_distmat(data['first']['verts'].numpy(), data['first']['faces'].numpy())    
+        # )
+        dist_x = data['first']['geo_dist']
         
         ###############################################
         # Geodesic errors

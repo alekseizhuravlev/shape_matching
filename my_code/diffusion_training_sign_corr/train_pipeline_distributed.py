@@ -29,19 +29,42 @@ from my_code.datasets.surreal_cached_train_dataset import SurrealTrainDataset
 import networks.diffusion_network as diffusion_network
 
 from accelerate import Accelerator
+import argparse
+
+def parse_args():
+    
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('--experiment_name', type=str)
+    parser.add_argument('--dataset_name', type=str)
+    
+    parser.add_argument('--fmap_direction', type=str)
+    parser.add_argument('--sample_size', type=int)
+    
+    parser.add_argument('--block_out_channels', type=str)
+    parser.add_argument('--down_block_types', type=str)
+    parser.add_argument('--up_block_types', type=str)
+    
+    args = parser.parse_args()
+    
+    return args
 
 
 def main():
     
+    args = parse_args()
+    
+    
+    
     # configuration
     config = {
-        'experiment_name': 'pair_10_xy_64_128_128_256',
+        'experiment_name': args.experiment_name,
         'accelerate': True,
         
         'dataset_base_dir': '/tmp',
-        'dataset_name': 'pair_10_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
+        'dataset_name': args.dataset_name,
         
-        'fmap_direction': 'xy',
+        'fmap_direction': args.fmap_direction,
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
         
@@ -53,23 +76,13 @@ def main():
         'eval_batch_size': 128,
         
         'model_params': {
-            'sample_size': 32,
+            'sample_size': args.sample_size,
             'in_channels': 3,
             'out_channels': 1,
             'layers_per_block': 2,
-            'block_out_channels': (64, 128, 128, 256),
-            'down_block_types': (
-                "DownBlock2D",
-                "AttnDownBlock2D",
-                "AttnDownBlock2D",
-                "AttnDownBlock2D",
-            ),
-            'up_block_types': (
-                "AttnUpBlock2D",
-                "AttnUpBlock2D",
-                "AttnUpBlock2D",
-                "UpBlock2D",
-            ),
+            'block_out_channels': tuple(map(int, args.block_out_channels.split(','))),
+            'down_block_types': tuple(args.down_block_types.split(',')),
+            'up_block_types': tuple(args.up_block_types.split(',')),
         },
     }   
     
@@ -114,7 +127,7 @@ def main():
     ### Train dataset with dataloader
     dataset_train = SurrealTrainDataset(
         # f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
-        f'{config["dataset_base_dir"]}/{config["dataset_name"]}',
+        f'{config["dataset_base_dir"]}/{config["dataset_name"]}/train',
         fmap_direction=config["fmap_direction"],
         fmap_input_type=config["fmap_type"],
         conditioning_types=config["conditioning_types"],

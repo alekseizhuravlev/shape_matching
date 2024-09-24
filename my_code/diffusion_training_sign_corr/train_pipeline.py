@@ -81,11 +81,12 @@ if __name__ == '__main__':
     
     # configuration
     config = {
-        'experiment_name': 'pair_10_xy',
+        'experiment_name': 'single_48_remeshed_noAcc_yx_64_128_128',
         
-        'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair',
-        'dataset_name': 'pair_10_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8',
-        'fmap_direction': 'xy',
+        # 'dataset_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train',
+        'dataset_base_dir': '/tmp',
+        'dataset_name': 'SURREAL_48_template_remeshed_augShapes',
+        'fmap_direction': 'yx',
         'fmap_type': 'orig',
         'conditioning_types': {'evecs'},
         
@@ -97,11 +98,11 @@ if __name__ == '__main__':
         'eval_batch_size': 128,
         
         'model_params': {
-            'sample_size': 32,
+            'sample_size': 48,
             'in_channels': 3,
             'out_channels': 1,
             'layers_per_block': 2,
-            'block_out_channels': (32, 64, 64),
+            'block_out_channels': (64, 128, 128),
             'down_block_types': (
                 "DownBlock2D",
                 "AttnDownBlock2D",
@@ -148,10 +149,11 @@ if __name__ == '__main__':
     ### Train dataset with dataloader
     dataset_train = SurrealTrainDataset(
         # f'data/SURREAL_full/full_datasets/{config["dataset_name"]}/train',
-        f'{config["dataset_base_dir"]}/{config["dataset_name"]}',
+        f'{config["dataset_base_dir"]}/{config["dataset_name"]}/train',
         fmap_direction=config["fmap_direction"],
         fmap_input_type=config["fmap_type"],
-        conditioning_types=config["conditioning_types"]
+        conditioning_types=config["conditioning_types"],
+        mmap=True
         )
     dataloader_train = torch.utils.data.DataLoader(dataset_train, batch_size=config["batch_size"], shuffle=True)
        

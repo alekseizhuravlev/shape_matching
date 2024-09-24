@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -n 1
-#SBATCH -t 24:00:00
-#SBATCH --array=0-7
+#SBATCH -t 14:00:00
+#SBATCH --array=0-5
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_medium
 #SBATCH --account=ag_ifi_laehner
@@ -19,12 +19,12 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='single_template_remeshedSimplified'
-checkpoint_name='checkpoint_99.pt'
+experiment_name='single_48_remeshed_noAcc_yx_64_128_128'
+# checkpoint_name='epoch_99'
 num_iters_avg=25
 
 # experiment_name='single_template_remeshedSmoothed_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
-# checkpoint_name='checkpoint_99.pt'
+checkpoint_name='checkpoint_90.pt'
 
 # put all dataset names and splits in a list
 job_list=(
@@ -42,8 +42,8 @@ job_list=(
     'SCAPE_r_pair test'
     'SCAPE_a_pair test'
 
-    'DT4D_inter_pair test'
-    'DT4D_intra_pair test'
+    # 'DT4D_inter_pair test'
+    # 'DT4D_intra_pair test'
 )
 
 # worker id = id of the current job in the job list

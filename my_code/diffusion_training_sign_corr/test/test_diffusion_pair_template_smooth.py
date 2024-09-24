@@ -30,6 +30,7 @@ from utils.shape_util import compute_geodesic_distmat
 from my_code.diffusion_training_sign_corr.test.test_diffusion_cond import select_p2p_map_dirichlet, log_to_database, parse_args
 from my_code.diffusion_training_sign_corr.test.test_diffusion_pair_template import get_geo_error
   
+import accelerate
 
 tqdm._instances.clear()
 
@@ -51,7 +52,12 @@ def run():
 
     ### model
     model = DiagConditionedUnet(config["model_params"]).to('cuda')
-    model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+    
+    if "accelerate" in config and config["accelerate"]:
+        accelerate.load_checkpoint_in_model(model, f"{exp_base_folder}/checkpoints/{checkpoint_name}/model.safetensors")
+    else:
+        model.load_state_dict(torch.load(f"{exp_base_folder}/checkpoints/{checkpoint_name}"))
+
     model = model.to('cuda')
     
     ### Sign correction network

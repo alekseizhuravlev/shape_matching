@@ -253,41 +253,15 @@ def save_train_dataset(
             evecs_cond_second_tensor = torch.cat((evecs_cond_second_tensor, evecs_cond_second.unsqueeze(0)), dim=0)
         
         
-            # pad the evecs and corr to 7000
-            # evecs_first_corrected = torch.cat((evecs_first_corrected, -1 * torch.ones(7000 - evecs_first_corrected.shape[0], num_evecs)))
-            # corr_first = torch.cat((corr_first, -2 * torch.ones(7000 - corr_first.shape[0]))) + 1
-            
-            # evecs_second_corrected = torch.cat((evecs_second_corrected, -1 * torch.ones(7000 - evecs_second_corrected.shape[0], num_evecs)))
-            # corr_second = torch.cat((corr_second, -2 * torch.ones(7000 - corr_second.shape[0]))) + 1
-
-
-            evecs_first_with_corr = evecs_first_corrected[corr_first]
-            evecs_second_with_corr = evecs_second_corrected[corr_second]
-            
-            evecs_first_with_corr_tensor = torch.cat((evecs_first_with_corr_tensor, evecs_first_with_corr.unsqueeze(0)), dim=0)
-            evecs_second_with_corr_tensor = torch.cat((evecs_second_with_corr_tensor, evecs_second_with_corr.unsqueeze(0)), dim=0)
+            if pair_type == 'pair':
+                evecs_first_with_corr = evecs_first_corrected[corr_first]
+                evecs_second_with_corr = evecs_second_corrected[corr_second]
+                
+                evecs_first_with_corr_tensor = torch.cat((evecs_first_with_corr_tensor, evecs_first_with_corr.unsqueeze(0)), dim=0)
+                evecs_second_with_corr_tensor = torch.cat((evecs_second_with_corr_tensor, evecs_second_with_corr.unsqueeze(0)), dim=0)
         
         
         
-            # evecs_first_corrected_tensor = torch.cat((evecs_first_corrected_tensor, evecs_first_corrected.unsqueeze(0)), dim=0)
-            # corr_first_tensor = torch.cat((corr_first_tensor, corr_first.unsqueeze(0)), dim=0)
-            # evecs_second_corrected_tensor = torch.cat((evecs_second_corrected_tensor, evecs_second_corrected.unsqueeze(0)), dim=0)
-            # corr_second_tensor = torch.cat((corr_second_tensor, corr_second.unsqueeze(0)), dim=0)
-            
-            # print('evecs_first_corrected_tensor', evecs_first_corrected_tensor.shape)
-            # print('evecs_second_corrected_tensor', evecs_second_corrected_tensor.shape)
-            # print('corr_first_tensor', corr_first_tensor.shape)
-            # print('corr_second_tensor', corr_second_tensor.shape)
-            
-            # print('evecs_first_corrected', evecs_first_corrected.shape)
-            # print('evecs_second_corrected', evecs_second_corrected.shape)
-            # print('corr_first', corr_first.shape)
-            # print('corr_second', corr_second.shape)
-            
-            # print('evecs_first_with_corr', evecs_first_with_corr.shape)
-            # print('evecs_second_with_corr', evecs_second_with_corr.shape)
-            # print()
-            
             
         if pair_type == 'pair' or i % 100 == 0 or i == 15:
             time_elapsed = time.time() - curr_time
@@ -311,13 +285,10 @@ def save_train_dataset(
     torch.save(evecs_cond_first_tensor, f'{train_folder}/evecs_cond_first_{start_idx}_{end_idx}.pt')
     torch.save(evecs_cond_second_tensor, f'{train_folder}/evecs_cond_second_{start_idx}_{end_idx}.pt')
     
-    # torch.save(evecs_first_corrected_tensor, f'{train_folder}/evecs_first_corrected_{start_idx}_{end_idx}.pt')
-    # torch.save(evecs_second_corrected_tensor, f'{train_folder}/evecs_second_corrected_{start_idx}_{end_idx}.pt')
-    # torch.save(corr_first_tensor, f'{train_folder}/corr_first_{start_idx}_{end_idx}.pt')
-    # torch.save(corr_second_tensor, f'{train_folder}/corr_second_{start_idx}_{end_idx}.pt')
-    
-    torch.save(evecs_first_with_corr_tensor, f'{train_folder}/evecs_first_with_corr_{start_idx}_{end_idx}.pt')
-    torch.save(evecs_second_with_corr_tensor, f'{train_folder}/evecs_second_with_corr_{start_idx}_{end_idx}.pt')
+
+    if pair_type == 'pair':
+        torch.save(evecs_first_with_corr_tensor, f'{train_folder}/evecs_first_with_corr_{start_idx}_{end_idx}.pt')
+        torch.save(evecs_second_with_corr_tensor, f'{train_folder}/evecs_second_with_corr_{start_idx}_{end_idx}.pt')
     
 
 
