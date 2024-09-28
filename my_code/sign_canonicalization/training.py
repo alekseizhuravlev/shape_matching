@@ -13,7 +13,9 @@ import my_code.datasets.shape_dataset as shape_dataset
 import yaml
 
 
-def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **kwargs):
+def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
+                        input_type, evecs_per_support,
+                        **kwargs):
     
     # check the input
     assert verts.dim() == 3
@@ -44,14 +46,47 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat, input_type, **k
     support_vector_norm = torch.nn.functional.normalize(support_vector_flip, p=2, dim=1)
     
     # copy each element to match the number of evecs
-    if support_vector_norm.shape[-1] != evecs_flip.shape[-1]:
+    if support_vector_norm.shape[-1] == evecs_flip.shape[-1]:
+        support_vector_norm_repeated = support_vector_norm
+    
+    elif isinstance(evecs_per_support, int):
         assert evecs_flip.shape[-1] % support_vector_norm.shape[-1] == 0
         
         repeat_factor = evecs_flip.shape[-1] // support_vector_norm.shape[-1]
         support_vector_norm_repeated = torch.repeat_interleave(
             support_vector_norm, repeat_factor, dim=-1)
+        
+    elif isinstance(evecs_per_support, tuple):
+        
+        assert evecs_flip.shape[-1] % len(evecs_per_support) == 0
+        
+        segment_size = evecs_flip.shape[-1] // len(evecs_per_support)
+        # 64 // 2 = 32
+        
+        support_vector_segments = []
+        for evecs_num in evecs_per_support:
+            assert segment_size % evecs_num == 0
+            support_vector_segments.append(segment_size // evecs_num)
+            # 32 // 1 = 32, 32 // 2 = 16 -> [32, 16]
+            
+        # repeat the support vector x times for each entry in evecs_per_support
+        support_vector_norm_repeated = torch.tensor([], device=support_vector_norm.device)
+        current_idx = 0
+        
+        for i in range(len(evecs_per_support)):
+
+            support_vector_repeated_i = torch.repeat_interleave(
+                support_vector_norm[:, :, current_idx:current_idx+support_vector_segments[i]],
+                evecs_per_support[i], dim=-1)
+            
+            support_vector_norm_repeated = torch.cat([
+                support_vector_norm_repeated,
+                support_vector_repeated_i], dim=-1)
+            
+            current_idx += support_vector_segments[i]
+        
     else:
-        support_vector_norm_repeated = support_vector_norm
+        raise ValueError(f'Unknown evecs_per_support type {evecs_per_support}')
         
     
     # multiply the support vector by the flipped evecs 
@@ -129,8 +164,8 @@ if __name__ == '__main__':
 
     input_channels = 128
     
-    feature_dim = 24
-    evecs_per_support = 1
+    feature_dim = 64
+    evecs_per_support = (2, 4)
     n_block = 6
     
     n_iter = 50000
@@ -139,9 +174,28 @@ if __name__ == '__main__':
     with_mass = True
 
     train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    exp_name = f'signNet_24_remeshed_mass_6b_1ev_10_0.2_0.8'
+    exp_name = f'signNet_64_remeshed_mass_6b_2-4ev_10_0.2_0.8'
+    # exp_name = f'test_different_supports'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
+    
+    
+    ###################################################
+    # count the number of output channels
+    ###################################################
+    
+    out_channels = 0
+    assert feature_dim % len(evecs_per_support) == 0
+    channels_per_entry = feature_dim // len(evecs_per_support)
+    
+    for evecs_num in evecs_per_support:
+        assert channels_per_entry % evecs_num == 0
+        
+        out_channels += channels_per_entry // evecs_num
+        
+    print('out_channels', out_channels)
+      
+    ################################################### 
     
     # shutil.rmtree(experiment_dir, ignore_errors=True)
     os.makedirs(experiment_dir)
@@ -149,11 +203,11 @@ if __name__ == '__main__':
     with open(f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}/config.yaml', 'r') as f:
         dataset_config = yaml.load(f, Loader=yaml.FullLoader)
     
-    config = {
+        config = {
         'train_folder': train_folder,
         'net_params': {
             'in_channels': input_channels,
-            'out_channels': feature_dim // evecs_per_support,
+            'out_channels': out_channels,
             'input_type': input_type,
             'k_eig': 128,
             'n_block': n_block,
@@ -237,6 +291,7 @@ if __name__ == '__main__':
             sign_pred_0 = predict_sign_change(
                 net, verts, faces, evecs_flip_0, 
                 mass_mat=mass_mat, input_type=input_type,
+                evecs_per_support=evecs_per_support,
                 
                 mass=train_shape['mass'], L=train_shape['L'],
                 evals=train_shape['evals'], evecs=train_shape['evecs'],
@@ -260,6 +315,7 @@ if __name__ == '__main__':
             sign_pred_1 = predict_sign_change(
                 net, verts, faces, evecs_flip_1, 
                 mass_mat=mass_mat, input_type=input_type,
+                evecs_per_support=evecs_per_support,
                 
                 mass=train_shape['mass'], L=train_shape['L'],
                 evals=train_shape['evals'], evecs=train_shape['evecs'],

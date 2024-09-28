@@ -81,7 +81,7 @@ def gather_files(data_dir, prefix, remove_after):
 
 if __name__ == '__main__':
     
-    dataset_name = 'SURREAL_64_template_remeshedSmoothed_augShapes'
+    dataset_name = 'SURREAL_64_2-4ev_template_remeshed_augShapes'
     data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
     
     # data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'

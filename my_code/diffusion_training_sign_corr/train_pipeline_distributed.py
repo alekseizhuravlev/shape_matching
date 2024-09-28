@@ -111,6 +111,8 @@ def main():
         
         os.makedirs(experiment_folder, exist_ok=True)
         os.makedirs(f'{experiment_folder}/checkpoints', exist_ok=True)
+        os.makedirs(f'{experiment_folder}/checkpoints_state', exist_ok=True)
+        os.makedirs(f'{experiment_folder}/checkpoints_state_dicts', exist_ok=True)
         
         # sign net config
         with open(f'{config["dataset_base_dir"]}/{config["dataset_name"]}/config.yaml', 'r') as f:
@@ -152,15 +154,32 @@ def main():
     model = DiagConditionedUnet(config["model_params"]).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
     
+    ####################################################
+    # !!!!!! dropping this will cause 
+    # UserWarning: Grad strides do not match bucket view strides. 
+    # grad.sizes() = [128, 256, 1, 1], strides() = [256, 1, 256, 256]
+    # bucket_view.sizes() = [128, 256, 1, 1], strides() = [256, 1, 1, 1]
+    
+    model.to(memory_format=torch.channels_last)
+    
+    ####################################################
+    
     model, opt, dataloader_train = accelerator.prepare(
         model, opt, dataloader_train
     )
+    
     
     noise_scheduler = DDPMScheduler(num_train_timesteps=1000, beta_schedule='squaredcos_cap_v2',
                                 clip_sample=True)
     loss_fn = torch.nn.MSELoss()
     
     accelerator.init_trackers(config["experiment_name"])
+    
+    
+    # print(model.state_dict())
+    
+    # exit(0)
+    
     
     ### Training
     train_iterator = tqdm(range(config["n_epochs"]), disable=not accelerator.is_local_main_process)
@@ -183,8 +202,16 @@ def main():
                     
         # save the model checkpoint
         if epoch > 0 and (epoch % config["checkpoint_every"] == 0 or epoch == config["n_epochs"] - 1):
-                accelerator.wait_for_everyone()
-                accelerator.save_model(model, f'{experiment_folder}/checkpoints/epoch_{epoch}')
+            
+            accelerator.wait_for_everyone()
+            accelerator.save_model(model, f'{experiment_folder}/checkpoints/epoch_{epoch}')
+            
+            accelerator.save_state(f'{experiment_folder}/checkpoints_state/epoch_{epoch}')
+            
+            state_dict = accelerator.get_state_dict(model, unwrap=True)
+            torch.save(state_dict, f'{experiment_folder}/checkpoints_state_dicts/epoch_{epoch}.pt')
+                
+
 
     accelerator.end_training()
         
@@ -192,8 +219,6 @@ if __name__ == '__main__':
     main()        
     
     
-    
 
-    
     
     

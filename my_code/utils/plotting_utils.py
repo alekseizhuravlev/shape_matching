@@ -1,6 +1,6 @@
 import numpy as np
 import trimesh
-
+import torch
 
 def plot_Cxy(figure, axis, Cxy_plt, title, min_dim, max_dim, show_grid, show_colorbar):
     
@@ -21,10 +21,29 @@ def plot_Cxy(figure, axis, Cxy_plt, title, min_dim, max_dim, show_grid, show_col
     axis.set_yticklabels([])
     
     
-def plot_p2p_map(scene, verts_x, faces_x, verts_y, faces_y, p2p):
+def plot_p2p_map(scene, verts_x, faces_x, verts_y, faces_y, p2p, axes_color_gradient=[0, 1],
+                 base_cmap='jet'):
+    
+    # assert axes_color_gradient is a list or tuple
+    assert isinstance(axes_color_gradient, (list, tuple)), "axes_color_gradient must be a list or tuple"
+    
+    # normalize verts_x[:, 0] between 0 and 1
+    # coords_x_norm = (verts_x[:, 0] - verts_x[:, 0].min()) / (verts_x[:, 0].max() - verts_x[:, 0].min())
+    # coords_y_norm = (verts_x[:, 1] - verts_x[:, 1].min()) / (verts_x[:, 1].max() - verts_x[:, 1].min())
+    # coords_z_norm = (verts_x[:, 2] - verts_x[:, 2].min()) / (verts_x[:, 2].max() - verts_x[:, 2].min())
 
+    coords_x_norm = torch.zeros_like(verts_x)
+    for i in range(3):
+        coords_x_norm[:, i] = (verts_x[:, i] - verts_x[:, i].min()) / (verts_x[:, i].max() - verts_x[:, i].min())
+
+    coords_interpolated = torch.zeros(verts_x.shape[0])
+    for i in axes_color_gradient:
+        coords_interpolated += coords_x_norm[:, i]
+        
     # first colormap = interpolated y-axis values
-    cmap = trimesh.visual.color.interpolate(verts_x[:, 1], 'jet')
+    cmap = trimesh.visual.color.interpolate(coords_interpolated, base_cmap)
+    
+    # cmap = trimesh.visual.color.interpolate(verts_x[:, 0] + verts_x[:, 1], 'jet')
     
     # second colormap = first colormap values mapped to second mesh
     cmap2 = cmap[p2p].clip(0, 255)

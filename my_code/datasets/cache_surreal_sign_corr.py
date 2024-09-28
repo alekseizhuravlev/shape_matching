@@ -54,7 +54,7 @@ def visualize_before_after(data, C_xy_corr, C_yx_corr, evecs_cond_first, evecs_c
         plt.close(fig)
         
     
-def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
+def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_per_support):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
@@ -88,6 +88,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
         sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
             net, verts_first, faces_first, evecs_first, 
             mass_mat=mass_mat_first, input_type=net_input_type,
+            evecs_per_support=evecs_per_support,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
             evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -96,6 +97,7 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass):
         sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
             net, verts_second, faces_second, evecs_second, 
             mass_mat=mass_mat_second, input_type=net_input_type,
+            evecs_per_support=evecs_per_support,
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
             evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
@@ -476,5 +478,6 @@ if __name__ == '__main__':
         # sign corr net parameters
         net=net,
         net_input_type=sign_net_config['net_params']['input_type'],
-        with_mass=sign_net_config['with_mass']
+        with_mass=sign_net_config['with_mass'],
+        evecs_per_support=sign_net_config['evecs_per_support']
     )

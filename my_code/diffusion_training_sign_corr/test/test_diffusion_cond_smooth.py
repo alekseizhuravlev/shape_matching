@@ -32,28 +32,28 @@ import accelerate
 
 from utils.shape_util import compute_geodesic_distmat
 from my_code.utils.median_p2p_map import get_median_p2p_map, dirichlet_energy
-
+from my_code.diffusion_training_sign_corr.test.test_diffusion_cond import parse_args, select_p2p_map_dirichlet
 
 
 tqdm._instances.clear()
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Train the model')
+# def parse_args():
+#     parser = argparse.ArgumentParser(description='Train the model')
     
-    parser.add_argument('--experiment_name', type=str)
-    parser.add_argument('--checkpoint_name', type=str)
+#     parser.add_argument('--experiment_name', type=str)
+#     parser.add_argument('--checkpoint_name', type=str)
     
-    parser.add_argument('--dataset_name', type=str)
-    parser.add_argument('--split', type=str)
+#     parser.add_argument('--dataset_name', type=str)
+#     parser.add_argument('--split', type=str)
     
-    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'])
-    parser.add_argument('--smoothing_iter', type=int)
+#     parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'])
+#     parser.add_argument('--smoothing_iter', type=int)
     
-    parser.add_argument('--num_iters_avg', type=int)
+#     parser.add_argument('--num_iters_avg', type=int)
     
-    args = parser.parse_args()
-    return args
+#     args = parser.parse_args()
+#     return args
 
 # python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name=pair_5_xy_distributed --checkpoint_name=epoch_99 --dataset_name=FAUST_r_pair --split=test --smoothing_type=taubin --smoothing_iter=5
 
@@ -61,6 +61,9 @@ def parse_args():
 if __name__ == '__main__':
 
     args = parse_args()
+    
+    assert args.smoothing_type is not None, 'Smoothing type not provided'
+    assert args.smoothing_iter is not None, 'Smoothing iter not provided'
 
     # configuration
     experiment_name = args.experiment_name
@@ -423,27 +426,33 @@ if __name__ == '__main__':
         # median p2p map
         p2p_est_pairzo_sampled = torch.stack(p2p_est_pairzo_sampled)
         
-        # dirichlet energy for each p2p map
-        dirichlet_energy_list = []
-        for n in range(p2p_est_pairzo_sampled.shape[0]):
-            dirichlet_energy_list.append(
-                dirichlet_energy(p2p_est_pairzo_sampled[n], verts_first.cpu(), data['second']['L']).item(),
-                )
-        dirichlet_energy_list = torch.tensor(dirichlet_energy_list)
-
-        # sort by dirichlet energy, get the arguments
-        _, sorted_idx_dirichlet = torch.sort(dirichlet_energy_list)
-        
-        # map with the lowest dirichlet energy
-        p2p_dirichlet = p2p_est_pairzo_sampled[sorted_idx_dirichlet[0]]
-        
-        # median p2p map, using 3 maps with lowest dirichlet energy
-        p2p_median = get_median_p2p_map(
-            p2p_est_pairzo_sampled[
-                sorted_idx_dirichlet[:int(round(args.num_iters_avg / 10))]
-                ],
-            dist_x
+        p2p_dirichlet, p2p_median, dirichlet_energy_list = select_p2p_map_dirichlet(
+            p2p_est_pairzo_sampled, verts_first.cpu(), data['second']['L'], dist_x,
+            num_samples_median=args.num_samples_median
             )
+        
+        # # dirichlet energy for each p2p map
+        # dirichlet_energy_list = []
+        # for n in range(p2p_est_pairzo_sampled.shape[0]):
+        #     dirichlet_energy_list.append(
+        #         dirichlet_energy(p2p_est_pairzo_sampled[n], verts_first.cpu(), data['second']['L']).item(),
+        #         )
+        # dirichlet_energy_list = torch.tensor(dirichlet_energy_list)
+
+        # # sort by dirichlet energy, get the arguments
+        # _, sorted_idx_dirichlet = torch.sort(dirichlet_energy_list)
+        
+        # # map with the lowest dirichlet energy
+        # p2p_dirichlet = p2p_est_pairzo_sampled[sorted_idx_dirichlet[0]]
+        
+        # # median p2p map, using 3 maps with lowest dirichlet energy
+        # p2p_median = get_median_p2p_map(
+        #     p2p_est_pairzo_sampled[
+        #         sorted_idx_dirichlet[:int(round(args.num_iters_avg / 10))]
+        #         ],
+        #     dist_x
+        #     )
+        
         
         geo_err_est_pairzo_median = geodist_metric.calculate_geodesic_error(
             dist_x, data['first']['corr'], data['second']['corr'], p2p_median, return_mean=True

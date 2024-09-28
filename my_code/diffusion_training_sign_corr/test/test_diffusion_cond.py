@@ -36,23 +36,25 @@ tqdm._instances.clear()
 def parse_args():
     parser = argparse.ArgumentParser(description='Test the model')
     
-    parser.add_argument('--experiment_name', type=str)
-    parser.add_argument('--checkpoint_name', type=str)
+    parser.add_argument('--experiment_name', type=str, required=True)
+    parser.add_argument('--checkpoint_name', type=str, required=True)
     
-    parser.add_argument('--dataset_name', type=str)
-    parser.add_argument('--split', type=str)
+    parser.add_argument('--dataset_name', type=str, required=True)
+    parser.add_argument('--split', type=str, required=True)
     
     parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'], required=False)
     parser.add_argument('--smoothing_iter', type=int, required=False)
     
     
-    parser.add_argument('--num_iters_avg', type=int)
+    parser.add_argument('--num_iters_avg', type=int, required=True)
+    parser.add_argument('--num_samples_median', type=int, required=True)
+    parser.add_argument('--confidence_threshold', type=float, required=True)
     
     args = parser.parse_args()
     return args
 
 
-def select_p2p_map_dirichlet(p2p_est_zo_sampled, verts_first, L_second, dist_first):
+def select_p2p_map_dirichlet(p2p_est_zo_sampled, verts_first, L_second, dist_first, num_samples_median):
 
     # dirichlet energy for each p2p map
     dirichlet_energy_list = []
@@ -69,52 +71,47 @@ def select_p2p_map_dirichlet(p2p_est_zo_sampled, verts_first, L_second, dist_fir
     p2p_dirichlet = p2p_est_zo_sampled[sorted_idx_dirichlet[0]]
     
     # median p2p map, using 3 maps with lowest dirichlet energy
-    p2p_median = get_median_p2p_map(
+    p2p_median, confidence_scores = get_median_p2p_map(
         p2p_est_zo_sampled[
-            sorted_idx_dirichlet[:int(round(p2p_est_zo_sampled.shape[0] / 10))]
+            sorted_idx_dirichlet[:num_samples_median]
             ],
         dist_first
         )
     
-    return p2p_dirichlet, p2p_median, dirichlet_energy_list
+    return p2p_dirichlet, p2p_median, confidence_scores, dirichlet_energy_list
 
+
+# def log_to_database(data):
+    
+#     assert len(data) == 1
+#     assert len(data[0]) == 11
+    
+#     # log to database    
+#     con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median_dirichlet.db")
+#     cur = con.cursor()
+    
+#     # if an entry with the same first 5 entries exists, delete it
+    
+#     if cur.execute(f"SELECT * FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'").fetchone():
+#         print('Deleting existing entry')
+#         cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'")
+        
+    
+#     cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
+#     con.commit()
+    
+#     con.close() 
 
 def log_to_database(data):
     
-    # data = [(
-    #     args.experiment_name,
-    #     args.checkpoint_name, 
-    #     'no', 
-    #     args.dataset_name,
-    #     args.split, 
-    #     # dirichlet
-    #     geo_errs_dirichlet.mean().item(),
-    #     # median p2p
-    #     geo_errs_median_p2p.mean().item(),
-    #     # zoomout
-    #     geo_errs_zo.mean().item(), geo_errs_zo_median.mean().item(),
-    #     # pred
-    #     geo_errs.mean().item(), geo_errs_median.mean().item()
-    #     ),]
-    
-    assert len(data) == 1
-    assert len(data[0]) == 11
-    
-    # log to database    
-    con = sqlite3.connect("/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/log_p2p_median_dirichlet.db")
-    cur = con.cursor()
-    
-    # if an entry with the same first 5 entries exists, delete it
-    
-    if cur.execute(f"SELECT * FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'").fetchone():
-        print('Deleting existing entry')
-        cur.execute(f"DELETE FROM ddpm WHERE experiment_name='{data[0][0]}' AND checkpoint_name='{data[0][1]}' AND smoothing='{data[0][2]}' AND dataset_name='{data[0][3]}' AND split='{data[0][4]}'")
-        
-    
-    cur.executemany("INSERT INTO ddpm VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", data)
-    con.commit()
-    
-    con.close() 
+    base_folder = '/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm_results'
+    os.makedirs(base_folder, exist_ok=True)
+
+    log_name = f"{data['experiment_name']}_{data['checkpoint_name']}_{data['smoothing']}_{data['dataset_name']}_{data['split']}.yaml"
+
+    # save to yaml
+    with open(f'{base_folder}/{log_name}', 'w') as f:
+        yaml.dump(data, f, sort_keys=False)
     
     
 
@@ -350,7 +347,8 @@ def run():
         # x_sampled = torch.rand(1, 1, model.model.sample_size, model.model.sample_size).to(device)
         # y = conditioning.unsqueeze(0).to(device) 
         
-        x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
+        # x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
+        x_sampled = torch.rand(args.num_iters_avg, 1, model.sample_size, model.sample_size).to(device)
         
         # repeat conditioning for each sample, [num_iters_avg, n_channels, model.sample_size, model.sample_size]
         y = conditioning.unsqueeze(0).repeat(args.num_iters_avg, 1, 1, 1).to(device)
@@ -463,7 +461,8 @@ def run():
         ##########################################################
         
         p2p_dirichlet, p2p_median, dirichlet_energy_list = select_p2p_map_dirichlet(
-            p2p_est_zo_sampled, verts_first[0].cpu(), data['second']['L'], dist_x
+            p2p_est_zo_sampled, verts_first[0].cpu(), data['second']['L'], dist_x,
+            num_samples_median=args.num_samples_median
             )
         
         

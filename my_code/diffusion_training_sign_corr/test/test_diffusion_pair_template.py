@@ -37,8 +37,9 @@ def get_geo_error(
     evecs_first, evecs_second,
     corr_first, corr_second,
     num_evecs, apply_zoomout,
-    dist_x
+    dist_x,
     ):
+        
     Cxy = torch.linalg.lstsq(
         evecs_second[:, :num_evecs][p2p_second],
         evecs_first[:, :num_evecs][p2p_first]
@@ -64,6 +65,33 @@ def get_geo_error(
     )
     
     return geo_err * 100
+
+
+def filter_p2p_by_confidence(
+    p2p_first, p2p_second,
+    confidence_scores_first, confidence_scores_second,
+    confidence_threshold, log_file_name
+    ):
+    
+    assert p2p_first.shape[0] == p2p_second.shape[0]
+    
+    # select points with both confidence scores above threshold
+    valid_points = (confidence_scores_first < confidence_threshold) & (confidence_scores_second < confidence_threshold)
+    
+    with open(log_file_name, 'a') as f:
+        
+        while valid_points.sum() < 0.05 * len(valid_points):
+            confidence_threshold += 0.05
+            valid_points = (confidence_scores_first < confidence_threshold) & (confidence_scores_second < confidence_threshold)
+            
+            f.write(f'Increasing confidence threshold: {confidence_threshold}\n')
+        f.write(f'Valid points: {valid_points.sum()}\n')
+        assert valid_points.sum() > 0, "No valid points found"
+        
+    p2p_first = p2p_first[valid_points]
+    p2p_second = p2p_second[valid_points]
+    
+    return p2p_first, p2p_second
 
 
 def run():
@@ -205,6 +233,8 @@ def run():
             sign_pred_first, support_vector_norm_first, _ = predict_sign_change(
                 sign_corr_net, verts_first, faces_first, evecs_first, 
                 mass_mat=mass_mat_first, input_type=sign_corr_net.input_type,
+                evecs_per_support=config["sign_net"]["evecs_per_support"],
+                
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=template_shape['mass'].unsqueeze(0), L=template_shape['L'].unsqueeze(0),
                 evals=template_shape['evals'][:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
@@ -214,6 +244,8 @@ def run():
             sign_pred_second, support_vector_norm_second, _ = predict_sign_change(
                 sign_corr_net, verts_second, faces_second, evecs_second, 
                 mass_mat=mass_mat_second, input_type=sign_corr_net.input_type,
+                evecs_per_support=config["sign_net"]["evecs_per_support"],
+                
                 # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
                 mass=data['mass'].unsqueeze(0), L=data['L'].unsqueeze(0),
                 evals=data['evals'][:config["sign_net"]["net_params"]["k_eig"]].unsqueeze(0),
@@ -290,7 +322,8 @@ def run():
         # Sample the model
         ###############################################
         
-        x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
+        # x_sampled = torch.rand(args.num_iters_avg, 1, model.model.sample_size, model.model.sample_size).to(device)
+        x_sampled = torch.rand(args.num_iters_avg, 1, model.sample_size, model.sample_size).to(device)
         y = conditioning.unsqueeze(0).repeat(args.num_iters_avg, 1, 1, 1).to(device)    
         
         # print(x_sampled.shape, y.shape)
@@ -369,17 +402,28 @@ def run():
                 faces_second[0].cpu().numpy())    
         )
         
-        p2p_dirichlet, p2p_median, dirichlet_energy_list = select_p2p_map_dirichlet(
+        p2p_dirichlet, p2p_median, confidence_scores, dirichlet_energy_list = select_p2p_map_dirichlet(
             single_dataset.additional_data[i]['p2p_est'],
             verts_second[0].cpu(),
             template_shape['L'], 
-            dist_second
+            dist_second,
+            num_samples_median=args.num_samples_median
             )
         
         single_dataset.additional_data[i]['p2p_dirichlet'] = p2p_dirichlet
         single_dataset.additional_data[i]['p2p_median'] = p2p_median
+        single_dataset.additional_data[i]['confidence_scores_median'] = confidence_scores
         
         single_dataset.additional_data[i]['geo_dist'] = dist_second
+        
+        
+        with open(log_file_name, 'a') as f:
+            f.write(f'Template stage, {i}\n')
+            f.write(f'Dirichlet energy: {dirichlet_energy_list}\n')
+            f.write(f'Confidence scores: {confidence_scores}\n')
+            f.write(f'Mean confidence score: {confidence_scores.mean():.3f}\n')
+            f.write(f'Median confidence score: {confidence_scores.median():.3f}\n')
+            f.write('\n')
 
     
     
@@ -394,12 +438,14 @@ def run():
     geo_errs_pairzo = []
     geo_errs_dirichlet = []
     geo_errs_median = []
+    geo_errs_median_filtered = []
     
         
     data_range_pair = tqdm(range(len(test_dataset)), desc='Calculating pair fmaps')
 
     # data_range_pair = tqdm(range(2))
     # print('!!! WARNING: only 2 samples are processed !!!')
+
 
     for i in data_range_pair:
         
@@ -485,7 +531,7 @@ def run():
             num_evecs, True,
             dist_x
             )
-        
+         
         # median geo error
         geo_err_est_median = get_geo_error(
             p2p_median_first, p2p_median_second,
@@ -494,16 +540,33 @@ def run():
             num_evecs, True,
             dist_x
             )
+        
+        # median geo error with confidence filtering
+        p2p_median_first_filtered, p2p_median_second_filtered = filter_p2p_by_confidence(
+            p2p_median_first, p2p_median_second,
+            data['first']['confidence_scores_median'], data['second']['confidence_scores_median'],
+            args.confidence_threshold, log_file_name
+            )
+        geo_err_est_median_filtered = get_geo_error(
+            p2p_median_first_filtered, p2p_median_second_filtered,
+            evecs_first_zo, evecs_second_zo,
+            corr_first, corr_second,
+            num_evecs, True,
+            dist_x
+            )
+        
+       
 
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
-            f.write(f'{i}\n')
+            f.write(f'{i}: {data["first"]["id"]}, {data["second"]["id"]}\n')
             f.write(f'Geo error GT: {geo_err_gt:.2f}\n')
             f.write(f'Geo error GT corr: {geo_err_corr_gt:.2f}\n')
             f.write(f'Geo error est pairzo: {geo_err_est_pairzo}\n')
             f.write(f'Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
             f.write(f'Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
             f.write(f'Geo error est median: {geo_err_est_median:.2f}\n')
+            f.write(f'Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
             f.write('-----------------------------------\n')
         
         geo_errs_gt.append(geo_err_gt)
@@ -511,6 +574,7 @@ def run():
         geo_errs_pairzo.append(geo_err_est_pairzo.mean())
         geo_errs_dirichlet.append(geo_err_est_dirichlet)
         geo_errs_median.append(geo_err_est_median)
+        geo_errs_median_filtered.append(geo_err_est_median_filtered)
 
 
     geo_errs_gt = torch.tensor(geo_errs_gt)
@@ -518,6 +582,7 @@ def run():
     geo_errs_pairzo = torch.tensor(geo_errs_pairzo)
     geo_errs_dirichlet = torch.tensor(geo_errs_dirichlet)
     geo_errs_median = torch.tensor(geo_errs_median)
+    geo_errs_median_filtered = torch.tensor(geo_errs_median_filtered)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -541,23 +606,44 @@ def run():
         f.write(f'Median geo err median: {geo_errs_median.median():.2f}\n')
         f.write(f'Median geo err min: {geo_errs_median.min():.2f}\n')
         f.write(f'Median geo err max: {geo_errs_median.max():.2f}\n')
+        f.write('\n')
+        f.write(f'Median geo err filtered mean: {geo_errs_median_filtered.mean():.2f}\n')
+        f.write(f'Median geo err filtered median: {geo_errs_median_filtered.median():.2f}\n')
+        f.write(f'Median geo err filtered min: {geo_errs_median_filtered.min():.2f}\n')
+        f.write(f'Median geo err filtered max: {geo_errs_median_filtered.max():.2f}\n')
         f.write('-----------------------------------\n')
         
-    data = [(
-        args.experiment_name,
-        args.checkpoint_name, 
-        'no', 
-        args.dataset_name,
-        args.split, 
-        # dirichlet
-        geo_errs_dirichlet.mean().item(),
-        # median p2p
-        geo_errs_median.mean().item(),
-        # zoomout
-        geo_errs_pairzo.mean().item(), geo_errs_pairzo.median().item(),
-        # pred
-        0, 0
-        ),]
+    # data = [(
+    #     args.experiment_name,
+    #     args.checkpoint_name, 
+    #     'no', 
+    #     args.dataset_name,
+    #     args.split, 
+    #     # dirichlet
+    #     geo_errs_dirichlet.mean().item(),
+    #     # median p2p
+    #     geo_errs_median.mean().item(),
+    #     # zoomout
+    #     geo_errs_pairzo.mean().item(), geo_errs_pairzo.median().item(),
+    #     # pred
+    #     0, 0
+    #     ),]
+    
+    data = {
+        'experiment_name': args.experiment_name,
+        'checkpoint_name': args.checkpoint_name, 
+        'smoothing': 'no', 
+        'dataset_name': args.dataset_name,
+        'split': args.split,
+        
+        'confidence_filtered': geo_errs_median_filtered.mean().item(),
+        
+        'dirichlet': geo_errs_dirichlet.mean().item(),
+        'p2p_median': geo_errs_median.mean().item(),
+        
+        'zoomout_mean': geo_errs_pairzo.mean().item(),
+        'zoomout_median': geo_errs_pairzo.median().item(),
+        }
     
     log_to_database(data)
         
