@@ -33,7 +33,7 @@ import networks.fmap_network as fmap_network
 
 tqdm._instances.clear()
 
-class RegularizedFMNet(nn.Module):
+class RegularizedFMNet(torch.nn.Module):
     """Compute the functional map matrix representation in DPFM"""
     def __init__(self, lmbda=0.01, resolvant_gamma=0.5, bidirectional=False):
         super(RegularizedFMNet, self).__init__()
@@ -319,6 +319,32 @@ def get_fmaps_evec_signs(
     return C_yx_est_full_list, evecs_first_signs_full_list, evecs_second_signs_full_list
 
 
+def get_evec_signs_from_remeshed(
+            data_range, single_dataset, single_dataset_remeshed,
+            evecs_second_signs_full_list_remeshed,
+            num_evecs
+        ):
+    
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    
+    for i in tqdm(data_range, desc='Getting evec signs from remeshed'):
+        
+        data_orig = single_dataset[i]
+        evecs_second_orig = data_orig['evecs'][:, :num_evecs].to(device)
+        
+        data_remeshed = single_dataset_remeshed[i]
+        evecs_second_remeshed = data_remeshed['evecs'][:, :num_evecs].to(device)
+        corr_orig_to_remeshed = data_remeshed['corr_orig_to_remeshed'].to(device)
+        
+        
+        prod_evecs_orig_remesh_corrected = evecs_second_orig.transpose(0, 1) @ evecs_second_remeshed[corr_orig_to_remeshed]
+
+        sign_difference = torch.sign(torch.diagonal(prod_evecs_orig_remesh_corrected, dim1=0, dim2=1)).cpu()
+        evecs_second_signs_full_list_remeshed[i] = evecs_second_signs_full_list_remeshed[i] * sign_difference
+        
+    return evecs_second_signs_full_list_remeshed
+            
+
 def get_p2p_maps_template(
         data_range, single_dataset,
         C_yx_est_full_list, evecs_first_signs_full_list, evecs_second_signs_full_list,
@@ -413,6 +439,8 @@ def get_pairwise_error(
     geo_errs_median = []
     geo_errs_median_filtered = []
     geo_errs_median_filtered_noZo = []
+    geo_errs_dirichlet_pairzo = []
+    geo_errs_median_pairzo = []
     
 
     for i in tqdm(data_range_pair, desc='Calculating pair fmaps'):
@@ -425,8 +453,8 @@ def get_pairwise_error(
         evecs_trans_first = data['first']['evecs_trans'][:, :].to(device)
         evecs_trans_second = data['second']['evecs_trans'][:, :].to(device)
         
-        evals_first = data['first']['evals'][:num_evecs]
-        evals_second = data['second']['evals'][:num_evecs]
+        evals_first = data['first']['evals'][:num_evecs].to(device)
+        evals_second = data['second']['evals'][:num_evecs].to(device)
 
         corr_first = data['first']['corr'].to(device)
         corr_second = data['second']['corr'].to(device)
@@ -466,16 +494,21 @@ def get_pairwise_error(
         
         # mean pred geo error with zoomout
         geo_err_est_pairzo = []
+        p2p_est_pairzo = []
         for k in range(args.num_iters_avg):
-            geo_err_est_pairzo.append(
-                get_geo_error(
+            geo_err_k, p2p_k = get_geo_error(
                 p2p_est_first[k], p2p_est_second[k],
                 evecs_first, evecs_second,
                 corr_first, corr_second,
                 num_evecs, True,
                 dist_x, A2=mass_second,
-                ))
+                return_p2p=True
+                )
+            geo_err_est_pairzo.append(geo_err_k)
+            p2p_est_pairzo.append(p2p_k)
+            
         geo_err_est_pairzo = torch.tensor(geo_err_est_pairzo)
+        p2p_est_pairzo = torch.stack(p2p_est_pairzo)
         
         # dirichlet geo error
         geo_err_est_dirichlet = get_geo_error(
@@ -528,7 +561,29 @@ def get_pairwise_error(
             fmnet=fmnet
             )
         
-       
+        ###############################################
+        # Dirichlet and median maps at the pairwise stage
+        ###############################################
+
+        p2p_dirichlet_pairzo, p2p_median_pairzo, confidence_scores, dirichlet_energy_list = select_p2p_map_dirichlet(
+            p2p_est_pairzo,
+            data['first']['verts'],
+            data['second']['L'], 
+            dist_x,
+            num_samples_median=args.num_samples_median
+            )
+        
+        geo_err_dirichlet_pairzo = geodist_metric.calculate_geodesic_error(
+            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_dirichlet_pairzo, return_mean=True
+        ) * 100
+        geo_err_median_pairzo = geodist_metric.calculate_geodesic_error(
+            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_median_pairzo, return_mean=True
+        ) * 100
+        
+        
+        ###############################################
+        # Logging
+        ###############################################
 
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
@@ -540,6 +595,8 @@ def get_pairwise_error(
             f.write(f'Geo error est median: {geo_err_est_median:.2f}\n')
             f.write(f'Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
             f.write(f'Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
+            f.write(f'Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
+            f.write(f'Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
             f.write('-----------------------------------\n')
         
         geo_errs_gt.append(geo_err_gt)
@@ -548,6 +605,8 @@ def get_pairwise_error(
         geo_errs_median.append(geo_err_est_median)
         geo_errs_median_filtered.append(geo_err_est_median_filtered)
         geo_errs_median_filtered_noZo.append(geo_err_est_median_filtered_noZo)
+        geo_errs_dirichlet_pairzo.append(geo_err_dirichlet_pairzo)
+        geo_errs_median_pairzo.append(geo_err_median_pairzo)
 
 
     geo_errs_gt = torch.tensor(geo_errs_gt)
@@ -556,6 +615,8 @@ def get_pairwise_error(
     geo_errs_median = torch.tensor(geo_errs_median)
     geo_errs_median_filtered = torch.tensor(geo_errs_median_filtered)
     geo_errs_median_filtered_noZo = torch.tensor(geo_errs_median_filtered_noZo)
+    geo_errs_dirichlet_pairzo = torch.tensor(geo_errs_dirichlet_pairzo)
+    geo_errs_median_pairzo = torch.tensor(geo_errs_median_pairzo)
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -586,6 +647,12 @@ def get_pairwise_error(
         f.write('\n')
         f.write(f'Median geo err filtered noZo mean: {geo_errs_median_filtered_noZo.mean():.2f}\n')
         f.write(f'Median geo err filtered noZo median: {geo_errs_median_filtered_noZo.median():.2f}\n')
+        f.write('\n')
+        f.write(f'Dirichlet pairzoomout geo err mean: {geo_errs_dirichlet_pairzo.mean():.2f}\n')
+        f.write(f'Dirichlet pairzoomout geo err median: {geo_errs_dirichlet_pairzo.median():.2f}\n')
+        f.write('\n')
+        f.write(f'Median pairzoomout geo err mean: {geo_errs_median_pairzo.mean():.2f}\n')
+        f.write(f'Median pairzoomout geo err median: {geo_errs_median_pairzo.median():.2f}\n')
         f.write('-----------------------------------\n')
 
     data_to_log = {
@@ -602,6 +669,10 @@ def get_pairwise_error(
         
         'zoomout_mean': geo_errs_pairzo.mean().item(),
         'zoomout_median': geo_errs_pairzo.median().item(),
+        
+        'filtered_noZo': geo_errs_median_filtered_noZo.mean().item(),
+        'dirichlet_pairzo': geo_errs_dirichlet_pairzo.mean().item(),
+        'median_pairzo': geo_errs_median_pairzo.mean().item(),
         }
     
     return data_to_log
@@ -679,7 +750,7 @@ def run():
     ##########################################
 
     if args.smoothing_type is not None:
-        test_name = f'{args.smoothing_type}_{args.smoothing_iter}'
+        test_name = f'{args.smoothing_type}-{args.smoothing_iter}'
     else:
         test_name = 'no_smoothing'
     
@@ -693,10 +764,19 @@ def run():
     
     
     ##########################################
-    # 0: Optionally smooth the dataset
+    # 1.1: Template stage, get the functional maps and signs of evecs
     ##########################################
+    
+    data_range_1 = range(len(single_dataset))
+
+    # data_range_1 = range(2)
+    # print('!!! WARNING: only 2 samples are processed !!!')
+    
+
 
     if args.smoothing_type is not None:
+        
+        # Optionally smooth the dataset
         single_dataset_remeshed = test_sign_correction.remesh_dataset(
             dataset=single_dataset, 
             name=dataset_name,
@@ -705,23 +785,23 @@ def run():
             smoothing_iter=args.smoothing_iter,
             num_evecs=200,
         )
-    else:
-        single_dataset_remeshed = single_dataset
-
-    ##########################################
-    # 1.1: Template stage, get the functional maps and signs of evecs
-    ##########################################
-
-    data_range_1 = range(len(single_dataset))
-
-    # data_range = range(2)
-    # print('!!! WARNING: only 2 samples are processed !!!')
-    
-    C_yx_est_full_list, evecs_first_signs_full_list, evecs_second_signs_full_list = get_fmaps_evec_signs(
-        data_range_1, single_dataset_remeshed, model,
-        noise_scheduler, config, args,
-        template_shape, sign_corr_net
+        C_yx_est_full_list, evecs_first_signs_full_list, evecs_second_signs_full_list_remeshed = get_fmaps_evec_signs(
+            data_range_1, single_dataset_remeshed, model,
+            noise_scheduler, config, args,
+            template_shape, sign_corr_net
         )  
+        evecs_second_signs_full_list = get_evec_signs_from_remeshed(
+            data_range_1, single_dataset, single_dataset_remeshed,
+            evecs_second_signs_full_list_remeshed,
+            num_evecs
+        )
+        
+    else:
+        C_yx_est_full_list, evecs_first_signs_full_list, evecs_second_signs_full_list = get_fmaps_evec_signs(
+            data_range_1, single_dataset, model,
+            noise_scheduler, config, args,
+            template_shape, sign_corr_net
+        )
         
     ##########################################
     # 1.2: Template stage, get p2p maps for the original dataset
@@ -748,7 +828,7 @@ def run():
         data_range_2, test_dataset, num_evecs, args, log_file_name, fmnet
     )
      
-    log_to_database(data_to_save)
+    log_to_database(data_to_save, args.log_subdir)
         
         
 if __name__ == '__main__':

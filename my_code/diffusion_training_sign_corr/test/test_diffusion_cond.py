@@ -50,6 +50,8 @@ def parse_args():
     parser.add_argument('--num_samples_median', type=int, required=True)
     parser.add_argument('--confidence_threshold', type=float, required=True)
     
+    parser.add_argument('--log_subdir', type=str, required=True)
+    
     args = parser.parse_args()
     return args
 
@@ -102,9 +104,9 @@ def select_p2p_map_dirichlet(p2p_est_zo_sampled, verts_first, L_second, dist_fir
     
 #     con.close() 
 
-def log_to_database(data):
+def log_to_database(data, log_subdir):
     
-    base_folder = '/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm_results'
+    base_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm_results/{log_subdir}'
     os.makedirs(base_folder, exist_ok=True)
 
     log_name = f"{data['experiment_name']}_{data['checkpoint_name']}_{data['smoothing']}_{data['dataset_name']}_{data['split']}.yaml"

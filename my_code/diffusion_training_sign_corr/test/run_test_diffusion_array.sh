@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -n 1
-#SBATCH -t 14:00:00
+#SBATCH -t 24:00:00
 #SBATCH --array=0-5
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_medium
@@ -19,14 +19,20 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='single_64_2-4ev_64-128-128_remeshed'
-num_iters_avg=32
-num_samples_median=8
-confidence_threshold=0.1
+# experiment_name='single_64_2-4ev_64-128-128_remeshed_fixed'
+# experiment_name is the first command line argument
+
+experiment_name=$1
+
+num_iters_avg=64
+num_samples_median=10
+confidence_threshold=0.2
+log_subdir='logs_robustMedian'
 
 
 # checkpoint_name='checkpoint_95.pt'
-checkpoint_name='epoch_99'
+# checkpoint_name='epoch_99'
+checkpoint_name=$2
 
 # put all dataset names and splits in a list
 job_list=(
@@ -66,10 +72,10 @@ echo "Running job $worker_id: dataset_name=$dataset_name, split=$split"
 # with template
 
 # no smoothing
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir
 
 # taubin 5
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir
 
 # laplacian 3
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_smooth.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type laplacian --smoothing_iter 3
@@ -81,7 +87,7 @@ srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_co
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg
 
 # write the line above ,with values instead of variables
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template.py --experiment_name single_48_remeshed_noAcc_yx_64_128_128 --checkpoint_name checkpoint_90.pt --dataset_name SHREC19_r_pair --split test --num_iters_avg 32 --num_samples_median 4
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_48_remeshed_noAcc_yx_64_128_128 --checkpoint_name checkpoint_90.pt --dataset_name FAUST_a_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2
 
 # python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name pair_5_xy_distributed --checkpoint_name epoch_99 --dataset_name SHREC19_r_pair --split test --num_iters_avg 16 --smoothing_type taubin --smoothing_iter 5
 
