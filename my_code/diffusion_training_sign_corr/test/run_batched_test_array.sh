@@ -1,5 +1,5 @@
 experiment_names=(
-    # 'single_24_remeshed_noAcc_yx'
+    'single_24_remeshed_noAcc_yx'
     'single_template_remeshed'
     'single_48_remeshed_noAcc_yx_64_128_128'
     'single_64_1-2ev_64-128-128_remeshed_fixed'
@@ -8,7 +8,7 @@ experiment_names=(
     'single_64_2-4ev_64-128-128_remeshed_fixed'
 )
 checkpoint_names=(
-    # 'checkpoint_99.pt'
+    'checkpoint_99.pt'
     'checkpoint_99.pt'
     'checkpoint_95.pt'
     'epoch_99'

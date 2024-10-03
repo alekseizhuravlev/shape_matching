@@ -30,6 +30,7 @@ from my_code.diffusion_training_sign_corr.test.test_diffusion_cond import select
 import accelerate
 import my_code.sign_canonicalization.test_sign_correction as test_sign_correction
 import networks.fmap_network as fmap_network
+from my_code.utils.median_p2p_map import dirichlet_energy
 
 tqdm._instances.clear()
 
@@ -327,7 +328,7 @@ def get_evec_signs_from_remeshed(
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
-    for i in tqdm(data_range, desc='Getting evec signs from remeshed'):
+    for curr_iter, i in enumerate(tqdm(data_range, desc='Getting evec signs from remeshed')):
         
         data_orig = single_dataset[i]
         evecs_second_orig = data_orig['evecs'][:, :num_evecs].to(device)
@@ -340,7 +341,7 @@ def get_evec_signs_from_remeshed(
         prod_evecs_orig_remesh_corrected = evecs_second_orig.transpose(0, 1) @ evecs_second_remeshed[corr_orig_to_remeshed]
 
         sign_difference = torch.sign(torch.diagonal(prod_evecs_orig_remesh_corrected, dim1=0, dim2=1)).cpu()
-        evecs_second_signs_full_list_remeshed[i] = evecs_second_signs_full_list_remeshed[i] * sign_difference
+        evecs_second_signs_full_list_remeshed[curr_iter] = evecs_second_signs_full_list_remeshed[curr_iter] * sign_difference
         
     return evecs_second_signs_full_list_remeshed
             
@@ -353,20 +354,32 @@ def get_p2p_maps_template(
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     num_evecs = config["model_params"]["sample_size"]
+    
+    f = open(log_file_name, 'a', buffering=1)
+    
 
-    for i in tqdm(data_range, desc='Calculating p2p maps to template'):
+    for curr_iter, i in enumerate(tqdm(data_range, desc='Calculating p2p maps to template')):
         
         data = single_dataset[i]
         
         verts_second = data['verts']
         faces_second = data['faces']
         
-        evecs_first = template_shape['evecs'][:, :num_evecs]
-        evecs_second = data['evecs'][:, :num_evecs]
+        # evecs_first = template_shape['evecs'][:, :num_evecs]
+        # evecs_second = data['evecs'][:, :num_evecs]
         
-        C_yx_est_i = C_yx_est_full_list[i]
-        evecs_first_signs_i = evecs_first_signs_full_list[i]
-        evecs_second_signs_i = evecs_second_signs_full_list[i]
+        evecs_first = template_shape['evecs']
+        evecs_second = data['evecs']
+        
+        C_yx_est_i = C_yx_est_full_list[curr_iter]
+        evecs_first_signs_i = evecs_first_signs_full_list[curr_iter]
+        evecs_second_signs_i = evecs_second_signs_full_list[curr_iter]
+        
+        dist_second = torch.tensor(
+            compute_geodesic_distmat(
+                verts_second.numpy(),
+                faces_second.numpy())    
+        )
         
         
         ##########################################################
@@ -375,31 +388,100 @@ def get_p2p_maps_template(
         
         single_dataset.additional_data[i]['p2p_est'] = []
         
-        for k in range(args.num_iters_avg):
+        # version without zoomout and dirichlet energy condition
+        
+        # for k in range(args.num_iters_avg):
     
-            evecs_first_corrected = evecs_first * evecs_first_signs_i[k]
-            evecs_second_corrected = evecs_second * evecs_second_signs_i[k]
-            Cyx_est_k = C_yx_est_i[k][0].cpu()
+        #     evecs_first_corrected = evecs_first * evecs_first_signs_i[k]
+        #     evecs_second_corrected = evecs_second * evecs_second_signs_i[k]
+        #     Cyx_est_k = C_yx_est_i[k][0].cpu()
 
-            p2p_est_k = fmap_util.fmap2pointmap(
-                C12=Cyx_est_k.to(device),
-                evecs_x=evecs_second_corrected.to(device),
-                evecs_y=evecs_first_corrected.to(device),
-                ).cpu()
+        #     p2p_est_k = fmap_util.fmap2pointmap(
+        #         C12=Cyx_est_k.to(device),
+        #         evecs_x=evecs_second_corrected.to(device),
+        #         evecs_y=evecs_first_corrected.to(device),
+        #         ).cpu()
 
+        #     single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
+        
+        
+        for k in range(args.num_iters_avg):
+            
+            fmap_dimension_k = num_evecs
+            
+            #######################################################
+            # Reduce the dimension of the fmaps if they 
+            # don't satisfy the dirichlet energy condition
+            #######################################################
+            
+            energy_condition = False
+            while not energy_condition:
+
+                evecs_first_corrected = evecs_first[:,:fmap_dimension_k] * evecs_first_signs_i[k][:,:fmap_dimension_k]
+                evecs_second_corrected = evecs_second[:,:fmap_dimension_k] * evecs_second_signs_i[k][:,:fmap_dimension_k]
+                Cyx_est_k = C_yx_est_i[k][0][:fmap_dimension_k,:fmap_dimension_k].cpu()
+
+                p2p_est_k = fmap_util.fmap2pointmap(
+                    C12=Cyx_est_k.to(device),
+                    evecs_x=evecs_second_corrected.to(device),
+                    evecs_y=evecs_first_corrected.to(device),
+                    ).cpu()
+
+                dirichlet_energy_k = dirichlet_energy(p2p_est_k, verts_second, template_shape['L'])
+            
+                energy_condition = args.dirichlet_energy_threshold_template is None or args.dirichlet_energy_threshold_template <= 0 or dirichlet_energy_k < args.dirichlet_energy_threshold_template or fmap_dimension_k <= 8
+                
+                if not energy_condition:
+                    fmap_dimension_k -= 2
+                    f.write(f'Dirichlet energy: {dirichlet_energy_k}, Decreasing fmap dimension to: {fmap_dimension_k}\n')
+
+            f.write(f'Condition satisfied, Dirichlet energy: {dirichlet_energy_k}, Fmap dimension: {fmap_dimension_k}\n')
+            
+            
+            #######################################################
+            # Zoomout refinement of p2p maps to template
+            #######################################################
+            
+            zo_num_evecs = args.zoomout_num_evecs_template
+            if zo_num_evecs is not None and zo_num_evecs > 0 and fmap_dimension_k < zo_num_evecs:
+                
+                evecs_first_zo = torch.cat(
+                    [evecs_first_corrected, evecs_first[:, fmap_dimension_k:zo_num_evecs]],
+                    dim=1
+                ).to(device)
+                
+                evecs_second_zo = torch.cat(
+                    [evecs_second_corrected, evecs_second[:, fmap_dimension_k:zo_num_evecs]],
+                    dim=1                    
+                ).to(device)
+                
+                
+                Cyx_zo_k = zoomout_custom.zoomout(
+                    FM_12=Cyx_est_k.to(device), 
+                    evects1=evecs_second_zo,
+                    evects2=evecs_first_zo,
+                    nit=zo_num_evecs-fmap_dimension_k, step=1,
+                    A2=template_shape['mass'].to(device),
+                )
+                p2p_zo_k = fmap_util.fmap2pointmap(
+                    C12=Cyx_zo_k,
+                    evecs_x=evecs_second_zo,
+                    evecs_y=evecs_first_zo,
+                    ).cpu()
+                
+                dirichlet_energy_zo = dirichlet_energy(p2p_zo_k, verts_second, template_shape['L'])
+                f.write(f'Zoomout energy: {dirichlet_energy_zo}\n')
+                
+                p2p_est_k = p2p_zo_k
+                
             single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
+                        
     
         single_dataset.additional_data[i]['p2p_est'] = torch.stack(single_dataset.additional_data[i]['p2p_est'])
             
         ##########################################################
         # p2p map selection
         ##########################################################
-        
-        dist_second = torch.tensor(
-            compute_geodesic_distmat(
-                verts_second.numpy(),
-                faces_second.numpy())    
-        )
         
         p2p_dirichlet, p2p_median, confidence_scores, dirichlet_energy_list = select_p2p_map_dirichlet(
             single_dataset.additional_data[i]['p2p_est'],
@@ -414,16 +496,16 @@ def get_p2p_maps_template(
         single_dataset.additional_data[i]['confidence_scores_median'] = confidence_scores
         
         single_dataset.additional_data[i]['geo_dist'] = dist_second
+                
+        f.write(f'Template stage, {i}\n')
+        f.write(f'Dirichlet energy: {dirichlet_energy_list}\n')
+        f.write(f'Confidence scores: {confidence_scores}\n')
+        f.write(f'Mean confidence score: {confidence_scores.mean():.3f}\n')
+        f.write(f'Median confidence score: {confidence_scores.median():.3f}\n')
+        f.write('\n')
         
+    f.close()
         
-        with open(log_file_name, 'a') as f:
-            f.write(f'Template stage, {i}\n')
-            f.write(f'Dirichlet energy: {dirichlet_energy_list}\n')
-            f.write(f'Confidence scores: {confidence_scores}\n')
-            f.write(f'Mean confidence score: {confidence_scores.mean():.3f}\n')
-            f.write(f'Median confidence score: {confidence_scores.median():.3f}\n')
-            f.write('\n')
-            
     return single_dataset
 
 
@@ -656,11 +738,13 @@ def get_pairwise_error(
         f.write('-----------------------------------\n')
 
     data_to_log = {
-        'experiment_name': args.experiment_name,
-        'checkpoint_name': args.checkpoint_name, 
-        'smoothing': 'no', 
-        'dataset_name': args.dataset_name,
-        'split': args.split,
+        # 'experiment_name': args.experiment_name,
+        # 'checkpoint_name': args.checkpoint_name, 
+        # 'smoothing': f'{args.smoothing_type}-{args.smoothing_iter}' if args.smoothing_type is not None else 'no_smoothing',
+        # 'dataset_name': args.dataset_name,
+        # 'split': args.split,
+        
+        **vars(args),
         
         'confidence_filtered': geo_errs_median_filtered.mean().item(),
         
@@ -770,6 +854,8 @@ def run():
     data_range_1 = range(len(single_dataset))
 
     # data_range_1 = range(2)
+    
+    # data_range_1 = [0, 61]
     # print('!!! WARNING: only 2 samples are processed !!!')
     
 
@@ -820,6 +906,7 @@ def run():
     data_range_2 = range(len(test_dataset))
     
     # data_range_2 = range(2)
+    # data_range_2 = [960]
     # print('!!! WARNING: only 2 samples are processed !!!')
         
     test_dataset.dataset = single_dataset

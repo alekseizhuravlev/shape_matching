@@ -600,6 +600,10 @@ class PairDT4DDataset(PairShapeDataset):
         item = dict()
         item['first'] = self.dataset[first_index]
         item['second'] = self.dataset[second_index]
+        
+        item['first']['id'] = torch.tensor(first_index)
+        item['second']['id'] = torch.tensor(second_index)    
+        
         if self.dataset.return_corr and self.inter_class:
             # read inter-class correspondence
             first_cat = self.dataset.off_files[first_index].split('/')[-2]

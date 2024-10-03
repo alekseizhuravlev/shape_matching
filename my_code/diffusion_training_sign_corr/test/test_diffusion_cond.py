@@ -52,6 +52,9 @@ def parse_args():
     
     parser.add_argument('--log_subdir', type=str, required=True)
     
+    parser.add_argument('--dirichlet_energy_threshold_template', type=float, required=False)
+    parser.add_argument('--zoomout_num_evecs_template', type=int, required=False)
+    
     args = parser.parse_args()
     return args
 
@@ -109,7 +112,7 @@ def log_to_database(data, log_subdir):
     base_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm_results/{log_subdir}'
     os.makedirs(base_folder, exist_ok=True)
 
-    log_name = f"{data['experiment_name']}_{data['checkpoint_name']}_{data['smoothing']}_{data['dataset_name']}_{data['split']}.yaml"
+    log_name = f"{data['experiment_name']}_{data['checkpoint_name']}_{data['smoothing_type']}_{data['smoothing_iter']}_{data['dataset_name']}_{data['split']}.yaml"
 
     # save to yaml
     with open(f'{base_folder}/{log_name}', 'w') as f:

@@ -2,10 +2,9 @@
 
 #SBATCH -n 1
 #SBATCH -t 24:00:00
-#SBATCH --array=0-19
+#SBATCH --array=0-39
 #SBATCH --mem=50G
-#SBATCH --gres=gpu:1
-#SBATCH --partition=mlgpu_medium
+#SBATCH --partition=intelsr_medium
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/cache_surreal_%A_%a.out
 #SBATCH --error=/home/s94zalek_hpc/shape_matching/SLURM_logs/cache_surreal_%A_%a.err
@@ -18,9 +17,9 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 
-num_evecs=64
-net_name='signNet_64_remeshed_mass_6b_2-4ev_10_0.2_0.8'
-dataset_name='SURREAL_64_2-4ev_template_remeshed_augShapes'
+num_evecs=96
+net_name='signNet_96_remeshed_mass_6b_2-2-4ev_10_0.2_0.8'
+dataset_name='SURREAL_96_2-2-4ev_template_remeshed_augShapes'
 template_type='remeshed'
 pair_type='template'
 n_pairs=1

@@ -164,8 +164,8 @@ if __name__ == '__main__':
 
     input_channels = 128
     
-    feature_dim = 64
-    evecs_per_support = (2, 4)
+    feature_dim = 96
+    evecs_per_support = (2, 2, 4)
     n_block = 6
     
     n_iter = 50000
@@ -174,7 +174,7 @@ if __name__ == '__main__':
     with_mass = True
 
     train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    exp_name = f'signNet_64_remeshed_mass_6b_2-4ev_10_0.2_0.8'
+    exp_name = f'signNet_96_remeshed_mass_6b_2-2-4ev_10_0.2_0.8'
     # exp_name = f'test_different_supports'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
