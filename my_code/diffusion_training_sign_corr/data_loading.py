@@ -19,7 +19,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
     if name == 'SURREAL':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/SURREAL_test',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/SURREAL_test/diffusion',
             return_evecs=return_evecs
@@ -31,14 +31,14 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox',
+            centering='mean',
             return_Cxy=return_evecs
         )
     elif name == 'FAUST_orig':
         dataset_single = shape_dataset.SingleFaustDataset(
             phase=phase,
             data_root = 'data_with_smpl_corr/FAUST_original',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/FAUST_original/diffusion',
             return_evecs=return_evecs,
@@ -50,14 +50,14 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox',
+            centering='mean',
             return_Cxy=return_evecs,
         )
     elif name == 'FAUST_r':
         dataset_single = shape_dataset.SingleFaustDataset(
             phase=phase,
             data_root = 'data_with_smpl_corr/FAUST_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/FAUST_r/diffusion',
             return_evecs=return_evecs,
@@ -69,13 +69,13 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox',
+            centering='mean',
             return_Cxy=return_evecs,
         )
     elif name == 'FAUST_a':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/FAUST_a',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/FAUST_a/diffusion',
             return_evecs=return_evecs,
@@ -87,13 +87,13 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox',
+            centering='mean',
             return_Cxy=return_evecs,
         )
     elif name == 'SHREC19_orig':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data_with_smpl_corr/SHREC19_original',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/SHREC19_original/diffusion',
             return_evecs=return_evecs,
@@ -106,13 +106,13 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             num_evecs=dataset_single.num_evecs,
             preload_base_dataset=preload,
             canonicalize_fmap=canonicalize_fmap,
-            centering='bbox',
+            centering='mean',
             return_Cxy=return_evecs,
         )
     elif name == 'SHREC19_r':
         dataset_single = shape_dataset.SingleShrec19Dataset(
             data_root = 'data/SHREC19_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/SHREC19_r/diffusion',
             return_evecs=return_evecs,
@@ -128,7 +128,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
         dataset_single = shape_dataset.SingleFaustDataset(
             phase=phase,
             data_root = 'data_with_smpl_corr/FAUST_original',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data_with_smpl_corr/FAUST_original/diffusion',
             return_evecs=return_evecs,
@@ -142,7 +142,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
         dataset_single = shape_dataset.SingleFaustDataset(
             phase=phase,
             data_root = 'data/FAUST_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/FAUST_r/diffusion',
             return_evecs=return_evecs,
@@ -155,7 +155,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
     elif name == 'FAUST_a_pair':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data/FAUST_a',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/FAUST_a/diffusion',
             return_evecs=return_evecs,
@@ -168,7 +168,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
     elif name == 'SHREC19_r_pair':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data/SHREC19_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/SHREC19_r/diffusion',
             return_evecs=return_evecs,
@@ -183,7 +183,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
         dataset_single = shape_dataset.SingleScapeDataset(
             phase=phase,
             data_root = 'data/SCAPE_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/SCAPE_r/diffusion',
             return_evecs=return_evecs,
@@ -196,7 +196,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
     elif name == 'SCAPE_a_pair':
         dataset_single = shape_dataset.SingleShapeDataset(
             data_root = 'data/SCAPE_a',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/SCAPE_a/diffusion',
             return_evecs=return_evecs,
@@ -210,7 +210,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
         dataset_single = shape_dataset.SingleDT4DDataset(
             phase=phase,
             data_root = 'data/DT4D_r',
-            centering = 'bbox',
+            centering = 'mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/DT4D_r/diffusion',
             return_evecs=return_evecs,
@@ -225,7 +225,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
         dataset_single = shape_dataset.SingleDT4DDataset(
             phase=phase,
             data_root='data/DT4D_r',
-            centering='bbox',
+            centering='mean',
             num_evecs=num_evecs,
             lb_cache_dir=f'data/DT4D_r/diffusion',
             return_evecs=return_evecs,
@@ -236,8 +236,39 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             cache_base_dataset=preload,
         )
         
+    ############################################################
+    # Partial datasets
+    ############################################################
+    
+    elif name == 'SHREC16_cuts_pair':
         
+        dataset_pair = shape_dataset.PairShrec16Dataset(
+            'data/SHREC16_test/' if phase == 'test' else 'data/SHREC16/',
+            categories=['david', 'michael', 'victoria'],
+            cut_type='cuts', return_faces=True,
+            return_evecs=return_evecs, num_evecs=num_evecs,
+            return_corr=True, return_dist=False
+        )
         
+        # data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
+        # dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)
+        
+        dataset_single = None
+        
+    elif name == 'SHREC16_holes_pair':
+        
+        dataset_pair = shape_dataset.PairShrec16Dataset(
+            'data/SHREC16_test/' if phase == 'test' else 'data/SHREC16/',
+            categories=['david', 'michael', 'victoria'],
+            cut_type='holes', return_faces=True,
+            return_evecs=return_evecs, num_evecs=num_evecs,
+            return_corr=True, return_dist=False
+        )
+        
+        # data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
+        # dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)        
+        
+        dataset_single = None
         
         
     else:

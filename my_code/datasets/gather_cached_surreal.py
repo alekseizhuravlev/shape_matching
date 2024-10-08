@@ -76,25 +76,39 @@ def gather_files(data_dir, prefix, remove_after):
             print('Removing', f'{file["file"]}')
             os.remove(f'{data_dir}/{file["file"]}')
             
-            
+         
+   
     
 
 if __name__ == '__main__':
     
-    dataset_name = 'SURREAL_64_2-4ev_template_remeshed_augShapes'
-    data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
+    # dataset_name = 'SURREAL_96_1-2-2ev_template_remeshed_augShapes'
     
-    # data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    dataset_name_list = [
+        'partial_0.8_5k_32_1_lambda_0.1',
+        'partial_0.8_5k_32_1_lambda_0.01',
+        'partial_0.8_5k_32_2_lambda_0.1',
+        'partial_0.8_5k_32_2_lambda_0.01',
+    ]
     
-    remove_after = True
+    for dataset_name in dataset_name_list:
+        
+        print('Gathering', dataset_name)
+        time.sleep(1)
     
-    gather_files(data_dir, 'evals_first', remove_after)
-    gather_files(data_dir, 'evals_second', remove_after)
-    
-    gather_files(data_dir, 'C_gt_xy', remove_after)
-    gather_files(data_dir, 'C_gt_yx', remove_after)
+        data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
+        
+        # data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+        
+        remove_after = True
+        
+        gather_files(data_dir, 'evals_first', remove_after)
+        gather_files(data_dir, 'evals_second', remove_after)
+        
+        gather_files(data_dir, 'C_gt_xy', remove_after)
+        gather_files(data_dir, 'C_gt_yx', remove_after)
 
-    gather_files(data_dir, 'evecs_cond_first', remove_after)
-    gather_files(data_dir, 'evecs_cond_second', remove_after)
+        gather_files(data_dir, 'evecs_cond_first', remove_after)
+        gather_files(data_dir, 'evecs_cond_second', remove_after)
     
     

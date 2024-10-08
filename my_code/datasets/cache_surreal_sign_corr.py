@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt
 import my_code.datasets.shape_dataset as shape_dataset
 import my_code.datasets.template_dataset as template_dataset
 from my_code.datasets.surreal_dataset_3dc import TemplateSurrealDataset3DC
-    
+from my_code.diffusion_training_sign_corr.test.test_diffusion_pair_template_unified import RegularizedFMNet    
     
 def visualize_before_after(data, C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second, figures_folder, idx):
         l = 0
@@ -54,7 +54,7 @@ def visualize_before_after(data, C_xy_corr, C_yx_corr, evecs_cond_first, evecs_c
         plt.close(fig)
         
     
-def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_per_support):
+def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_per_support, fmnet):
     
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     # device = 'cpu'
@@ -106,10 +106,12 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_pe
 
     # correct the evecs
     evecs_first_corrected = evecs_first[0] * torch.sign(sign_pred_first)
-    evecs_first_corrected_norm = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
+    # evecs_first_corrected_norm = evecs_first_corrected / torch.norm(evecs_first_corrected, dim=0, keepdim=True)
+    evecs_first_corrected_norm = torch.nn.functional.normalize(evecs_first_corrected, p=2, dim=0)
     
     evecs_second_corrected = evecs_second[0] * torch.sign(sign_pred_second)
-    evecs_second_corrected_norm = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
+    # evecs_second_corrected_norm = evecs_second_corrected / torch.norm(evecs_second_corrected, dim=0, keepdim=True)
+    evecs_second_corrected_norm = torch.nn.functional.normalize(evecs_second_corrected, p=2, dim=0)
     
     
     # product with support
@@ -135,22 +137,37 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_pe
     # evecs_cond_second = evecs_second_corrected.transpose(0, 1) @ support_vector_norm_second[0].cpu()
 
 
+    if fmnet is None:
+        # correct the functional map
+        C_xy_pred = torch.linalg.lstsq(
+            evecs_second_corrected[corr_second],
+            evecs_first_corrected[corr_first],
+            ).solution
+        
+        C_yx_pred = torch.linalg.lstsq(
+            evecs_first_corrected[corr_first],
+            evecs_second_corrected[corr_second],
+            ).solution
+        
+    else:
+        # regularized version
+        evecs_trans_first = evecs_first_corrected.T * data['first']['mass'][None].to(device)
+        evecs_trans_second = evecs_second_corrected.T * data['second']['mass'][None].to(device)
+        
+        C_xy_pred = fmnet.compute_functional_map(
+            evecs_trans_second[:, corr_second].unsqueeze(0).to(device),
+            evecs_trans_first[:, corr_first].unsqueeze(0).to(device),
+            data['second']['evals'][:num_evecs].unsqueeze(0).to(device),
+            data['first']['evals'][:num_evecs].unsqueeze(0).to(device),
+        )[0].T
 
-
-    # correct the functional map
-    C_xy_pred = torch.linalg.lstsq(
-        # evecs_second[0, corr_second] * torch.sign(sign_pred_second),
-        # evecs_first[0, corr_first] * torch.sign(sign_pred_first),
-        evecs_second_corrected[corr_second],
-        evecs_first_corrected[corr_first],
-        ).solution
-    
-    C_yx_pred = torch.linalg.lstsq(
-        # evecs_first[0, corr_first] * torch.sign(sign_pred_first),
-        # evecs_second[0, corr_second] * torch.sign(sign_pred_second),
-        evecs_first_corrected[corr_first],
-        evecs_second_corrected[corr_second],
-        ).solution
+        C_yx_pred = fmnet.compute_functional_map(
+            evecs_trans_first[:, corr_first].unsqueeze(0).to(device),
+            evecs_trans_second[:, corr_second].unsqueeze(0).to(device),
+            data['first']['evals'][:num_evecs].unsqueeze(0).to(device),
+            data['second']['evals'][:num_evecs].unsqueeze(0).to(device),
+        )[0].T
+        
 
     return C_xy_pred.cpu(), C_yx_pred.cpu(), evecs_cond_first.cpu(), evecs_cond_second.cpu(), \
         evecs_first_corrected.cpu(), evecs_second_corrected.cpu(), \
@@ -167,6 +184,7 @@ def save_train_dataset(
         num_evecs,
         pair_type,
         n_pairs,
+        fmnet,
         **net_params
     ):
     
@@ -239,6 +257,7 @@ def save_train_dataset(
             C_xy_corr, C_yx_corr, evecs_cond_first, evecs_cond_second, evecs_first_corrected, evecs_second_corrected, corr_first, corr_second = get_corrected_data(
                 data=data,
                 num_evecs=num_evecs,
+                fmnet=fmnet,
                 **net_params
             )
             # assert the tensors have the correct shapes
@@ -270,8 +289,8 @@ def save_train_dataset(
             print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}, second_indices: {second_indices}',
                 flush=True)
             
-        # if i < 5 or i % 1000 == 0:
-        if i % 1000 == 0:
+        if i < 5 or i % 1000 == 0:
+        # if i % 1000 == 0:
             data['second']['C_gt_xy'], data['second']['C_gt_yx'] =\
                 dataset.get_functional_map(data['first'], data['second'])
             
@@ -314,11 +333,13 @@ def parse_args():
     
     parser.add_argument('--template_type', type=str)
     
+    parser.add_argument('--regularization_lambda', type=float, required=False)
+    
     
     
     args = parser.parse_args()
     
-    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 20000 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/signNet_remeshed_mass_6b_1ev_10_0.2_0.8 --dataset_name test_evecs_corrected --template_type original --pair_type template --n_pairs 1
+    # python my_code/datasets/cache_surreal_sign_corr.py --n_workers 20000 --current_worker 0 --num_evecs 32 --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/test_partial_0.8_5k_32_1 --dataset_name test_partial_lambda_0.1 --template_type remeshed --pair_type template --n_pairs 1 --regularization_lambda 0.1
     
     return args
          
@@ -335,45 +356,51 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
-    # augmentations = {
-    #     'remesh': {
-    #         'n_remesh_iters': 10,
-    #         'simplify_strength_min': 0.2,
-    #         'simplify_strength_max': 0.8,
-    #         'remesh_targetlen': 1,
-    #     }
-    # }
+    # partial
     
     augmentations = {
         "remesh": {
-            "isotropic": {
-                "n_remesh_iters": 10,
-                "remesh_targetlen": 1,
-                "simplify_strength_min": 0.2,
-                "simplify_strength_max": 0.8,
+                "isotropic": {
+                    "n_remesh_iters": 10,
+                    "remesh_targetlen": 1,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.8,
+                },
+                "partial": {
+                    "probability": 0.75,
+                    "n_remesh_iters": 10,
+                    "fraction_to_select_min": 0.25,
+                    "fraction_to_select_max": 0.75,
+                    "n_seed_samples": [1, 5, 25],
+                    "weighted_by": "area",
+                },
             },
-            "anisotropic": {
-                "probability": 0.35,
-                    
-                "n_remesh_iters": 10,
-                "fraction_to_simplify_min": 0.2,
-                "fraction_to_simplify_max": 0.6,
-                "simplify_strength_min": 0.2,
-                "simplify_strength_max": 0.5,
-                "weighted_by": "face_count",
-            },
-        },
-    }
+        }
     
-    # dataset = TemplateSurrealDataset3DC(
-    #     # shape_path=f'/home/s94zalek_hpc/3D-CODED/data/mmap_datas_surreal_train.pth',
-    #     shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
-    #     num_evecs=128,
-    #     cache_lb_dir=None,
-    #     return_evecs=True,
-    #     mmap=True,
-    #     augmentations=augmentations
-    # )   
+    # full
+    
+    # augmentations = {
+    #     "remesh": {
+    #         "isotropic": {
+    #             "n_remesh_iters": 10,
+    #             "remesh_targetlen": 1,
+    #             "simplify_strength_min": 0.2,
+    #             "simplify_strength_max": 0.8,
+    #         },
+    #         "anisotropic": {
+    #             "probability": 0.35,
+                    
+    #             "n_remesh_iters": 10,
+    #             "fraction_to_simplify_min": 0.2,
+    #             "fraction_to_simplify_max": 0.6,
+    #             "simplify_strength_min": 0.2,
+    #             "simplify_strength_max": 0.5,
+    #             "weighted_by": "face_count",
+    #         },
+    #     },
+    # }
+    
+     
     
     dataset = TemplateSurrealDataset3DC(
         shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
@@ -437,6 +464,18 @@ if __name__ == '__main__':
     if not os.path.exists(f'{dataset_folder}/config.yaml'):
         with open(f'{dataset_folder}/config.yaml', 'w') as f:
             yaml.dump(sign_net_config, f)
+            
+            
+    ####################################################
+    # Regularization
+    ####################################################
+    
+    if args.regularization_lambda is not None and args.regularization_lambda > 0:
+        fmnet = RegularizedFMNet(
+            lmbda=args.regularization_lambda,
+            resolvant_gamma=0.5).to(device)
+    else:
+        fmnet = None
     
     ####################################################
     # Saving
@@ -479,5 +518,7 @@ if __name__ == '__main__':
         net=net,
         net_input_type=sign_net_config['net_params']['input_type'],
         with_mass=sign_net_config['with_mass'],
-        evecs_per_support=sign_net_config['evecs_per_support']
+        evecs_per_support=sign_net_config['evecs_per_support'],
+        
+        fmnet=fmnet
     )

@@ -26,6 +26,8 @@ def plot_p2p_map(scene, verts_x, faces_x, verts_y, faces_y, p2p, axes_color_grad
     
     # assert axes_color_gradient is a list or tuple
     assert isinstance(axes_color_gradient, (list, tuple)), "axes_color_gradient must be a list or tuple"
+    assert verts_y.shape[0] == len(p2p), f"verts_y {verts_y.shape} and p2p {p2p.shape} must have the same length"
+    
     
     # normalize verts_x[:, 0] between 0 and 1
     # coords_x_norm = (verts_x[:, 0] - verts_x[:, 0].min()) / (verts_x[:, 0].max() - verts_x[:, 0].min())
@@ -52,6 +54,8 @@ def plot_p2p_map(scene, verts_x, faces_x, verts_y, faces_y, p2p, axes_color_grad
     mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x)
     mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     scene.add_geometry(mesh1)
+    
+    
     
     # add the second mesh
     mesh2 = trimesh.Trimesh(vertices=verts_y + np.array([1, 0, 0]), faces=faces_y)

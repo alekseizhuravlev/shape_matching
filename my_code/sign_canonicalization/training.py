@@ -27,7 +27,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
     evecs_flip = torch.nn.functional.normalize(evecs_flip, p=2, dim=1)
     
     # get the input for the network
-    if input_type == 'wks':
+    if input_type == 'wks' or input_type == 'xyz':
         evecs_input = None
     elif input_type == 'evecs':
         evecs_input = evecs_flip
@@ -164,8 +164,8 @@ if __name__ == '__main__':
 
     input_channels = 128
     
-    feature_dim = 96
-    evecs_per_support = (2, 2, 4)
+    feature_dim = 32
+    evecs_per_support = (4,)
     n_block = 6
     
     n_iter = 50000
@@ -173,9 +173,12 @@ if __name__ == '__main__':
     
     with_mass = True
 
-    train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    exp_name = f'signNet_96_remeshed_mass_6b_2-2-4ev_10_0.2_0.8'
+    # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    # exp_name = f'signNet_96_remeshed_mass_6b_2-2-4ev_10_0.2_0.8'
     # exp_name = f'test_different_supports'
+    
+    train_folder = 'test_partial_0.8_5k'
+    exp_name = f'test_partial_0.8_5k_32_4'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     

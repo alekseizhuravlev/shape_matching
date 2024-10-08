@@ -20,9 +20,9 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "SURREAL_isoRemesh_0.2_0.8_smooth_taubin_5_6",
+        "dataset_name": "test_partial_0.8_5k",
         
-        "n_shapes": 1000,
+        "n_shapes": 5000,
         "lapl_type": "mesh",
         
         "split": "train",
@@ -46,22 +46,15 @@ if __name__ == '__main__':
                 "simplify_strength_min": 0.2,
                 "simplify_strength_max": 0.8,
             },
-            "anisotropic": {
-                "probability": 0.0,
-                    
+            "partial": {
+                "probability": 0.75,
                 "n_remesh_iters": 10,
-                "fraction_to_simplify_min": 0.4,
-                "fraction_to_simplify_max": 0.8,
-                "simplify_strength_min": 0.2,
-                "simplify_strength_max": 0.5,
-                "weighted_by": "face_count",
+                "fraction_to_select_min": 0.25,
+                "fraction_to_select_max": 0.75,
+                "n_seed_samples": [1, 5, 25],
+                "weighted_by": "area",
             },
         },
-        "smooth": {
-            "filter": "taubin",
-            "iterations_min": -1,
-            "iterations_max": -1,
-        }
     }
     
     train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
@@ -96,8 +89,9 @@ if __name__ == '__main__':
             verts_orig = train_dataset[i]['verts']
             faces_orig = train_dataset[i]['faces']
             
+            
             # randomly choose the remeshing type
-            remesh_type = np.random.choice(['isotropic', 'anisotropic'], p=[1-config["remesh"]["anisotropic"]["probability"], config["remesh"]["anisotropic"]["probability"]])
+            remesh_type = np.random.choice(['isotropic', 'partial'], p=[1-config["remesh"]["partial"]["probability"], config["remesh"]["partial"]["probability"]])
             
             if remesh_type == 'isotropic':
                 simplify_strength = np.random.uniform(config["remesh"]["isotropic"]["simplify_strength_min"], config["remesh"]["isotropic"]["simplify_strength_max"])
@@ -109,33 +103,21 @@ if __name__ == '__main__':
                     simplify_strength=simplify_strength,
                 )
             else:
-                fraction_to_simplify = np.random.uniform(config["remesh"]["anisotropic"]["fraction_to_simplify_min"], config["remesh"]["anisotropic"]["fraction_to_simplify_max"])
-                simplify_strength = np.random.uniform(config["remesh"]["anisotropic"]["simplify_strength_min"], config["remesh"]["anisotropic"]["simplify_strength_max"])
-                
-                verts, faces = remesh.remesh_simplify_anis(
+                fraction_to_select = np.random.uniform(config["remesh"]["partial"]["fraction_to_select_min"], config["remesh"]["partial"]["fraction_to_select_max"])
+                n_seed_samples = np.random.choice(config["remesh"]["partial"]["n_seed_samples"])
+                remove_selection = n_seed_samples != 1
+
+                verts, faces = remesh.remesh_partial(
                     verts_orig,
                     faces_orig,
-                    n_remesh_iters=config["remesh"]["anisotropic"]["n_remesh_iters"],
-                    fraction_to_simplify=fraction_to_simplify,
-                    simplify_strength=simplify_strength,
-                    weighted_by=config["remesh"]["anisotropic"]["weighted_by"]
+                    n_remesh_iters=config["remesh"]["partial"]["n_remesh_iters"],
+                    fraction_to_select=fraction_to_select,
+                    n_seed_samples=n_seed_samples,
+                    weighted_by=config["remesh"]["partial"]["weighted_by"],
+                    remove_selection=remove_selection
                 )
-                
-            # laplacian smoothing
-            if config["smooth"]["iterations_min"] >= 0 and config["smooth"]["iterations_max"] > 0:
-                
-                mesh_remeshed = trimesh.Trimesh(verts, faces)
-                smoothing_iter = np.random.randint(config["smooth"]["iterations_min"], config["smooth"]["iterations_max"])
-                
-                if smoothing_iter > 0 and config["smooth"]["filter"] == 'taubin':
-                    trimesh.smoothing.filter_taubin(mesh_remeshed, iterations=smoothing_iter)
-                elif smoothing_iter > 0 and config["smooth"]["filter"] == 'humphrey':
-                    trimesh.smoothing.filter_humphrey(mesh_remeshed, iterations=smoothing_iter)
-                    
-                verts = torch.tensor(mesh_remeshed.vertices).float()
-                faces = torch.tensor(mesh_remeshed.faces).int()              
-                
-            
+
+
             # augment the vertices
             verts_aug = geometry_util.data_augmentation(
                 verts.unsqueeze(0),

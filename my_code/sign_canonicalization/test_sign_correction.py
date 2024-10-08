@@ -122,6 +122,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
                 sign_pred_0, supp_vec_0, _ = sign_training.predict_sign_change(
                     net, verts, faces, evecs_flip_0, 
                     mass_mat=mass_mat, input_type=net.input_type,
+                    evecs_per_support=config['evecs_per_support'],
                     
                     mass=train_shape['mass'].unsqueeze(0), L=train_shape['L'].unsqueeze(0),
                     evals=train_shape['evals'].unsqueeze(0), evecs=train_shape['evecs'].unsqueeze(0),
@@ -146,6 +147,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
                 sign_pred_1, supp_vec_1, _ = sign_training.predict_sign_change(
                     net, verts, faces, evecs_flip_1, 
                     mass_mat=mass_mat, input_type=net.input_type,
+                    evecs_per_support=config['evecs_per_support'],
                     
                     mass=train_shape['mass'].unsqueeze(0), L=train_shape['L'].unsqueeze(0),
                     evals=train_shape['evals'].unsqueeze(0), evecs=train_shape['evecs'].unsqueeze(0),
@@ -192,6 +194,8 @@ if __name__ == '__main__':
                         
     parser.add_argument('--smoothing_iter', type=int)
     
+    parser.add_argument('--partial', type=bool, required=True)
+    
     args = parser.parse_args()
     
     exp_name = args.exp_name
@@ -234,14 +238,21 @@ if __name__ == '__main__':
     # log_file = f'{exp_dir}/logs_shrec/log_10ep_laplacianSmooth_{smoothing_iter}.txt'
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
-
-    for n_iter in [50000]:
-    # for n_iter in [200, 600, 1000, 1400, 2000]:
-
-        net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
-
-
-        for dataset_name, split in [
+    
+    if args.partial:
+        dataset_list = [
+            ('SHREC16_cuts_pair', 'test'),
+            ('SHREC16_holes_pair', 'test'),
+            ('FAUST_r', 'test'),
+            ('FAUST_orig', 'test'), 
+            ('FAUST_a', 'test'),
+            ('SCAPE_r_pair', 'test'),
+            ('SCAPE_a_pair', 'test'),
+            ('SHREC19_r', 'train'), 
+            
+        ]
+    else:    
+        dataset_list = [
             # (config["train_folder"], 'train'),
             
             ('FAUST_a', 'test'),
@@ -258,8 +269,16 @@ if __name__ == '__main__':
             # ('DT4D_intra_pair', 'train'),
             # ('DT4D_inter_pair', 'test'),
             # ('DT4D_inter_pair', 'train'),
-            
-            ]:
+        ]
+    
+
+    for n_iter in [50000]:
+    # for n_iter in [200, 600, 1000, 1400, 2000]:
+
+        net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
+
+
+        for dataset_name, split in dataset_list:
             
             if dataset_name == config["train_folder"]:
                 test_dataset_curr, _ = sign_training.load_cached_shapes(

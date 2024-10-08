@@ -17,13 +17,14 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 
-num_evecs=96
-net_name='signNet_96_remeshed_mass_6b_2-2-4ev_10_0.2_0.8'
-dataset_name='SURREAL_96_2-2-4ev_template_remeshed_augShapes'
+num_evecs=32
+net_name='test_partial_0.8_5k_32_2'
+dataset_name='partial_0.8_5k_32_2_lambda_0.1'
 template_type='remeshed'
 pair_type='template'
 n_pairs=1
+regularization_lambda=0.1
 
-srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/${net_name} --dataset_name ${dataset_name} --template_type ${template_type} --pair_type ${pair_type} --n_pairs ${n_pairs}
+srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/${net_name} --dataset_name ${dataset_name} --template_type ${template_type} --pair_type ${pair_type} --n_pairs ${n_pairs} --regularization_lambda ${regularization_lambda}
 
     

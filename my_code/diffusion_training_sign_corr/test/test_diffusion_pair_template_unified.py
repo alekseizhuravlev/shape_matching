@@ -390,91 +390,91 @@ def get_p2p_maps_template(
         
         # version without zoomout and dirichlet energy condition
         
-        # for k in range(args.num_iters_avg):
-    
-        #     evecs_first_corrected = evecs_first * evecs_first_signs_i[k]
-        #     evecs_second_corrected = evecs_second * evecs_second_signs_i[k]
-        #     Cyx_est_k = C_yx_est_i[k][0].cpu()
-
-        #     p2p_est_k = fmap_util.fmap2pointmap(
-        #         C12=Cyx_est_k.to(device),
-        #         evecs_x=evecs_second_corrected.to(device),
-        #         evecs_y=evecs_first_corrected.to(device),
-        #         ).cpu()
-
-        #     single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
-        
-        
         for k in range(args.num_iters_avg):
-            
-            fmap_dimension_k = num_evecs
-            
-            #######################################################
-            # Reduce the dimension of the fmaps if they 
-            # don't satisfy the dirichlet energy condition
-            #######################################################
-            
-            energy_condition = False
-            while not energy_condition:
+    
+            evecs_first_corrected = evecs_first[:, :num_evecs] * evecs_first_signs_i[k]
+            evecs_second_corrected = evecs_second[:, :num_evecs] * evecs_second_signs_i[k]
+            Cyx_est_k = C_yx_est_i[k][0].cpu()
 
-                evecs_first_corrected = evecs_first[:,:fmap_dimension_k] * evecs_first_signs_i[k][:,:fmap_dimension_k]
-                evecs_second_corrected = evecs_second[:,:fmap_dimension_k] * evecs_second_signs_i[k][:,:fmap_dimension_k]
-                Cyx_est_k = C_yx_est_i[k][0][:fmap_dimension_k,:fmap_dimension_k].cpu()
+            p2p_est_k = fmap_util.fmap2pointmap(
+                C12=Cyx_est_k.to(device),
+                evecs_x=evecs_second_corrected.to(device),
+                evecs_y=evecs_first_corrected.to(device),
+                ).cpu()
 
-                p2p_est_k = fmap_util.fmap2pointmap(
-                    C12=Cyx_est_k.to(device),
-                    evecs_x=evecs_second_corrected.to(device),
-                    evecs_y=evecs_first_corrected.to(device),
-                    ).cpu()
-
-                dirichlet_energy_k = dirichlet_energy(p2p_est_k, verts_second, template_shape['L'])
+            single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
+        
+        
+        # for k in range(args.num_iters_avg):
             
-                energy_condition = args.dirichlet_energy_threshold_template is None or args.dirichlet_energy_threshold_template <= 0 or dirichlet_energy_k < args.dirichlet_energy_threshold_template or fmap_dimension_k <= 8
+        #     fmap_dimension_k = num_evecs
+            
+        #     #######################################################
+        #     # Reduce the dimension of the fmaps if they 
+        #     # don't satisfy the dirichlet energy condition
+        #     #######################################################
+            
+        #     energy_condition = False
+        #     while not energy_condition:
+
+        #         evecs_first_corrected = evecs_first[:,:fmap_dimension_k] * evecs_first_signs_i[k][:,:fmap_dimension_k]
+        #         evecs_second_corrected = evecs_second[:,:fmap_dimension_k] * evecs_second_signs_i[k][:,:fmap_dimension_k]
+        #         Cyx_est_k = C_yx_est_i[k][0][:fmap_dimension_k,:fmap_dimension_k].cpu()
+
+        #         p2p_est_k = fmap_util.fmap2pointmap(
+        #             C12=Cyx_est_k.to(device),
+        #             evecs_x=evecs_second_corrected.to(device),
+        #             evecs_y=evecs_first_corrected.to(device),
+        #             ).cpu()
+
+        #         dirichlet_energy_k = dirichlet_energy(p2p_est_k, verts_second, template_shape['L'])
+            
+        #         energy_condition = args.dirichlet_energy_threshold_template is None or args.dirichlet_energy_threshold_template <= 0 or dirichlet_energy_k < args.dirichlet_energy_threshold_template or fmap_dimension_k <= 8
                 
-                if not energy_condition:
-                    fmap_dimension_k -= 2
-                    f.write(f'Dirichlet energy: {dirichlet_energy_k}, Decreasing fmap dimension to: {fmap_dimension_k}\n')
+        #         if not energy_condition:
+        #             fmap_dimension_k -= 2
+        #             f.write(f'Dirichlet energy: {dirichlet_energy_k}, Decreasing fmap dimension to: {fmap_dimension_k}\n')
 
-            f.write(f'Condition satisfied, Dirichlet energy: {dirichlet_energy_k}, Fmap dimension: {fmap_dimension_k}\n')
+        #     f.write(f'Condition satisfied, Dirichlet energy: {dirichlet_energy_k}, Fmap dimension: {fmap_dimension_k}\n')
             
             
             #######################################################
             # Zoomout refinement of p2p maps to template
             #######################################################
             
-            zo_num_evecs = args.zoomout_num_evecs_template
-            if zo_num_evecs is not None and zo_num_evecs > 0 and fmap_dimension_k < zo_num_evecs:
+            # zo_num_evecs = args.zoomout_num_evecs_template
+            # if zo_num_evecs is not None and zo_num_evecs > 0 and fmap_dimension_k < zo_num_evecs:
                 
-                evecs_first_zo = torch.cat(
-                    [evecs_first_corrected, evecs_first[:, fmap_dimension_k:zo_num_evecs]],
-                    dim=1
-                ).to(device)
+            #     evecs_first_zo = torch.cat(
+            #         [evecs_first_corrected, evecs_first[:, fmap_dimension_k:zo_num_evecs]],
+            #         dim=1
+            #     ).to(device)
                 
-                evecs_second_zo = torch.cat(
-                    [evecs_second_corrected, evecs_second[:, fmap_dimension_k:zo_num_evecs]],
-                    dim=1                    
-                ).to(device)
+            #     evecs_second_zo = torch.cat(
+            #         [evecs_second_corrected, evecs_second[:, fmap_dimension_k:zo_num_evecs]],
+            #         dim=1                    
+            #     ).to(device)
                 
                 
-                Cyx_zo_k = zoomout_custom.zoomout(
-                    FM_12=Cyx_est_k.to(device), 
-                    evects1=evecs_second_zo,
-                    evects2=evecs_first_zo,
-                    nit=zo_num_evecs-fmap_dimension_k, step=1,
-                    A2=template_shape['mass'].to(device),
-                )
-                p2p_zo_k = fmap_util.fmap2pointmap(
-                    C12=Cyx_zo_k,
-                    evecs_x=evecs_second_zo,
-                    evecs_y=evecs_first_zo,
-                    ).cpu()
+            #     Cyx_zo_k = zoomout_custom.zoomout(
+            #         FM_12=Cyx_est_k.to(device), 
+            #         evects1=evecs_second_zo,
+            #         evects2=evecs_first_zo,
+            #         nit=zo_num_evecs-fmap_dimension_k, step=1,
+            #         A2=template_shape['mass'].to(device),
+            #     )
+            #     p2p_zo_k = fmap_util.fmap2pointmap(
+            #         C12=Cyx_zo_k,
+            #         evecs_x=evecs_second_zo,
+            #         evecs_y=evecs_first_zo,
+            #         ).cpu()
                 
-                dirichlet_energy_zo = dirichlet_energy(p2p_zo_k, verts_second, template_shape['L'])
-                f.write(f'Zoomout energy: {dirichlet_energy_zo}\n')
+            #     dirichlet_energy_zo = dirichlet_energy(p2p_zo_k, verts_second, template_shape['L'])
+            #     f.write(f'Zoomout energy: {dirichlet_energy_zo}\n')
                 
-                p2p_est_k = p2p_zo_k
+            #     p2p_est_k = p2p_zo_k
                 
-            single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
+            # single_dataset.additional_data[i]['p2p_est'].append(p2p_est_k)
                         
     
         single_dataset.additional_data[i]['p2p_est'] = torch.stack(single_dataset.additional_data[i]['p2p_est'])
@@ -851,13 +851,11 @@ def run():
     # 1.1: Template stage, get the functional maps and signs of evecs
     ##########################################
     
-    data_range_1 = range(len(single_dataset))
-
-    # data_range_1 = range(2)
-    
-    # data_range_1 = [0, 61]
-    # print('!!! WARNING: only 2 samples are processed !!!')
-    
+    if args.reduced:
+        print('!!! WARNING: only 2 samples are processed !!!')
+        data_range_1 = range(2)  
+    else:
+        data_range_1 = range(len(single_dataset))
 
 
     if args.smoothing_type is not None:
@@ -903,11 +901,15 @@ def run():
     # Pairwise stage
     ##########################################
     
-    data_range_2 = range(len(test_dataset))
+    if args.reduced:
+        print('!!! WARNING: only 2 samples are processed !!!')
+        data_range_2 = range(2)
+    else:
+        data_range_2 = range(len(test_dataset))
     
-    # data_range_2 = range(2)
+    # 
     # data_range_2 = [960]
-    # print('!!! WARNING: only 2 samples are processed !!!')
+    # 
         
     test_dataset.dataset = single_dataset
     

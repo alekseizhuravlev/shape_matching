@@ -27,7 +27,7 @@ class SingleShapeDataset(Dataset):
                  data_root, return_faces=True,
                  return_evecs=True, num_evecs=200,
                  return_corr=True, return_dist=False,
-                 lb_cache_dir=None, centering='bbox'
+                 lb_cache_dir=None, centering='mean'
                  ):
         """
         Single Shape Dataset
@@ -739,6 +739,15 @@ class PairShrec16Dataset(Dataset):
         full_data['verts'] = torch.from_numpy(verts).float()
         if self.return_faces:
             full_data['faces'] = torch.from_numpy(faces).long()
+            
+            
+        # center and normalize face area
+        full_data['verts'] = preprocessing.center_mean(full_data['verts'])
+        full_data['verts'] = preprocessing.normalize_face_area(full_data['verts'], full_data['faces'])
+        # full_data['verts'] = preprocessing.center_bbox(full_data['verts'])
+        
+
+            
 
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
@@ -761,6 +770,15 @@ class PairShrec16Dataset(Dataset):
         partial_data['verts'] = torch.from_numpy(verts).float()
         if self.return_faces:
             partial_data['faces'] = torch.from_numpy(faces).long()
+            
+            
+        # center and normalize face area
+        
+        partial_data['verts'] = preprocessing.center_mean(partial_data['verts'])
+        partial_data['verts'] = preprocessing.normalize_face_area(partial_data['verts'], partial_data['faces'])
+        # partial_data['verts'] = preprocessing.center_bbox(partial_data['verts'])
+        
+        
 
         # get eigenfunctions/eigenvalues
         if self.return_evecs:

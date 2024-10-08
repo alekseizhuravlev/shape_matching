@@ -145,6 +145,11 @@ def main():
     # print(f'Number of training samples: {len(dataset_train)}')
     # for val_dataset in val_datasets_payload:
     #     print(f'Number of {val_dataset["name"]} samples: {len(val_dataset["dataset"])}')
+    
+    # print all args
+    print('All args:')
+    for arg in vars(args):
+        print(f'{arg}: {getattr(args, arg)}')
         
     print(f'Fmap shape: {dataset_train[10][0].shape}, ', 
           f'conditioning shape: {dataset_train[10][1].shape}')
@@ -206,10 +211,10 @@ def main():
             accelerator.wait_for_everyone()
             accelerator.save_model(model, f'{experiment_folder}/checkpoints/epoch_{epoch}')
             
-            accelerator.save_state(f'{experiment_folder}/checkpoints_state/epoch_{epoch}')
+            # accelerator.save_state(f'{experiment_folder}/checkpoints_state/epoch_{epoch}')
             
-            state_dict = accelerator.get_state_dict(model, unwrap=True)
-            torch.save(state_dict, f'{experiment_folder}/checkpoints_state_dicts/epoch_{epoch}.pt')
+            # state_dict = accelerator.get_state_dict(model, unwrap=True)
+            # torch.save(state_dict, f'{experiment_folder}/checkpoints_state_dicts/epoch_{epoch}.pt')
                 
 
 

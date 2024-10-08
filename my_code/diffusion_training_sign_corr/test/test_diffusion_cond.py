@@ -55,6 +55,8 @@ def parse_args():
     parser.add_argument('--dirichlet_energy_threshold_template', type=float, required=False)
     parser.add_argument('--zoomout_num_evecs_template', type=int, required=False)
     
+    parser.add_argument('--reduced', action='store_true', default=False)
+    
     args = parser.parse_args()
     return args
 

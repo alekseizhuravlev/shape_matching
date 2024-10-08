@@ -20,6 +20,8 @@ import my_code.datasets.preprocessing as preprocessing
 import my_code.sign_canonicalization.remesh as remesh
 import utils.fmap_util as fmap_util
 
+import copy
+
 
 class TemplateSurrealDataset3DC(Dataset):
     def __init__(self,
@@ -39,6 +41,15 @@ class TemplateSurrealDataset3DC(Dataset):
         self.return_evecs = return_evecs
         self.return_fmap = return_fmap
         self.augmentations = augmentations
+        
+        # determine if augmentations are partial
+        if self.augmentations is not None and 'remesh' in self.augmentations:
+            if 'partial' in self.augmentations['remesh']:
+                self.partial = True
+            else:
+                self.partial = False
+        else:
+            self.partial = False
 
         # load the shapes from 3D-coded
         self.shapes = torch.load(shape_path, mmap=mmap)
@@ -69,7 +80,7 @@ class TemplateSurrealDataset3DC(Dataset):
         # self.template['verts'] = preprocessing.center(self.template['verts'])[0]
         
         # center the template
-        self.template['verts'] = preprocessing.center_bbox(self.template['verts'])
+        self.template['verts'] = preprocessing.center_mean(self.template['verts'])
         self.template['verts'] = preprocessing.normalize_face_area(self.template['verts'], self.template['faces'])
             
         
@@ -108,17 +119,24 @@ class TemplateSurrealDataset3DC(Dataset):
             verts_orig = item['verts']
             faces_orig = item['faces']
                         
-            item['verts'], item['faces'], item['corr'] = remesh.augmentation_pipeline(
-                verts_orig,
-                faces_orig,
-                self.augmentations,
-            )       
+            if self.partial:
+                item['verts'], item['faces'], item['corr'] = remesh.augmentation_pipeline_partial(
+                    verts_orig,
+                    faces_orig,
+                    self.augmentations,
+                )
+            else:   
+                item['verts'], item['faces'], item['corr'] = remesh.augmentation_pipeline(
+                    verts_orig,
+                    faces_orig,
+                    self.augmentations,
+                )       
         else:
             # 1 to 1 correspondence
             item['corr'] = torch.tensor(list(range(len(item['verts']))))        
         
         # center the shape and normalize the face area
-        item['verts'] = preprocessing.center_bbox(item['verts'])
+        item['verts'] = preprocessing.center_mean(item['verts'])
         item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
 
         
@@ -127,10 +145,28 @@ class TemplateSurrealDataset3DC(Dataset):
             item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
         
         
-        payload =  {
-            'first': self.template,
-            'second': item,
-        }
+        if self.partial:
+            payload =  {
+                'first': copy.deepcopy(self.template),
+                'second': item,
+            }
+            # now, 'first' has the correspondence: remeshed template -> smpl
+            # 'second' has the correspondence: smpl -> partial shape            
+            
+            payload['first']['corr'] = payload['first']['corr'][payload['second']['corr']]
+            payload['second']['corr'] = torch.tensor(list(range(len(payload['second']['corr']))), dtype=torch.int32)
+            
+            # now, 'first' has the correspondence: remeshed template -> partial shape
+            # 'second' has the correspondence: partial shape -> partial shape
+            # this follows the structure of SHREC16 dataset
+            
+        else:        
+            payload =  {
+                'first': self.template,
+                'second': item,
+            }
+            # now, 'first' has the correspondence: remeshed template -> smpl
+            # 'second' has the correspondence: remeshed shape -> smpl
         
         if self.return_fmap:
             payload['second']['C_gt_xy'], payload['second']['C_gt_yx'] = \
