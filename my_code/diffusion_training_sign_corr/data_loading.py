@@ -250,10 +250,10 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             return_corr=True, return_dist=False
         )
         
-        # data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
-        # dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)
+        data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
+        dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)
         
-        dataset_single = None
+        # dataset_single = None
         
     elif name == 'SHREC16_holes_pair':
         
@@ -265,10 +265,10 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, canonicalize_
             return_corr=True, return_dist=False
         )
         
-        # data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
-        # dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)        
+        data_single = [dataset_pair[i]['second'] for i in range(len(dataset_pair))]
+        dataset_single = shape_dataset.DatasetFromListOfDicts(data_single)        
         
-        dataset_single = None
+        # dataset_single = None
         
         
     else:

@@ -335,6 +335,7 @@ def parse_args():
     
     parser.add_argument('--regularization_lambda', type=float, required=False)
     
+    parser.add_argument('--partial', type=int, required=True)
     
     
     args = parser.parse_args()
@@ -356,49 +357,59 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
-    # partial
+    if args.partial:
     
-    augmentations = {
-        "remesh": {
+        augmentations = {
+            "remesh": {
                 "isotropic": {
                     "n_remesh_iters": 10,
                     "remesh_targetlen": 1,
                     "simplify_strength_min": 0.2,
                     "simplify_strength_max": 0.8,
                 },
-                "partial": {
-                    "probability": 0.75,
+                "anisotropic": {
+                    "probability": 0.35,
+                        
                     "n_remesh_iters": 10,
-                    "fraction_to_select_min": 0.25,
-                    "fraction_to_select_max": 0.75,
-                    "n_seed_samples": [1, 5, 25],
-                    "weighted_by": "area",
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
+                "partial": {
+                    "probability": 0.8,
+                    "n_remesh_iters": 10,
+                    "fraction_to_keep_min": 0.4,
+                    "fraction_to_keep_max": 0.8,
+                    "n_seed_samples": [1],
+                    "weighted_by": "face_count",
                 },
             },
         }
-    
-    # full
-    
-    # augmentations = {
-    #     "remesh": {
-    #         "isotropic": {
-    #             "n_remesh_iters": 10,
-    #             "remesh_targetlen": 1,
-    #             "simplify_strength_min": 0.2,
-    #             "simplify_strength_max": 0.8,
-    #         },
-    #         "anisotropic": {
-    #             "probability": 0.35,
-                    
-    #             "n_remesh_iters": 10,
-    #             "fraction_to_simplify_min": 0.2,
-    #             "fraction_to_simplify_max": 0.6,
-    #             "simplify_strength_min": 0.2,
-    #             "simplify_strength_max": 0.5,
-    #             "weighted_by": "face_count",
-    #         },
-    #     },
-    # }
+    else:
+        # full
+        
+        augmentations = {
+            "remesh": {
+                "isotropic": {
+                    "n_remesh_iters": 10,
+                    "remesh_targetlen": 1,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.8,
+                },
+                "anisotropic": {
+                    "probability": 0.35,
+                        
+                    "n_remesh_iters": 10,
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
+            },
+        }
     
      
     
@@ -456,6 +467,7 @@ if __name__ == '__main__':
     sign_net_config['template_type'] = args.template_type
     sign_net_config['pair_type'] = args.pair_type
     sign_net_config['n_pairs'] = args.n_pairs
+    sign_net_config['regularization_lambda'] = args.regularization_lambda
     
     if args.pair_type == 'template':
         assert args.n_pairs == 1, 'n_pairs must be 1 for template pair type'

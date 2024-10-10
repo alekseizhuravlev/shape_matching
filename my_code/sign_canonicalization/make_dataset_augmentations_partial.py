@@ -20,9 +20,9 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "test_partial_0.8_5k",
+        "dataset_name": "partial_anisRemesh",
         
-        "n_shapes": 5000,
+        "n_shapes": 1000,
         "lapl_type": "mesh",
         
         "split": "train",
@@ -40,22 +40,32 @@ if __name__ == '__main__':
         "scale_max": 1.1,
         
         "remesh": {
-            "isotropic": {
-                "n_remesh_iters": 10,
-                "remesh_targetlen": 1,
-                "simplify_strength_min": 0.2,
-                "simplify_strength_max": 0.8,
+                "isotropic": {
+                    "n_remesh_iters": 10,
+                    "remesh_targetlen": 1,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.8,
+                },
+                "anisotropic": {
+                    "probability": 0.35,
+                        
+                    "n_remesh_iters": 10,
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
+                "partial": {
+                    "probability": 0.8,
+                    "n_remesh_iters": 10,
+                    "fraction_to_keep_min": 0.4,
+                    "fraction_to_keep_max": 0.8,
+                    "n_seed_samples": [1, 5, 25],
+                    "weighted_by": "face_count",
+                },
             },
-            "partial": {
-                "probability": 0.75,
-                "n_remesh_iters": 10,
-                "fraction_to_select_min": 0.25,
-                "fraction_to_select_max": 0.75,
-                "n_seed_samples": [1, 5, 25],
-                "weighted_by": "area",
-            },
-        },
-    }
+        }
     
     train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
     train_dataset = shape_dataset.SingleShapeDataset(
@@ -89,33 +99,41 @@ if __name__ == '__main__':
             verts_orig = train_dataset[i]['verts']
             faces_orig = train_dataset[i]['faces']
             
+            verts, faces, _ = remesh.augmentation_pipeline_partial(
+                    verts_orig,
+                    faces_orig,
+                    {"remesh": config["remesh"]},
+                )
+            
+            
+            
             
             # randomly choose the remeshing type
-            remesh_type = np.random.choice(['isotropic', 'partial'], p=[1-config["remesh"]["partial"]["probability"], config["remesh"]["partial"]["probability"]])
+            # remesh_type = np.random.choice(['isotropic', 'partial'], p=[1-config["remesh"]["partial"]["probability"], config["remesh"]["partial"]["probability"]])
             
-            if remesh_type == 'isotropic':
-                simplify_strength = np.random.uniform(config["remesh"]["isotropic"]["simplify_strength_min"], config["remesh"]["isotropic"]["simplify_strength_max"])
-                verts, faces = remesh.remesh_simplify_iso(
-                    verts_orig,
-                    faces_orig,
-                    n_remesh_iters=config["remesh"]["isotropic"]["n_remesh_iters"],
-                    remesh_targetlen=config["remesh"]["isotropic"]["remesh_targetlen"],
-                    simplify_strength=simplify_strength,
-                )
-            else:
-                fraction_to_select = np.random.uniform(config["remesh"]["partial"]["fraction_to_select_min"], config["remesh"]["partial"]["fraction_to_select_max"])
-                n_seed_samples = np.random.choice(config["remesh"]["partial"]["n_seed_samples"])
-                remove_selection = n_seed_samples != 1
+            # if remesh_type == 'isotropic':
+            #     simplify_strength = np.random.uniform(config["remesh"]["isotropic"]["simplify_strength_min"], config["remesh"]["isotropic"]["simplify_strength_max"])
+            #     verts, faces = remesh.remesh_simplify_iso(
+            #         verts_orig,
+            #         faces_orig,
+            #         n_remesh_iters=config["remesh"]["isotropic"]["n_remesh_iters"],
+            #         remesh_targetlen=config["remesh"]["isotropic"]["remesh_targetlen"],
+            #         simplify_strength=simplify_strength,
+            #     )
+            # else:
+            #     fraction_to_select = np.random.uniform(config["remesh"]["partial"]["fraction_to_select_min"], config["remesh"]["partial"]["fraction_to_select_max"])
+            #     n_seed_samples = np.random.choice(config["remesh"]["partial"]["n_seed_samples"])
+            #     remove_selection = n_seed_samples != 1
 
-                verts, faces = remesh.remesh_partial(
-                    verts_orig,
-                    faces_orig,
-                    n_remesh_iters=config["remesh"]["partial"]["n_remesh_iters"],
-                    fraction_to_select=fraction_to_select,
-                    n_seed_samples=n_seed_samples,
-                    weighted_by=config["remesh"]["partial"]["weighted_by"],
-                    remove_selection=remove_selection
-                )
+            #     verts, faces = remesh.remesh_partial(
+            #         verts_orig,
+            #         faces_orig,
+            #         n_remesh_iters=config["remesh"]["partial"]["n_remesh_iters"],
+            #         fraction_to_select=fraction_to_select,
+            #         n_seed_samples=n_seed_samples,
+            #         weighted_by=config["remesh"]["partial"]["weighted_by"],
+            #         remove_selection=remove_selection
+            #     )
 
 
             # augment the vertices

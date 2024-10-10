@@ -3,21 +3,7 @@ import os
 import torch
 import time
 
-def gather_files(data_dir, prefix, remove_after):
-    
-    # if f'{data_dir}/{prefix}.txt' exists, remove it
-    # if os.path.exists(f'{data_dir}/{prefix}.txt'):
-    #     print('Removing', f'{data_dir}/{prefix}.txt')
-    #     os.remove(f'{data_dir}/{prefix}.txt')
-    
-    if os.path.exists(f'{data_dir}/{prefix}.pt'):
-        raise RuntimeError(f'{data_dir}/{prefix}.pt already exists')
-        # print('Removing', f'{data_dir}/{prefix}.pt')
-        # os.remove(f'{data_dir}/{prefix}.pt')
-    
-    # get all files in dir in alphabetical order
-    files = os.listdir(data_dir)
-    files = sorted(files)
+def get_files_with_prefix(files, prefix):
     
     files_with_start_end = []
     for file in files:
@@ -37,19 +23,88 @@ def gather_files(data_dir, prefix, remove_after):
             
     sorted_files = sorted(files_with_start_end, key=lambda x: x['start_idx'])
     
-    data_pt = torch.tensor([])
+    return sorted_files
+
+
+def verify_integrity(data_dir, prefix_list):
     
-    # make a file prefix.txt
-    # with open(f'{data_dir}/{prefix}.txt', 'w') as f:
-        # for file in sorted_files:
-                        
-            # with open(f'{data_dir}/{file["file"]}', 'r') as file_f:
-                # lines = file_f.readlines()
-                
-                # print('Appending', file['file'], 'lines:', len(lines))
-                
-                # for line in lines:
-                #     f.write(line)
+    # check that for each prefix, all files have identical start and end indices
+    
+    files = os.listdir(data_dir)
+    files = sorted(files)
+    
+    files_by_prefix = {}
+    unique_start_indices = set()
+    
+    for prefix in prefix_list:
+        
+        sorted_files = get_files_with_prefix(files, prefix)
+        
+        files_by_prefix[prefix] = sorted_files
+        
+        unique_start_indices.update([file['start_idx'] for file in sorted_files])
+        
+
+    # assert that for each prefix, there exists one file with each start index
+    for prefix in prefix_list:
+        start_indices = [file['start_idx'] for file in files_by_prefix[prefix]]
+        assert len(start_indices) == len(unique_start_indices), f'prefix: {prefix}, len(start_indices): {len(start_indices)}, len(unique_start_indices): {len(unique_start_indices)}'
+        
+        print(f'prefix: {prefix}, len(start_indices): {len(start_indices)}, len(unique_start_indices): {len(unique_start_indices)}')
+        
+        assert set(start_indices) == unique_start_indices, f'prefix: {prefix}, start_indices: {start_indices}, unique_start_indices: {unique_start_indices}'
+            
+        print(f'prefix: {prefix}, start_indices: {start_indices}, unique_start_indices: {sorted(unique_start_indices)}')
+    
+    
+def check_for_nan(data_dir, prefix_list):
+    
+    # check that for each prefix, all files have identical start and end indices
+    
+    files = os.listdir(data_dir)
+    files = sorted(files)
+    
+    files_by_prefix = {}
+    unique_start_indices = set()
+    
+    for prefix in prefix_list:
+        
+        sorted_files = get_files_with_prefix(files, prefix)
+        
+        files_by_prefix[prefix] = sorted_files
+        
+
+    # assert that for each prefix, there exists one file with each start index
+    for prefix in prefix_list:
+        # load each file and check for nan
+        for file in files_by_prefix[prefix]:
+            data = torch.load(f'{data_dir}/{file["file"]}')
+            
+            assert not torch.isnan(data).any(), f'prefix: {prefix}, file: {file["file"]} has nan'
+        
+        print(f'prefix: {prefix}, no nans found')   
+    
+
+
+def gather_files(data_dir, prefix, remove_after):
+    
+    # if f'{data_dir}/{prefix}.txt' exists, remove it
+    # if os.path.exists(f'{data_dir}/{prefix}.txt'):
+    #     print('Removing', f'{data_dir}/{prefix}.txt')
+    #     os.remove(f'{data_dir}/{prefix}.txt')
+    
+    if os.path.exists(f'{data_dir}/{prefix}.pt'):
+        raise RuntimeError(f'{data_dir}/{prefix}.pt already exists')
+        # print('Removing', f'{data_dir}/{prefix}.pt')
+        # os.remove(f'{data_dir}/{prefix}.pt')
+    
+    # get all files in dir in alphabetical order
+    files = os.listdir(data_dir)
+    files = sorted(files)
+    
+    sorted_files = get_files_with_prefix(files, prefix)
+    
+    data_pt = torch.tensor([])
 
     time_start = time.time()
 
@@ -85,30 +140,30 @@ if __name__ == '__main__':
     # dataset_name = 'SURREAL_96_1-2-2ev_template_remeshed_augShapes'
     
     dataset_name_list = [
-        'partial_0.8_5k_32_1_lambda_0.1',
-        'partial_0.8_5k_32_1_lambda_0.01',
-        'partial_0.8_5k_32_2_lambda_0.1',
-        'partial_0.8_5k_32_2_lambda_0.01',
+        'partial_0.8_5k_32_1_lambda_0.01_anisRemesh_cuts',
+        'partial_0.8_5k_32_1_lambda_0.001_anisRemesh_cuts',
     ]
+    
+    prefix_list = [
+        'evals_first', 'evals_second',
+        'C_gt_xy', 'C_gt_yx', 
+        'evecs_cond_first', 'evecs_cond_second'
+        ]
     
     for dataset_name in dataset_name_list:
         
         print('Gathering', dataset_name)
         time.sleep(1)
-    
+        
         data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
         
-        # data_dir = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL_pair/pair_0.5_augShapes_signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+        verify_integrity(data_dir, prefix_list)
         
-        remove_after = True
+        check_for_nan(data_dir, prefix_list)
         
-        gather_files(data_dir, 'evals_first', remove_after)
-        gather_files(data_dir, 'evals_second', remove_after)
         
-        gather_files(data_dir, 'C_gt_xy', remove_after)
-        gather_files(data_dir, 'C_gt_yx', remove_after)
+        for prefix in prefix_list:
+            gather_files(data_dir, prefix, remove_after=True)
 
-        gather_files(data_dir, 'evecs_cond_first', remove_after)
-        gather_files(data_dir, 'evecs_cond_second', remove_after)
     
     

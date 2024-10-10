@@ -51,7 +51,11 @@ def augmentation_pipeline_partial(verts_orig, faces_orig, augmentations):
     
     
     # randomly choose the remeshing type
-    remesh_type = np.random.choice(['isotropic', 'partial'], p=[1-augmentations["remesh"]["partial"]["probability"], augmentations["remesh"]["partial"]["probability"]])
+    remesh_type = np.random.choice(
+        ['isotropic', 'anisotropic'],
+        p=[1-augmentations["remesh"]["anisotropic"]["probability"],
+           augmentations["remesh"]["anisotropic"]["probability"]])
+    
     
     if remesh_type == 'isotropic':
         simplify_strength = np.random.uniform(augmentations["remesh"]["isotropic"]["simplify_strength_min"], augmentations["remesh"]["isotropic"]["simplify_strength_max"])
@@ -63,14 +67,44 @@ def augmentation_pipeline_partial(verts_orig, faces_orig, augmentations):
             simplify_strength=simplify_strength,
         )
     else:
-        fraction_to_select = np.random.uniform(augmentations["remesh"]["partial"]["fraction_to_select_min"], augmentations["remesh"]["partial"]["fraction_to_select_max"])
-        n_seed_samples = np.random.choice(augmentations["remesh"]["partial"]["n_seed_samples"])
-        remove_selection = n_seed_samples != 1
-
-        verts, faces = remesh_partial(
+        # anisotropic remeshing
+        fraction_to_simplify = np.random.uniform(augmentations["remesh"]["anisotropic"]["fraction_to_simplify_min"], augmentations["remesh"]["anisotropic"]["fraction_to_simplify_max"])
+        simplify_strength = np.random.uniform(augmentations["remesh"]["anisotropic"]["simplify_strength_min"], augmentations["remesh"]["anisotropic"]["simplify_strength_max"])
+        
+        verts, faces = remesh_simplify_anis(
             verts_orig,
             faces_orig,
-            n_remesh_iters=augmentations["remesh"]["partial"]["n_remesh_iters"],
+            n_remesh_iters=augmentations["remesh"]["anisotropic"]["n_remesh_iters"],
+            fraction_to_simplify=fraction_to_simplify,
+            simplify_strength=simplify_strength,
+            weighted_by=augmentations["remesh"]["anisotropic"]["weighted_by"]
+        )
+        
+        
+    apply_partiality = np.random.choice(
+        ['none', 'partial'],
+        p=[1-augmentations["remesh"]["partial"]["probability"],
+           augmentations["remesh"]["partial"]["probability"]])
+    
+        
+    if apply_partiality == 'partial':
+        
+        fraction_to_keep = np.random.uniform(augmentations["remesh"]["partial"]["fraction_to_keep_min"], augmentations["remesh"]["partial"]["fraction_to_keep_max"])
+        n_seed_samples = np.random.choice(augmentations["remesh"]["partial"]["n_seed_samples"])
+        
+        remove_selection = n_seed_samples != 1
+        if remove_selection:
+            fraction_to_select = 1 - fraction_to_keep
+        else:
+            fraction_to_select = fraction_to_keep
+
+        verts, faces = remesh_partial(
+            # verts_orig,
+            # faces_orig,
+            # n_remesh_iters=augmentations["remesh"]["partial"]["n_remesh_iters"],
+            
+            verts,
+            faces,
             fraction_to_select=fraction_to_select,
             n_seed_samples=n_seed_samples,
             weighted_by=augmentations["remesh"]["partial"]["weighted_by"],
@@ -213,7 +247,7 @@ def remesh_simplify_anis(
 def remesh_partial(
     verts,
     faces,
-    n_remesh_iters,
+    # n_remesh_iters,
     fraction_to_select,
     n_seed_samples,
     weighted_by,
@@ -226,14 +260,17 @@ def remesh_partial(
     ms.add_mesh(mesh)
     
     # isotropic remeshing
-    if n_remesh_iters > 0:
-        ms.meshing_isotropic_explicit_remeshing(
-            iterations=n_remesh_iters,
-        ) 
+    # if n_remesh_iters > 0:
+    #     ms.meshing_isotropic_explicit_remeshing(
+    #         iterations=n_remesh_iters,
+    #     ) 
         
     # mesh after remeshing   
-    v_r = ms.current_mesh().vertex_matrix()
-    f_r = ms.current_mesh().face_matrix()
+    # v_r = ms.current_mesh().vertex_matrix()
+    # f_r = ms.current_mesh().face_matrix()
+    
+    v_r = verts
+    f_r = faces
     
     if weighted_by == 'area':
         # face area

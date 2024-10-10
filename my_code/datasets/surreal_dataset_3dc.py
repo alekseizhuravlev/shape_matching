@@ -138,6 +138,12 @@ class TemplateSurrealDataset3DC(Dataset):
         # center the shape and normalize the face area
         item['verts'] = preprocessing.center_mean(item['verts'])
         item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
+        
+        # if not self.partial:
+        #     item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
+        
+        # else:
+        #     print('!!!!!!! ATTENTION: NOT NORMALIZING FACE AREA !!!!!!!')
 
         
         # get eigenfunctions/eigenvalues

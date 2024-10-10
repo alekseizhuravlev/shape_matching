@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH -t 2-00:00:00
 #SBATCH --mem=50G
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:4
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/train_diffusion_%j.out
@@ -16,10 +16,9 @@ module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 
-experiment_name='partial_0.8_5k_32_2_lambda_0.01_yx'
-dataset_name='partial_0.8_5k_32_2_lambda_0.01'
+experiment_name='partial_0.8_5k_32_1_lambda_0.001_anisRemesh_cuts_yx'
+dataset_name='partial_0.8_5k_32_1_lambda_0.001_anisRemesh_cuts'
 
-# fmap_direction='yx'
 fmap_direction='yx'
 sample_size=32
 

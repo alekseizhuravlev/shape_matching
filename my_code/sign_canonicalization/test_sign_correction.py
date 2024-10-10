@@ -243,12 +243,12 @@ if __name__ == '__main__':
         dataset_list = [
             ('SHREC16_cuts_pair', 'test'),
             ('SHREC16_holes_pair', 'test'),
-            ('FAUST_r', 'test'),
-            ('FAUST_orig', 'test'), 
-            ('FAUST_a', 'test'),
-            ('SCAPE_r_pair', 'test'),
-            ('SCAPE_a_pair', 'test'),
-            ('SHREC19_r', 'train'), 
+            # ('FAUST_r', 'test'),
+            # ('FAUST_orig', 'test'), 
+            # ('FAUST_a', 'test'),
+            # ('SCAPE_r_pair', 'test'),
+            # ('SCAPE_a_pair', 'test'),
+            # ('SHREC19_r', 'train'), 
             
         ]
     else:    
@@ -270,9 +270,17 @@ if __name__ == '__main__':
             # ('DT4D_inter_pair', 'test'),
             # ('DT4D_inter_pair', 'train'),
         ]
+        
+    # find the latest checkpoint in f'{exp_dir}/....pth'
+    checkpoint_files = os.listdir(exp_dir)
+    checkpoint_files = [f for f in checkpoint_files if f.endswith('.pth')]
+    checkpoint_files = [int(f.split('.')[0]) for f in checkpoint_files]
+    checkpoint_files = sorted(checkpoint_files)
+    
+    last_checkpoint = checkpoint_files[-1]
     
 
-    for n_iter in [50000]:
+    for n_iter in [last_checkpoint]:
     # for n_iter in [200, 600, 1000, 1400, 2000]:
 
         net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
