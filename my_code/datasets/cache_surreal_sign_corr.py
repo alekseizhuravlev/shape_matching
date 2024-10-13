@@ -335,7 +335,7 @@ def parse_args():
     
     parser.add_argument('--regularization_lambda', type=float, required=False)
     
-    parser.add_argument('--partial', type=int, required=True)
+    parser.add_argument('--partial', type=float, required=True)
     
     
     args = parser.parse_args()
@@ -357,7 +357,12 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
-    if args.partial:
+    
+    
+    
+    if args.partial > 0:
+        
+        # print('!!!!!!! for partial, no full meshes are included')
     
         augmentations = {
             "remesh": {
@@ -378,11 +383,11 @@ if __name__ == '__main__':
                     "weighted_by": "face_count",
                 },
                 "partial": {
-                    "probability": 0.8,
+                    "probability": args.partial,
                     "n_remesh_iters": 10,
                     "fraction_to_keep_min": 0.4,
                     "fraction_to_keep_max": 0.8,
-                    "n_seed_samples": [1],
+                    "n_seed_samples": [5, 25],
                     "weighted_by": "face_count",
                 },
             },
@@ -424,7 +429,8 @@ if __name__ == '__main__':
         template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/template.off',
         template_corr=np.loadtxt(
             f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
-            dtype=np.int32) - 1
+            dtype=np.int32) - 1,
+        centering='bbox'
     )   
     
     print('Dataset created')

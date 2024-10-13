@@ -810,7 +810,7 @@ def run():
     split = args.split
 
     single_dataset, test_dataset = data_loading.get_val_dataset(
-        dataset_name, split, 200, preload=False, return_evecs=True
+        dataset_name, split, 200, preload=False, return_evecs=True, centering='bbox',
         )
     sign_corr_net.cache_dir = single_dataset.lb_cache_dir
 

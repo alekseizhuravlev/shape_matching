@@ -162,25 +162,27 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 128
+    input_channels = 3
     
     feature_dim = 32
-    evecs_per_support = (1, )
+    evecs_per_support = (4, )
     n_block = 6
     
-    n_iter = 50000
-    input_type = 'wks'
+    n_iter = 100000
+    input_type = 'xyz'
     
     with_mass = True
     
-    train_folder = 'partial_anisRemesh'
-    exp_name = 'partial_anisRemesh'
+    train_folder = 'test_partial_0.8_5k'
+    exp_name = 'test_partial_0.8_5k_xyz_32_4'
 
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_2-2-4-8ev_10_0.2_0.8'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
+    dataset_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/train/'
+    # dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
     
     ###################################################
     # count the number of output channels
@@ -202,7 +204,7 @@ if __name__ == '__main__':
     # shutil.rmtree(experiment_dir, ignore_errors=True)
     os.makedirs(experiment_dir)
     
-    with open(f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}/config.yaml', 'r') as f:
+    with open(f'{dataset_base_dir}/{train_folder}/config.yaml', 'r') as f:
         dataset_config = yaml.load(f, Loader=yaml.FullLoader)
     
         config = {
@@ -238,7 +240,8 @@ if __name__ == '__main__':
     
     
     train_shapes, train_diff_folder = load_cached_shapes(
-        f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
+        # f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
+        f'{dataset_base_dir}/{train_folder}',
         unsqueeze=True
     )        
     

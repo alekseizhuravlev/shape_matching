@@ -34,6 +34,7 @@ class TemplateSurrealDataset3DC(Dataset):
                  augmentations,
                  template_path,
                  template_corr,
+                 centering,
                  ):
         
         self.num_evecs = num_evecs
@@ -41,6 +42,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.return_evecs = return_evecs
         self.return_fmap = return_fmap
         self.augmentations = augmentations
+        self.centering = centering
         
         # determine if augmentations are partial
         if self.augmentations is not None and 'remesh' in self.augmentations:
@@ -80,7 +82,15 @@ class TemplateSurrealDataset3DC(Dataset):
         # self.template['verts'] = preprocessing.center(self.template['verts'])[0]
         
         # center the template
-        self.template['verts'] = preprocessing.center_mean(self.template['verts'])
+        
+        if self.centering == 'bbox':
+            self.template['verts'] = preprocessing.center_bbox(self.template['verts'])
+        elif self.centering == 'mean':
+            self.template['verts'] = preprocessing.center_mean(self.template['verts'])
+        else:
+            raise ValueError(f'Invalid centering method: {self.centering}')
+        
+        
         self.template['verts'] = preprocessing.normalize_face_area(self.template['verts'], self.template['faces'])
             
         
@@ -136,15 +146,16 @@ class TemplateSurrealDataset3DC(Dataset):
             item['corr'] = torch.tensor(list(range(len(item['verts']))))        
         
         # center the shape and normalize the face area
-        item['verts'] = preprocessing.center_mean(item['verts'])
+        
+        if self.centering == 'bbox':
+            item['verts'] = preprocessing.center_bbox(item['verts'])
+        elif self.centering == 'mean':
+            item['verts'] = preprocessing.center_mean(item['verts'])
+        else:
+            raise ValueError(f'Invalid centering method: {self.centering}')
+        
         item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
         
-        # if not self.partial:
-        #     item['verts'] = preprocessing.normalize_face_area(item['verts'], item['faces'])
-        
-        # else:
-        #     print('!!!!!!! ATTENTION: NOT NORMALIZING FACE AREA !!!!!!!')
-
         
         # get eigenfunctions/eigenvalues
         if self.return_evecs:

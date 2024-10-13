@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 24:00:00
-#SBATCH --array=0-0
+#SBATCH --array=0-2
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_medium
 #SBATCH --account=ag_ifi_laehner
@@ -17,8 +17,9 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 # put all dataset names and splits in a list
 job_list=(
-
-    'test_partial_anisRemesh'
+    'test_partial_5k_xyz_32_1'
+    'test_partial_5k_xyz_32_2'
+    'test_partial_5k_xyz_32_4'
 
     # 'signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
     # 'signNet_24_remeshed_mass_6b_1ev_10_0.2_0.8'

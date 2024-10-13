@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 1-00:00:00
-#SBATCH --array=0-7
+#SBATCH --array=0-3
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_medium
 #SBATCH --account=ag_ifi_laehner
@@ -21,15 +21,10 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 # put all dataset names and splits in a list
 job_list=(
-    "partial_0.8_5k_32_1_lambda_0.1_xy"
-    "partial_0.8_5k_32_1_lambda_0.01_xy"
-    "partial_0.8_5k_32_1_lambda_0.1_yx"
-    "partial_0.8_5k_32_1_lambda_0.01_yx"
-
-    "partial_0.8_5k_32_2_lambda_0.1_xy"
-    "partial_0.8_5k_32_2_lambda_0.01_xy"
-    "partial_0.8_5k_32_2_lambda_0.1_yx"
-    "partial_0.8_5k_32_2_lambda_0.01_yx"
+    "partial_0.8_5k_xyz_32_1_lambda_-1_anisRemesh_cuts_bbox_partial_0.8_xy"
+    "partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8_xy"
+    "partial_0.8_5k_xyz_32_1_lambda_0.001_anisRemesh_cuts_bbox_partial_0.8_xy"
+    "partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8_yx"
 )
 
 # worker id = id of the current job in the job list
@@ -41,13 +36,13 @@ experiment_name=${job_list[$worker_id]}
 dataset_name='training_data'
 split='train'
 
-checkpoint_name='epoch_99'
+checkpoint_name='epoch_90'
 num_iters_avg=64
 num_samples_median=10
 confidence_threshold=0.2
-num_iters_dataset=150
+num_iters_dataset=50
 
-log_subdir="test_partial_on_train_data"
+log_subdir="test_partial_on_train_data_1_0.5_0.9"
 
 
 echo "Testing experiment $experiment_name with checkpoint $checkpoint_name"

@@ -742,9 +742,9 @@ class PairShrec16Dataset(Dataset):
             
             
         # center and normalize face area
-        full_data['verts'] = preprocessing.center_mean(full_data['verts'])
+        # full_data['verts'] = preprocessing.center_mean(full_data['verts'])
         full_data['verts'] = preprocessing.normalize_face_area(full_data['verts'], full_data['faces'])
-        # full_data['verts'] = preprocessing.center_bbox(full_data['verts'])
+        full_data['verts'] = preprocessing.center_bbox(full_data['verts'])
         
 
             
@@ -774,9 +774,9 @@ class PairShrec16Dataset(Dataset):
             
         # center and normalize face area
         
-        partial_data['verts'] = preprocessing.center_mean(partial_data['verts'])
+        # partial_data['verts'] = preprocessing.center_mean(partial_data['verts'])
         partial_data['verts'] = preprocessing.normalize_face_area(partial_data['verts'], partial_data['faces'])
-        # partial_data['verts'] = preprocessing.center_bbox(partial_data['verts'])
+        partial_data['verts'] = preprocessing.center_bbox(partial_data['verts'])
         
         
 

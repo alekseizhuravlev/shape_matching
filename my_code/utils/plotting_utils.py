@@ -51,14 +51,14 @@ def plot_p2p_map(scene, verts_x, faces_x, verts_y, faces_y, p2p, axes_color_grad
     cmap2 = cmap[p2p].clip(0, 255)
 
     # add the first mesh
-    mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x)
+    mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, validate=True)
     mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     scene.add_geometry(mesh1)
     
     
     
     # add the second mesh
-    mesh2 = trimesh.Trimesh(vertices=verts_y + np.array([1, 0, 0]), faces=faces_y)
+    mesh2 = trimesh.Trimesh(vertices=verts_y + np.array([1, 0, 0]), faces=faces_y, validate=True)
     mesh2.visual.vertex_colors = cmap2[:len(mesh2.vertices)]
     scene.add_geometry(mesh2)
 

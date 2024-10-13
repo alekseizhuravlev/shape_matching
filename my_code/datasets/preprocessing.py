@@ -72,6 +72,10 @@ def normalize_face_area(verts, faces):
     return torch.tensor(verts)
 
 
+# def inertia_transform(vertices, faces):
+    
+
+
 def get_spectral_ops(item, num_evecs, cache_dir=None):
     if cache_dir is not None and not os.path.isdir(cache_dir):
         os.makedirs(cache_dir)

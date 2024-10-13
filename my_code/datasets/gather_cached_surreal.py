@@ -140,8 +140,9 @@ if __name__ == '__main__':
     # dataset_name = 'SURREAL_96_1-2-2ev_template_remeshed_augShapes'
     
     dataset_name_list = [
-        'partial_0.8_5k_32_1_lambda_0.01_anisRemesh_cuts',
-        'partial_0.8_5k_32_1_lambda_0.001_anisRemesh_cuts',
+        'partial_0.8_5k_xyz_32_1_lambda_-1_anisRemesh_cuts_bbox_partial_0.8',
+        'partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8',
+        'partial_0.8_5k_xyz_32_1_lambda_0.001_anisRemesh_cuts_bbox_partial_0.8',
     ]
     
     prefix_list = [

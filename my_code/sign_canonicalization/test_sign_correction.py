@@ -243,12 +243,12 @@ if __name__ == '__main__':
         dataset_list = [
             ('SHREC16_cuts_pair', 'test'),
             ('SHREC16_holes_pair', 'test'),
-            # ('FAUST_r', 'test'),
-            # ('FAUST_orig', 'test'), 
-            # ('FAUST_a', 'test'),
-            # ('SCAPE_r_pair', 'test'),
-            # ('SCAPE_a_pair', 'test'),
-            # ('SHREC19_r', 'train'), 
+            ('FAUST_r', 'test'),
+            ('FAUST_orig', 'test'), 
+            ('FAUST_a', 'test'),
+            ('SCAPE_r_pair', 'test'),
+            ('SCAPE_a_pair', 'test'),
+            ('SHREC19_r', 'train'), 
             
         ]
     else:    
@@ -299,7 +299,7 @@ if __name__ == '__main__':
                 
             else:
                 test_dataset_curr = data_loading.get_val_dataset(
-                    dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True
+                    dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True, centering='bbox'
                     )[0]
                 
                 if remesh_targetlen is not None and remesh_targetlen > 0:

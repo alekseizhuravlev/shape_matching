@@ -530,20 +530,30 @@ def run():
 
 
     augmentations = {
-        "remesh": {
+            "remesh": {
                 "isotropic": {
                     "n_remesh_iters": 10,
                     "remesh_targetlen": 1,
                     "simplify_strength_min": 0.2,
                     "simplify_strength_max": 0.8,
                 },
+                "anisotropic": {
+                    "probability": 0.35,
+                        
+                    "n_remesh_iters": 10,
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
                 "partial": {
                     "probability": 1,
                     "n_remesh_iters": 10,
                     "fraction_to_keep_min": 0.5,
                     "fraction_to_keep_max": 0.9,
-                    "n_seed_samples": [1, 5, 25],
-                    "weighted_by": "area",
+                    "n_seed_samples": [1],
+                    "weighted_by": "face_count",
                 },
             },
         }
@@ -561,7 +571,8 @@ def run():
         template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/remeshed/template.off',
         template_corr=np.loadtxt(
             f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/remeshed/corr.txt',
-            dtype=np.int32) - 1
+            dtype=np.int32) - 1,
+        centering='bbox',
     )  
     
     
