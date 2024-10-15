@@ -72,7 +72,13 @@ def normalize_face_area(verts, faces):
     return torch.tensor(verts)
 
 
-# def inertia_transform(vertices, faces):
+def inertia_transform(verts, faces):
+    
+    mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
+    
+    mesh.apply_transform(mesh.principal_inertia_transform)
+    
+    return torch.tensor(mesh.vertices, dtype=torch.float32)
     
 
 

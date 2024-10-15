@@ -71,6 +71,16 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_pe
     corr_first = data['first']['corr']
     corr_second = data['second']['corr']
     
+    if net_input_type == 'shot':
+        input_feats_first = data['first']['shot'].unsqueeze(0).to(device)    
+        input_feats_second = data['second']['shot'].unsqueeze(0).to(device)
+    else:
+        input_feats_first = None
+        input_feats_second = None
+        
+    
+    
+    
     if with_mass:
         mass_mat_first = torch.diag_embed(
             data['first']['mass'].unsqueeze(0)
@@ -89,6 +99,9 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_pe
             net, verts_first, faces_first, evecs_first, 
             mass_mat=mass_mat_first, input_type=net_input_type,
             evecs_per_support=evecs_per_support,
+            
+            input_feats=input_feats_first,
+            
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['first']['mass'].unsqueeze(0), L=data['first']['L'].unsqueeze(0),
             evals=data['first']['evals'].unsqueeze(0), evecs=data['first']['evecs'].unsqueeze(0),
@@ -98,6 +111,9 @@ def get_corrected_data(data, num_evecs, net, net_input_type, with_mass, evecs_pe
             net, verts_second, faces_second, evecs_second, 
             mass_mat=mass_mat_second, input_type=net_input_type,
             evecs_per_support=evecs_per_support,
+            
+            input_feats=input_feats_second,
+            
             # mass=None, L=None, evals=None, evecs=None, gradX=None, gradY=None
             mass=data['second']['mass'].unsqueeze(0), L=data['second']['L'].unsqueeze(0),
             evals=data['second']['evals'].unsqueeze(0), evecs=data['second']['evecs'].unsqueeze(0),
@@ -357,7 +373,10 @@ if __name__ == '__main__':
     # Dataset
     ####################################################
     
-    
+    # load the config
+    with open(f'{args.net_path}/config.yaml', 'r') as f:
+        sign_net_config = yaml.load(f, Loader=yaml.FullLoader)
+           
     
     
     if args.partial > 0:
@@ -430,7 +449,8 @@ if __name__ == '__main__':
         template_corr=np.loadtxt(
             f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
             dtype=np.int32) - 1,
-        centering='bbox'
+        centering='mean',
+        return_shot=sign_net_config['net_params']['input_type'] == 'shot',
     )   
     
     print('Dataset created')
@@ -450,10 +470,6 @@ if __name__ == '__main__':
     # Sign correction network
     ####################################################
 
-    # load the network
-    with open(f'{args.net_path}/config.yaml', 'r') as f:
-        sign_net_config = yaml.load(f, Loader=yaml.FullLoader)
-        
     # initialize the network
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     net = diffusion_network.DiffusionNet(

@@ -14,7 +14,7 @@ import yaml
 
 
 def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
-                        input_type, evecs_per_support,
+                        input_type, evecs_per_support, input_feats=None,
                         **kwargs):
     
     # check the input
@@ -28,9 +28,11 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
     
     # get the input for the network
     if input_type == 'wks' or input_type == 'xyz':
-        evecs_input = None
+        input_feats = None
     elif input_type == 'evecs':
-        evecs_input = evecs_flip
+        input_feats = evecs_flip
+    elif input_type == 'shot':
+        input_feats = input_feats
     else:
         raise ValueError(f'Unknown input type {input_type}')
         
@@ -38,7 +40,7 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
     support_vector_flip = net(
         verts=verts,
         faces=faces,
-        feats=evecs_input,
+        feats=input_feats,
         **kwargs
     ) # [1 x 6890 x 1]
 
@@ -117,6 +119,8 @@ def load_cached_shapes(save_folder, unsqueeze):
     # prepare the folders
     mesh_folder = f'{save_folder}/off'
     diff_folder = f'{save_folder}/diffusion'
+    
+    shot_folder = f'{save_folder}/shot' if os.path.exists(f'{save_folder}/shot') else None
 
 
     # get all meshes in the folder
@@ -128,6 +132,13 @@ def load_cached_shapes(save_folder, unsqueeze):
         verts, faces = shape_util.read_shape(os.path.join(mesh_folder, file))
         verts = torch.tensor(verts, dtype=torch.float32)
         faces = torch.tensor(faces, dtype=torch.int32)
+        
+        if shot_folder is not None:
+            # read e.g. 0000.pt file from shot folder
+            shot_file = os.path.join(shot_folder, file.replace('.off', '.pt'))
+            shot_feats = torch.load(shot_file).float()
+        else:
+            shot_feats = None
 
         _, mass, L, evals, evecs, gradX, gradY = geometry_util.get_operators(verts, faces,
                                                 k=128,
@@ -142,6 +153,9 @@ def load_cached_shapes(save_folder, unsqueeze):
                 'evals': evals.unsqueeze(0),
                 'gradX': gradX.unsqueeze(0),
                 'gradY': gradY.unsqueeze(0),
+                'shot': shot_feats.unsqueeze(0) if shot_feats is not None else None
+                
+                
             })
         else:
             shapes_list.append({
@@ -153,6 +167,7 @@ def load_cached_shapes(save_folder, unsqueeze):
                 'evals': evals,
                 'gradX': gradX,
                 'gradY': gradY,
+                'shot': shot_feats
             })
         
     return shapes_list, diff_folder
@@ -162,19 +177,19 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 3
+    input_channels = 352
     
     feature_dim = 32
-    evecs_per_support = (4, )
+    evecs_per_support = (1, )
     n_block = 6
     
-    n_iter = 100000
-    input_type = 'xyz'
+    n_iter = 50000
+    input_type = 'shot'
     
     with_mass = True
     
-    train_folder = 'test_partial_0.8_5k'
-    exp_name = 'test_partial_0.8_5k_xyz_32_4'
+    train_folder = 'test_partial_isoRemesh_shot'
+    exp_name = 'test_partial_isoRemesh_shot'
 
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_2-2-4-8ev_10_0.2_0.8'
@@ -268,7 +283,9 @@ if __name__ == '__main__':
             train_shape = train_shapes[curr_idx]
 
             verts = train_shape['verts'].to(device)
-            faces = train_shape['faces'].to(device)    
+            faces = train_shape['faces'].to(device)
+            
+            input_feats = train_shape['shot'].to(device)    
 
             evecs_orig = train_shape['evecs'][:, :, start_dim:start_dim+feature_dim].to(device)
             
@@ -298,6 +315,8 @@ if __name__ == '__main__':
                 mass_mat=mass_mat, input_type=input_type,
                 evecs_per_support=evecs_per_support,
                 
+                input_feats=input_feats,
+                
                 mass=train_shape['mass'], L=train_shape['L'],
                 evals=train_shape['evals'], evecs=train_shape['evecs'],
                 gradX=train_shape['gradX'], gradY=train_shape['gradY']
@@ -321,6 +340,8 @@ if __name__ == '__main__':
                 net, verts, faces, evecs_flip_1, 
                 mass_mat=mass_mat, input_type=input_type,
                 evecs_per_support=evecs_per_support,
+                
+                input_feats=input_feats,
                 
                 mass=train_shape['mass'], L=train_shape['L'],
                 evals=train_shape['evals'], evecs=train_shape['evecs'],

@@ -19,8 +19,8 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 # experiment_name='single_128_2-2-4-8ev_64-128-128_remeshed'
 # dataset_name='SURREAL_128_2-2-4-8ev_template_remeshed_augShapes'
 
-experiment_name='partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8_yx'
-dataset_name='partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8'
+experiment_name='partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_yx'
+dataset_name='partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8'
 
 fmap_direction='yx'
 sample_size=32

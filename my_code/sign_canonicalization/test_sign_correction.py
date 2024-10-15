@@ -10,6 +10,7 @@ import my_code.datasets.preprocessing as preprocessing
 import trimesh
 import argparse
 import utils.fmap_util as fmap_util
+import numpy as np
     
 
 
@@ -72,6 +73,35 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
     iterator = tqdm(total=len(test_dataset) * n_epochs)
     incorrect_signs_list = torch.tensor([])
     curr_iter = 0
+    
+    
+    
+    if net.input_type == 'shot':
+        import pyshot
+        
+        test_dataset_processed = []
+        
+        for i in tqdm(range(len(test_dataset)), desc='Calculating SHOT descriptors'):
+            data_i = test_dataset[i]
+            
+            shot_descrs = pyshot.get_descriptors(
+                data_i['verts'].numpy().astype(np.double),
+                data_i['faces'].numpy().astype(np.int64),
+                radius=100,
+                local_rf_radius=100,
+                # The following parameters are optional
+                min_neighbors=3,
+                n_bins=10,
+                double_volumes_sectors=True,
+                use_interpolation=True,
+                use_normalization=True,
+            )
+            
+            data_i['shot'] = torch.tensor(shot_descrs, dtype=torch.float32)
+            test_dataset_processed.append(data_i)
+        
+        test_dataset = test_dataset_processed
+                
 
         
     for _ in range(n_epochs):
@@ -99,6 +129,11 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
                     ).to(device)
             else:
                 mass_mat = None
+                
+            if net.input_type == 'shot':
+                input_feats = train_shape['shot'].unsqueeze(0).to(device)
+            else:
+                input_feats = None
 
             ##############################################
             # Set the signs on shape 0
@@ -124,6 +159,8 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
                     mass_mat=mass_mat, input_type=net.input_type,
                     evecs_per_support=config['evecs_per_support'],
                     
+                    input_feats = input_feats,
+                    
                     mass=train_shape['mass'].unsqueeze(0), L=train_shape['L'].unsqueeze(0),
                     evals=train_shape['evals'].unsqueeze(0), evecs=train_shape['evecs'].unsqueeze(0),
                     gradX=train_shape['gradX'].unsqueeze(0), gradY=train_shape['gradY'].unsqueeze(0)
@@ -148,6 +185,8 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
                     net, verts, faces, evecs_flip_1, 
                     mass_mat=mass_mat, input_type=net.input_type,
                     evecs_per_support=config['evecs_per_support'],
+                    
+                    input_feats = input_feats,
                     
                     mass=train_shape['mass'].unsqueeze(0), L=train_shape['L'].unsqueeze(0),
                     evals=train_shape['evals'].unsqueeze(0), evecs=train_shape['evecs'].unsqueeze(0),
@@ -299,7 +338,7 @@ if __name__ == '__main__':
                 
             else:
                 test_dataset_curr = data_loading.get_val_dataset(
-                    dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True, centering='bbox'
+                    dataset_name, split, 128, canonicalize_fmap=None, preload=False, return_evecs=True, centering='mean'
                     )[0]
                 
                 if remesh_targetlen is not None and remesh_targetlen > 0:

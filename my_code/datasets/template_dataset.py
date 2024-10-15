@@ -3,6 +3,7 @@ import trimesh
 import torch
 from torch.utils.data import Dataset
 from tqdm import tqdm
+import numpy as np
 
 import sys
 import os
@@ -19,7 +20,7 @@ import datasets_code.shape_dataset as shape_dataset
 import my_code.datasets.preprocessing as preprocessing
 
 
-def get_template(template_path, num_evecs, template_corr, centering):
+def get_template(template_path, num_evecs, template_corr, centering, return_shot=False):
     
     # load template mesh
     template_mesh = trimesh.load(template_path, process=False)
@@ -52,6 +53,24 @@ def get_template(template_path, num_evecs, template_corr, centering):
         num_evecs=num_evecs,
         cache_dir=os.path.dirname(template_path)
         )
+    
+    if return_shot:
+        import pyshot
+        
+        template['shot'] = torch.tensor(
+            pyshot.get_descriptors(
+            template['verts'].numpy().astype(np.double),
+            template['faces'].numpy().astype(np.int64),
+            radius=100,
+            local_rf_radius=100,
+            
+            min_neighbors=3,
+            n_bins=10,
+            double_volumes_sectors=True,
+            use_interpolation=True,
+            use_normalization=True,
+        ), dtype=torch.float32)
+        
     
     return template
         

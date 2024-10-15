@@ -35,6 +35,7 @@ class TemplateSurrealDataset3DC(Dataset):
                  template_path,
                  template_corr,
                  centering,
+                 return_shot=False,
                  ):
         
         self.num_evecs = num_evecs
@@ -43,6 +44,7 @@ class TemplateSurrealDataset3DC(Dataset):
         self.return_fmap = return_fmap
         self.augmentations = augmentations
         self.centering = centering
+        self.return_shot = return_shot
         
         # determine if augmentations are partial
         if self.augmentations is not None and 'remesh' in self.augmentations:
@@ -95,6 +97,24 @@ class TemplateSurrealDataset3DC(Dataset):
             
         
         self.template = preprocessing.get_spectral_ops(self.template, num_evecs=self.num_evecs)
+        
+        if self.return_shot:
+            import pyshot
+            
+            self.template['shot'] = torch.tensor(
+                pyshot.get_descriptors(
+                    self.template['verts'].numpy().astype(np.double),
+                    self.template['faces'].numpy().astype(np.int64),
+                    radius=100,
+                    local_rf_radius=100,
+                    
+                    min_neighbors=3,
+                    n_bins=10,
+                    double_volumes_sectors=True,
+                    use_interpolation=True,
+                    use_normalization=True,
+                ), dtype=torch.float32)
+            
      
     
     def get_functional_map(self, data_x, data_y):
@@ -116,6 +136,21 @@ class TemplateSurrealDataset3DC(Dataset):
         
         
     def __getitem__(self, index):
+        
+        n_attempts = 10
+        
+        while n_attempts > 0:
+            try:
+                return self._get_item(index)
+            except Exception as e:
+                print(f'Error: {e}')
+                n_attempts -= 1
+                print(f'Attempts left: {n_attempts}')
+                
+        raise ValueError(f'Failed to get item {index}')
+        
+        
+    def _get_item(self, index):
         
         item = dict()
         
@@ -160,6 +195,26 @@ class TemplateSurrealDataset3DC(Dataset):
         # get eigenfunctions/eigenvalues
         if self.return_evecs:
             item = preprocessing.get_spectral_ops(item, num_evecs=self.num_evecs, cache_dir=self.cache_lb_dir)
+
+        
+        if self.return_shot:
+            
+            import pyshot
+            
+            item['shot'] = torch.tensor(
+                pyshot.get_descriptors(
+                item['verts'].numpy().astype(np.double),
+                item['faces'].numpy().astype(np.int64),
+                radius=100,
+                local_rf_radius=100,
+                
+                min_neighbors=3,
+                n_bins=10,
+                double_volumes_sectors=True,
+                use_interpolation=True,
+                use_normalization=True,
+            ), dtype=torch.float32)
+        
         
         
         if self.partial:

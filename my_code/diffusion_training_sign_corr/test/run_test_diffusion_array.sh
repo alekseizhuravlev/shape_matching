@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH -n 1
-#SBATCH -t 2-00:00:00
+#SBATCH -t 7-00:00:00
 #SBATCH --array=0-5
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_long
@@ -73,10 +73,10 @@ echo "Log directory: $log_subdir"
 srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir 
 
 # rewrite the line above with values instead of variables
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_48_remeshed_noAcc_yx_64_128_128 --checkpoint_name checkpoint_90.pt --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_128_1-2-2-4ev_64-128-128_remeshed --checkpoint_name epoch_95 --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test --reduced
 
 # taubin 5
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir
+# srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir
 
 # laplacian 5
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type laplacian --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir --dirichlet_energy_threshold_template $dirichlet_energy_threshold_template --zoomout_num_evecs_template $zoomout_num_evecs_template

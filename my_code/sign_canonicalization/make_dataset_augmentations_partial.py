@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import trimesh
 # import my_code.diffusion_training_sign_corr.data_loading as data_loading
 import my_code.datasets.shape_dataset as shape_dataset
+import my_code.datasets.preprocessing as preprocessing
 
 import os
 import shutil
@@ -20,10 +21,14 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "partial_anisRemesh",
+        "dataset_name": "partial_isoRemesh_shot",
         
         "n_shapes": 1000,
         "lapl_type": "mesh",
+        
+        'descr_type': 'shot',
+        'centering': 'mean',
+        
         
         "split": "train",
         
@@ -47,7 +52,7 @@ if __name__ == '__main__':
                     "simplify_strength_max": 0.8,
                 },
                 "anisotropic": {
-                    "probability": 0.35,
+                    "probability": 0,
                         
                     "n_remesh_iters": 10,
                     "fraction_to_simplify_min": 0.2,
@@ -59,7 +64,7 @@ if __name__ == '__main__':
                 "partial": {
                     "probability": 0.8,
                     "n_remesh_iters": 10,
-                    "fraction_to_keep_min": 0.4,
+                    "fraction_to_keep_min": 0.5,
                     "fraction_to_keep_max": 0.8,
                     "n_seed_samples": [1, 5, 25],
                     "weighted_by": "face_count",
@@ -77,8 +82,8 @@ if __name__ == '__main__':
     )
     
     # prepare the folders
-    base_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/{config["split"]}/{config["dataset_name"]}'
-    shutil.rmtree(base_folder, ignore_errors=True)
+    base_folder = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/{config["split"]}/{config["dataset_name"]}'
+    # shutil.rmtree(base_folder, ignore_errors=True)
     
     mesh_folder = f'{base_folder}/off'
     diff_folder = f'{base_folder}/diffusion'
@@ -134,6 +139,18 @@ if __name__ == '__main__':
             #         weighted_by=config["remesh"]["partial"]["weighted_by"],
             #         remove_selection=remove_selection
             #     )
+            
+            
+            if config["centering"] == 'bbox':
+                verts = preprocessing.center_bbox(verts)
+            elif config["centering"] == 'mean':
+                verts = preprocessing.center_mean(verts)
+            else:
+                raise ValueError(f'Invalid centering method: {config["centering"]}')
+                
+            # normalize vertices by area
+            verts = preprocessing.normalize_face_area(verts, faces)
+            
 
 
             # augment the vertices
@@ -177,6 +194,33 @@ if __name__ == '__main__':
                 _, _, _, _, evecs_orig, _, _ = geometry_util.get_operators(
                     verts_aug, faces,
                     k=128, cache_dir=diff_folder)
+                
+                
+            if config["descr_type"] == 'shot':
+                import pyshot
+                
+                shot_descrs = pyshot.get_descriptors(
+                    verts_aug.numpy().astype(np.double),
+                    faces.numpy().astype(np.int64),
+                    radius=100,
+                    local_rf_radius=100,
+                    # The following parameters are optional
+                    min_neighbors=3,
+                    n_bins=10,
+                    double_volumes_sectors=True,
+                    use_interpolation=True,
+                    use_normalization=True,
+                )
+                
+                shot_folder = f'{base_folder}/shot'
+                os.makedirs(shot_folder, exist_ok=True)
+                
+                torch.save(
+                    torch.tensor(shot_descrs),
+                    f'{shot_folder}/{current_iteration:04}.pt'
+                    )
+                
+            
 
             # update the iterator
             iterator.update(1)

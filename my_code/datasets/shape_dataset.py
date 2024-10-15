@@ -743,6 +743,14 @@ class PairShrec16Dataset(Dataset):
             
         # center and normalize face area
         # full_data['verts'] = preprocessing.center_mean(full_data['verts'])
+        
+        # full_data['verts'] = preprocessing.inertia_transform(full_data['verts'], full_data['faces'])
+
+        verts_first_raw = full_data['verts'].clone()
+        full_data['verts'][:, 0] = verts_first_raw[:, 0]
+        full_data['verts'][:, 1] = verts_first_raw[:, 2]
+        full_data['verts'][:, 2] = -verts_first_raw[:, 1]
+        
         full_data['verts'] = preprocessing.normalize_face_area(full_data['verts'], full_data['faces'])
         full_data['verts'] = preprocessing.center_bbox(full_data['verts'])
         
@@ -775,6 +783,14 @@ class PairShrec16Dataset(Dataset):
         # center and normalize face area
         
         # partial_data['verts'] = preprocessing.center_mean(partial_data['verts'])
+        
+        # partial_data['verts'] = preprocessing.inertia_transform(partial_data['verts'], partial_data['faces'])
+        
+        verts_second_raw = partial_data['verts'].clone()
+        partial_data['verts'][:, 0] = verts_second_raw[:, 0]
+        partial_data['verts'][:, 1] = verts_second_raw[:, 2]
+        partial_data['verts'][:, 2] = -verts_second_raw[:, 1]
+        
         partial_data['verts'] = preprocessing.normalize_face_area(partial_data['verts'], partial_data['faces'])
         partial_data['verts'] = preprocessing.center_bbox(partial_data['verts'])
         
