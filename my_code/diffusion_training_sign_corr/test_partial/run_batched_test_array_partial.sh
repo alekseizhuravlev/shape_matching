@@ -1,10 +1,18 @@
 experiment_names=(
-    'partial_anisRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_xy'
-    'partial_anisRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_yx'
-    'partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_xy'
-    'partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_yx'
+    'partial_0.8_5k_32_1_lambda_0.01_anisRemesh_cuts_xy'
+    'partial_0.8_5k_32_1_lambda_0.01_anisRemesh_cuts_yx'
+    'partial_0.8_5k_32_1_lambda_0.001_anisRemesh_cuts_xy'
+    'partial_0.8_5k_32_1_lambda_0.01_xy'
+    'partial_0.8_5k_32_2_lambda_0.01_xy'
+    'partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_holes_bbox_partial_0.8_xy'
+    'partial_0.8_5k_xyz_32_1_lambda_0.01_anisRemesh_cuts_bbox_partial_0.8_xy'
+    'partial_0.8_5k_xyz_32_2_-1_anisRemesh_cuts_bbox_partial_0.8_xy'
 )
 checkpoint_names=(
+    'epoch_95'
+    'epoch_95'
+    'epoch_95'
+    'epoch_95'
     'epoch_95'
     'epoch_95'
     'epoch_95'

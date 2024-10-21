@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 def train_epoch(model, is_unconditional,
                 train_dataloader, noise_scheduler,
-                opt, loss_fn, accelerator=None):
+                opt, loss_fn, lr_scheduler, accelerator=None):
     
     # Keeping a record of the losses for later viewing
     losses = []
@@ -40,6 +40,12 @@ def train_epoch(model, is_unconditional,
 
         # Calculate the loss
         loss = loss_fn(pred, noise) # How close is the output to the noise
+        
+        # if accelerator is None:
+        #     loss = loss_fn(pred, noise) # How close is the output to the noise
+        # else:
+        #     with accelerator.autocast():
+        #         loss = loss_fn(pred, noise)
 
         # Backprop and update the params:
         opt.zero_grad()
@@ -50,6 +56,7 @@ def train_epoch(model, is_unconditional,
             loss.backward()
             
         opt.step()
+        lr_scheduler.step()
 
         # Store the loss for later
         losses.append(loss.item())

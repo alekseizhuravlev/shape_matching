@@ -27,7 +27,7 @@ num_iters_avg=64
 num_samples_median=10
 confidence_threshold=0.2
 
-log_subdir="logs_partial"
+log_subdir="logs_partial_symm"
 
 
 

@@ -233,7 +233,7 @@ if __name__ == '__main__':
                         
     parser.add_argument('--smoothing_iter', type=int)
     
-    parser.add_argument('--partial', type=bool, required=True)
+    parser.add_argument('--partial', type=int, required=True)
     
     args = parser.parse_args()
     
@@ -278,7 +278,7 @@ if __name__ == '__main__':
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     
     
-    if args.partial:
+    if args.partial > 0:
         dataset_list = [
             ('SHREC16_cuts_pair', 'test'),
             ('SHREC16_holes_pair', 'test'),

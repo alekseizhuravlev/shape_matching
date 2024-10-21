@@ -17,9 +17,9 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 # put all dataset names and splits in a list
 job_list=(
-    'test_partial_5k_xyz_32_1'
-    'test_partial_5k_xyz_32_2'
-    'test_partial_5k_xyz_32_4'
+    'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
+    'signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
+    'signNet_128_remeshed_mass_6b_1-2-2-4ev_10_0.2_0.8'
 
     # 'signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
     # 'signNet_24_remeshed_mass_6b_1ev_10_0.2_0.8'
@@ -27,7 +27,7 @@ job_list=(
     # 'signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8'
 )
 
-partial=1
+partial=-1
 
 # worker id = id of the current job in the job list
 worker_id=$SLURM_ARRAY_TASK_ID

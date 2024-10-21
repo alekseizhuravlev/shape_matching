@@ -234,7 +234,7 @@ class TemplateSurrealDataset3DC(Dataset):
             
         else:        
             payload =  {
-                'first': self.template,
+                'first': copy.deepcopy(self.template),
                 'second': item,
             }
             # now, 'first' has the correspondence: remeshed template -> smpl

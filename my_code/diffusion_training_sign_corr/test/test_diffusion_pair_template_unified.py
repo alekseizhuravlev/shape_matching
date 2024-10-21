@@ -31,6 +31,7 @@ import accelerate
 import my_code.sign_canonicalization.test_sign_correction as test_sign_correction
 import networks.fmap_network as fmap_network
 from my_code.utils.median_p2p_map import dirichlet_energy
+import random
 
 tqdm._instances.clear()
 
@@ -765,6 +766,14 @@ def get_pairwise_error(
 def run():
 
     args = parse_args()
+    
+    # set random seed
+    torch.manual_seed(args.random_seed)
+    np.random.seed(args.random_seed)
+    random.seed(args.random_seed)
+    
+    
+    
 
     # configuration
     experiment_name = args.experiment_name
@@ -772,6 +781,9 @@ def run():
 
     ### config
     exp_base_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/{experiment_name}'
+    if not os.path.exists(exp_base_folder):
+        exp_base_folder = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/{experiment_name}'
+    
     with open(f'{exp_base_folder}/config.yaml', 'r') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 

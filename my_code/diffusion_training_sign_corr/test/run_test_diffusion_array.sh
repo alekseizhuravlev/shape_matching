@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 7-00:00:00
-#SBATCH --array=0-5
+#SBATCH --array=0-4
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
@@ -24,11 +24,19 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 experiment_name=$1
 
-num_iters_avg=64
-num_samples_median=10
+# num_iters_avg=64
+# num_samples_median=10
+
+num_iters_avg=128
+num_samples_median=16
+
 confidence_threshold=0.2
 
 log_subdir="logs_robustMedian_fixedSmoothing_${num_iters_avg}_${num_samples_median}_${confidence_threshold}"
+
+random_seed=12
+
+
 # log_subdir="logs_templateZoomout"
 
 # dirichlet_energy_threshold_template=30
@@ -41,7 +49,8 @@ checkpoint_name=$2
 
 # put all dataset names and splits in a list
 job_list=(
-    'FAUST_orig_pair test'
+    # 'FAUST_orig_pair test'
+
     'FAUST_r_pair test'
     'FAUST_a_pair test'
     'SHREC19_r_pair test'
@@ -70,10 +79,10 @@ echo "Log directory: $log_subdir"
 # with template
 
 # no smoothing
-srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir 
+srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir --random_seed $random_seed
 
 # rewrite the line above with values instead of variables
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_128_1-2-2-4ev_64-128-128_remeshed --checkpoint_name epoch_95 --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test --reduced
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_64_1-2ev_64-128-128_remeshed_fixed --checkpoint_name epoch_99 --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test --reduced --random_seed 1
 
 # taubin 5
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir

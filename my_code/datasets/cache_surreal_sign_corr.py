@@ -353,6 +353,8 @@ def parse_args():
     
     parser.add_argument('--partial', type=float, required=True)
     
+    parser.add_argument('--centering', type=str, required=True)
+    
     
     args = parser.parse_args()
     
@@ -380,6 +382,8 @@ if __name__ == '__main__':
     
     
     if args.partial > 0:
+        
+        raise NotImplementedError('Partial remeshing is not supported')
         
         # print('!!!!!!! for partial, no full meshes are included')
     
@@ -449,7 +453,7 @@ if __name__ == '__main__':
         template_corr=np.loadtxt(
             f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
             dtype=np.int32) - 1,
-        centering='mean',
+        centering=args.centering,
         return_shot=sign_net_config['net_params']['input_type'] == 'shot',
     )   
     
@@ -490,6 +494,7 @@ if __name__ == '__main__':
     sign_net_config['pair_type'] = args.pair_type
     sign_net_config['n_pairs'] = args.n_pairs
     sign_net_config['regularization_lambda'] = args.regularization_lambda
+    sign_net_config['centering'] = args.centering
     
     if args.pair_type == 'template':
         assert args.n_pairs == 1, 'n_pairs must be 1 for template pair type'

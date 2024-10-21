@@ -32,7 +32,8 @@ def predict_sign_change(net, verts, faces, evecs_flip, mass_mat,
     elif input_type == 'evecs':
         input_feats = evecs_flip
     elif input_type == 'shot':
-        input_feats = input_feats
+        raise ValueError('Not implemented')
+        # input_feats = input_feats
     else:
         raise ValueError(f'Unknown input type {input_type}')
         
@@ -177,27 +178,28 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 352
+    input_channels = 256
     
-    feature_dim = 32
-    evecs_per_support = (1, )
+    feature_dim = 128
+    evecs_per_support = (1, 1, 2, 2)
     n_block = 6
     
     n_iter = 50000
-    input_type = 'shot'
+    input_type = 'wks'
     
     with_mass = True
     
-    train_folder = 'test_partial_isoRemesh_shot'
-    exp_name = 'test_partial_isoRemesh_shot'
+    # train_folder = 'test_partial_isoRemesh_shot'
+    # exp_name = 'test_partial_isoRemesh_shot'
+    # dataset_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/train/'
 
-    # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    # exp_name = f'signNet_128_remeshed_mass_6b_2-2-4-8ev_10_0.2_0.8'
+    train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     
-    dataset_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/train/'
-    # dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
+    
+    dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
     
     ###################################################
     # count the number of output channels
@@ -285,7 +287,10 @@ if __name__ == '__main__':
             verts = train_shape['verts'].to(device)
             faces = train_shape['faces'].to(device)
             
-            input_feats = train_shape['shot'].to(device)    
+            if input_type == 'shot':
+                input_feats = train_shape['shot'].to(device)    
+            else:
+                input_feats = None
 
             evecs_orig = train_shape['evecs'][:, :, start_dim:start_dim+feature_dim].to(device)
             

@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 24:00:00
-#SBATCH --array=0-199
+#SBATCH --array=0-99
 #SBATCH --mem=50G
 #SBATCH --partition=intelsr_medium
 #SBATCH --account=ag_ifi_laehner
@@ -17,22 +17,26 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 
-# num_evecs=128
-# net_name='signNet_128_remeshed_mass_6b_2-2-4-8ev_10_0.2_0.8'
-# dataset_name='SURREAL_128_2-2-4-8ev_template_remeshed_augShapes'
+num_evecs=128
+net_name='signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
+dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
 
-num_evecs=32
-net_name='test_partial_isoRemesh_shot'
-dataset_name='partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8'
+regularization_lambda=-1
+partial=-1
+
+# num_evecs=32
+# net_name='test_partial_isoRemesh_shot'
+# dataset_name='partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8'
+# regularization_lambda=0.01
+# partial=0.8
 
 template_type='remeshed'
 pair_type='template'
 n_pairs=1
+centering='bbox'
 
-regularization_lambda=0.01
-partial=0.8
 
-srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/${net_name} --dataset_name ${dataset_name} --template_type ${template_type} --pair_type ${pair_type} --n_pairs ${n_pairs} --regularization_lambda ${regularization_lambda} --partial ${partial}
+srun python my_code/datasets/cache_surreal_sign_corr.py  --num_evecs ${num_evecs} --n_workers ${SLURM_ARRAY_TASK_COUNT} --current_worker ${SLURM_ARRAY_TASK_ID} --net_path /home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/${net_name} --dataset_name ${dataset_name} --template_type ${template_type} --pair_type ${pair_type} --n_pairs ${n_pairs} --regularization_lambda ${regularization_lambda} --partial ${partial} --centering ${centering}
 
 
 # rewrite as line of code with values instead of variables

@@ -59,6 +59,7 @@ def main():
     # configuration
     config = {
         'experiment_name': args.experiment_name,
+        'experiment_base_dir': '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints',
         'accelerate': True,
         
         'dataset_base_dir': '/tmp',
@@ -72,8 +73,8 @@ def main():
         'validate_every': 5,
         'checkpoint_every': 5,
         
-        'batch_size': 128,
-        'eval_batch_size': 128,
+        'batch_size': 32,
+        'eval_batch_size': 32,
         
         'model_params': {
             'sample_size': args.sample_size,
@@ -87,7 +88,10 @@ def main():
     }   
     
     # experiment setup
-    experiment_folder = f'/home/{user_name}/shape_matching/my_code/experiments/ddpm/{config["experiment_name"]}'
+    # experiment_folder = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/ddpm/{config["experiment_name"]}'
+    experiment_folder = f'{config["experiment_base_dir"]}/{config["experiment_name"]}'
+    
+    
     # shutil.rmtree(experiment_folder, ignore_errors=True)
     
     
@@ -158,6 +162,15 @@ def main():
     ### Model
     model = DiagConditionedUnet(config["model_params"]).to(device)
     opt = torch.optim.Adam(model.parameters(), lr=1e-3)
+    # lr_scheduler = torch.optim.lr_scheduler.LinearLR(
+    #     opt, start_factor=1, end_factor=0.1, 
+    #     total_iters=config["n_epochs"] * len(dataloader_train)
+    #     )
+    
+    # use cosine annealing
+    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        opt, T_max=config["n_epochs"] * len(dataloader_train)
+        )
     
     ####################################################
     # !!!!!! dropping this will cause 
@@ -169,8 +182,8 @@ def main():
     
     ####################################################
     
-    model, opt, dataloader_train = accelerator.prepare(
-        model, opt, dataloader_train
+    model, opt, dataloader_train, lr_scheduler = accelerator.prepare(
+        model, opt, dataloader_train, lr_scheduler
     )
     
     
@@ -195,7 +208,8 @@ def main():
                                     train_dataloader=dataloader_train,
                                     noise_scheduler=noise_scheduler,
                                     opt=opt, loss_fn=loss_fn,
-                                    accelerator=accelerator)
+                                    accelerator=accelerator,
+                                    lr_scheduler=lr_scheduler)
         
         # save the losses to tensorboard
         for i, loss_value in enumerate(losses):

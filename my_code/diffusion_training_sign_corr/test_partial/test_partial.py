@@ -485,6 +485,38 @@ def get_p2p_maps_template(
     return p2p_est, p2p_dirichlet, p2p_median, confidence_scores, dist_second
 
 
+def zoomout_after_reindexing(
+    p2p_input,
+    evecs_first, evecs_second,
+    A2, start_dim,
+):
+
+    if A2 is not None:
+        if A2.ndim == 1:
+            Cxy = evecs_second[:, :start_dim].T @ (A2[:, None] * evecs_first[p2p_input, :start_dim])
+        else:
+            Cxy = evecs_second[:, :start_dim].T @ (A2 @ evecs_first[p2p_input, :start_dim])
+    else:
+        Cxy = fmap_util.pointmap2fmap(p2p_input, evecs_second[:, :start_dim], evecs_first[:, :start_dim])
+
+    Cxy = zoomout_custom.zoomout(
+        FM_12=Cxy, 
+        evects1=evecs_first,
+        evects2=evecs_second,
+        nit=evecs_first.shape[1] - start_dim, step=1,
+        A2=A2
+    )
+    
+    num_evecs = evecs_first.shape[1]
+        
+    p2p = fmap_util.fmap2pointmap(
+        C12=Cxy,
+        evecs_x=evecs_first[:, :num_evecs],
+        evecs_y=evecs_second[:, :num_evecs],
+        )
+    
+    return p2p.cpu(), Cxy.cpu()
+
 
 def run():
 
@@ -581,7 +613,7 @@ def run():
 
 
     if args.reduced:
-        data_range_2 = [8]
+        data_range_2 = [6]
         print('!!! WARNING: only 2 samples are processed !!!')
         
     else:
@@ -677,7 +709,27 @@ def run():
             Cxy_second_list, evecs_second_signs_list_second, evecs_first_signs_list_second,
             data['second'], args, log_file_name, config
         )
+        
+            
+        ###############################################
+        # Reflected correspondences
+        ###############################################
+        
+        print('!!! using reflected correspondences')
+        
+        verts_first_orig = data['first']['verts']
 
+        verts_first_reflected = verts_first_orig.clone()
+        verts_first_reflected[:, 0] *= -1
+
+        symm_map_first = fmap_util.nn_query(
+            verts_first_reflected,
+            verts_first_orig
+            )    
+        
+        corr_first_symm = symm_map_first[corr_first.cpu()]
+        
+        ###############################################
 
         corr_first = corr_first.cpu()
         corr_second = corr_second.cpu()
@@ -685,31 +737,79 @@ def run():
 
         p2p_est_pairzo = []
         geo_err_est_pairzo = []
+        Cxy_est_pairzo = []
 
         for k in range(args.num_iters_avg):
             
             p2p_est_pairzo_k = p2p_est_first[k][p2p_est_second_rev[k]].cpu()
             
+            # p2p_est_pairzo_k, Cxy_est_pairzo_k = zoomout_after_reindexing(
+            #     p2p_est_pairzo_k.to(device),
+            #     evecs_first.to(device),
+            #     evecs_second.to(device),
+            #     mass_second.to(device), 
+            #     num_evecs,
+            # )
+            
+            # p2p_est_pairzo_k, Cxy_est_pairzo_k = zoomout_after_reindexing(
+            #     p2p_est_pairzo_k.to(device),
+            #     evecs_first.to(device), evecs_second.to(device),
+            #     evecs_trans_first.to(device), evecs_trans_second.to(device),
+            #     evals_first.to(device), evals_second.to(device), 
+            #     args.reduced_dim, fmnet
+            # )   
+            
+            # Cxy_est_pairzo.append(Cxy_est_pairzo_k)
             p2p_est_pairzo.append(p2p_est_pairzo_k)
+            
             geo_err_est_pairzo.append(
-                geodist_metric.calculate_geodesic_error(
-                dist_x, corr_first, corr_second, p2p_est_pairzo_k, return_mean=True
-            ) * 100)
-    
+                min(
+                    geodist_metric.calculate_geodesic_error(
+                        dist_x, corr_first, corr_second, p2p_est_pairzo_k, return_mean=True
+                    ) * 100,
+                    geodist_metric.calculate_geodesic_error(
+                        dist_x, corr_first_symm, corr_second, p2p_est_pairzo_k, return_mean=True
+                    ) * 100,
+                ))
+
         p2p_est_pairzo = torch.stack(p2p_est_pairzo)
         geo_err_est_pairzo = torch.tensor(geo_err_est_pairzo)
 
 
 
         p2p_est_dirichlet = p2p_dirichlet_first[p2p_dirichlet_second_rev].cpu()
-        geo_err_est_dirichlet = geodist_metric.calculate_geodesic_error(
-            dist_x, corr_first, corr_second, p2p_est_dirichlet, return_mean=True
-        ) * 100
+        # p2p_est_dirichlet, _ = zoomout_after_reindexing(
+        #     p2p_est_dirichlet.to(device),
+        #     evecs_first.to(device),
+        #     evecs_second.to(device),
+        #     mass_second.to(device), 
+        #     num_evecs,
+        # )
+        geo_err_est_dirichlet = min(
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first, corr_second, p2p_est_dirichlet, return_mean=True
+            ) * 100,
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first_symm, corr_second, p2p_est_dirichlet, return_mean=True
+            ) * 100
+        )
 
         p2p_est_median = p2p_median_first[p2p_median_second_rev].cpu()
-        geo_err_est_median = geodist_metric.calculate_geodesic_error(
-            dist_x, corr_first, corr_second, p2p_est_median, return_mean=True
-        ) * 100
+        # p2p_est_median, _ = zoomout_after_reindexing(
+        #     p2p_est_median.to(device),
+        #     evecs_first.to(device),
+        #     evecs_second.to(device),
+        #     mass_second.to(device), 
+        #     num_evecs,
+        # )
+        geo_err_est_median = min(
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first, corr_second, p2p_est_median, return_mean=True
+            ) * 100,
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first_symm, corr_second, p2p_est_median, return_mean=True
+            ) * 100, 
+        )
         
         
         
@@ -720,13 +820,90 @@ def run():
             dist_x,
             num_samples_median=args.num_samples_median
             )
+        # p2p_dirichlet_pairzo, _ = zoomout_after_reindexing(
+        #     p2p_dirichlet_pairzo.to(device),
+        #     evecs_first.to(device),
+        #     evecs_second.to(device),
+        #     mass_second.to(device), 
+        #     num_evecs,
+        # )
+        # p2p_median_pairzo, _ = zoomout_after_reindexing(
+        #     p2p_median_pairzo.to(device),
+        #     evecs_first.to(device),
+        #     evecs_second.to(device),
+        #     mass_second.to(device), 
+        #     num_evecs,
+        # )
+
+        geo_err_dirichlet_pairzo = min(
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first, corr_second, p2p_dirichlet_pairzo, return_mean=True
+            ) * 100,
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first_symm, corr_second, p2p_dirichlet_pairzo, return_mean=True
+            ) * 100
+        )
         
-        geo_err_dirichlet_pairzo = geodist_metric.calculate_geodesic_error(
-            dist_x, corr_first, corr_second, p2p_dirichlet_pairzo, return_mean=True
-        ) * 100
-        geo_err_median_pairzo = geodist_metric.calculate_geodesic_error(
-            dist_x, corr_first, corr_second, p2p_median_pairzo, return_mean=True
-        ) * 100
+        geo_err_median_pairzo = min(
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first, corr_second, p2p_median_pairzo, return_mean=True
+            ) * 100,
+            geodist_metric.calculate_geodesic_error(
+                dist_x, corr_first_symm, corr_second, p2p_median_pairzo, return_mean=True
+            ) * 100,
+        )
+             
+        
+
+
+        # corr_first = corr_first.cpu()
+        # corr_second = corr_second.cpu()
+        
+
+        # p2p_est_pairzo = []
+        # geo_err_est_pairzo = []
+
+        # for k in range(args.num_iters_avg):
+            
+        #     p2p_est_pairzo_k = p2p_est_first[k][p2p_est_second_rev[k]].cpu()
+            
+        #     p2p_est_pairzo.append(p2p_est_pairzo_k)
+        #     geo_err_est_pairzo.append(
+        #         geodist_metric.calculate_geodesic_error(
+        #         dist_x, corr_first, corr_second, p2p_est_pairzo_k, return_mean=True
+        #     ) * 100)
+    
+        # p2p_est_pairzo = torch.stack(p2p_est_pairzo)
+        # geo_err_est_pairzo = torch.tensor(geo_err_est_pairzo)
+
+
+
+        # p2p_est_dirichlet = p2p_dirichlet_first[p2p_dirichlet_second_rev].cpu()
+        # geo_err_est_dirichlet = geodist_metric.calculate_geodesic_error(
+        #     dist_x, corr_first, corr_second, p2p_est_dirichlet, return_mean=True
+        # ) * 100
+
+        # p2p_est_median = p2p_median_first[p2p_median_second_rev].cpu()
+        # geo_err_est_median = geodist_metric.calculate_geodesic_error(
+        #     dist_x, corr_first, corr_second, p2p_est_median, return_mean=True
+        # ) * 100
+        
+        
+        
+        # p2p_dirichlet_pairzo, p2p_median_pairzo, confidence_scores, dirichlet_energy_list = select_p2p_map_dirichlet(
+        #     p2p_est_pairzo,
+        #     data['first']['verts'],
+        #     data['second']['L'], 
+        #     dist_x,
+        #     num_samples_median=args.num_samples_median
+        #     )
+        
+        # geo_err_dirichlet_pairzo = geodist_metric.calculate_geodesic_error(
+        #     dist_x, corr_first, corr_second, p2p_dirichlet_pairzo, return_mean=True
+        # ) * 100
+        # geo_err_median_pairzo = geodist_metric.calculate_geodesic_error(
+        #     dist_x, corr_first, corr_second, p2p_median_pairzo, return_mean=True
+        # ) * 100
         
         
         with open(log_file_name, 'a') as f:

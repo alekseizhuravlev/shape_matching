@@ -140,8 +140,8 @@ if __name__ == '__main__':
     # dataset_name = 'SURREAL_96_1-2-2ev_template_remeshed_augShapes'
     
     dataset_name_list = [
-        'partial_anisRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8',
-        'partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8',
+        # 'SURREAL_128_1-1-2-2ev_template_remeshed_augShapes_bbox',
+        'SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox',
     ]
     
     prefix_list = [
@@ -163,7 +163,7 @@ if __name__ == '__main__':
         
         
         for prefix in prefix_list:
-            gather_files(data_dir, prefix, remove_after=True)
+            gather_files(data_dir, prefix, remove_after=False)
 
     
     
