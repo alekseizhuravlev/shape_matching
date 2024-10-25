@@ -66,7 +66,7 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, smoothing_ty
     return new_dataset
 
 
-def test_on_dataset(net, test_dataset, with_mass, n_epochs):
+def test_on_dataset(net, test_dataset, n_epochs, config):
 
     tqdm._instances.clear()
         
@@ -74,6 +74,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
     incorrect_signs_list = torch.tensor([])
     curr_iter = 0
     
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     
     
     if net.input_type == 'shot':
@@ -121,9 +122,9 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
             verts = train_shape['verts'].unsqueeze(0).to(device)
             faces = train_shape['faces'].unsqueeze(0).to(device)    
 
-            evecs_orig = train_shape['evecs'].unsqueeze(0)[:, :, start_dim:start_dim+feature_dim].to(device)
+            evecs_orig = train_shape['evecs'].unsqueeze(0)[:, :, config['start_dim']:config['start_dim']+config['feature_dim']].to(device)
             
-            if with_mass:
+            if config['with_mass']:
                 mass_mat = torch.diag_embed(
                     train_shape['mass'].unsqueeze(0)
                     ).to(device)
@@ -140,7 +141,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
             ##############################################
 
             # create a random combilation of +1 and -1, length = feature_dim
-            sign_gt_0 = torch.randint(0, 2, (feature_dim,)).float().to(device)
+            sign_gt_0 = torch.randint(0, 2, (config['feature_dim'],)).float().to(device)
             
             sign_gt_0[sign_gt_0 == 0] = -1
             sign_gt_0 = sign_gt_0.float().unsqueeze(0)
@@ -171,7 +172,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
             ##############################################
             
             # create a random combilation of +1 and -1, length = feature_dim
-            sign_gt_1 = torch.randint(0, 2, (feature_dim,)).float().to(device)
+            sign_gt_1 = torch.randint(0, 2, (config['feature_dim'],)).float().to(device)
             
             sign_gt_1[sign_gt_1 == 0] = -1
             sign_gt_1 = sign_gt_1.float().unsqueeze(0)
@@ -213,7 +214,7 @@ def test_on_dataset(net, test_dataset, with_mass, n_epochs):
             incorrect_signs_list = torch.cat([incorrect_signs_list, torch.tensor([count_incorrect_signs])])
             
             
-            iterator.set_description(f'Mean incorrect signs {incorrect_signs_list.float().mean():.2f} / {feature_dim}, max {incorrect_signs_list.max()}')
+            iterator.set_description(f'Mean incorrect signs {incorrect_signs_list.float().mean():.2f} / {config["feature_dim"]}, max {incorrect_signs_list.max()}')
             iterator.update(1)
             # if count_incorrect_signs > 7:
             #     raise ValueError('Too many incorrect signs')
@@ -350,8 +351,7 @@ if __name__ == '__main__':
                         )
                 
                 mean_incorrect_signs, max_incorrect_signs = test_on_dataset(
-                    net, test_dataset_curr,
-                    with_mass=config['with_mass'], n_epochs=25)
+                    net, test_dataset_curr, n_epochs=25, config=config)
     
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')

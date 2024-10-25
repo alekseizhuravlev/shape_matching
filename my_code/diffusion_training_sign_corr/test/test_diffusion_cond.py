@@ -59,7 +59,9 @@ def parse_args():
     
     parser.add_argument('--reduced', action='store_true', default=False)
     
-    parser.add_argument('--random_seed', type=int, required=False)
+    parser.add_argument('--random_seed', type=int, required=True)
+    
+    parser.add_argument('--recompute_evecs', type=int, required=True)
     
     args = parser.parse_args()
     return args

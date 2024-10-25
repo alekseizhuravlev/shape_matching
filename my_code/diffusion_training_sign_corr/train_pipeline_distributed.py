@@ -17,6 +17,7 @@ sys.path.append(f'/home/{user_name}/shape_matching')
 # models
 from my_code.models.diag_conditional import DiagConditionedUnet
 from diffusers import DDPMScheduler
+from diffusers.optimization import get_cosine_schedule_with_warmup
 
 # training / evaluation
 from torch.utils.tensorboard import SummaryWriter
@@ -73,8 +74,8 @@ def main():
         'validate_every': 5,
         'checkpoint_every': 5,
         
-        'batch_size': 32,
-        'eval_batch_size': 32,
+        'batch_size': 64,
+        'eval_batch_size': 64,
         
         'model_params': {
             'sample_size': args.sample_size,
@@ -168,9 +169,15 @@ def main():
     #     )
     
     # use cosine annealing
-    lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        opt, T_max=config["n_epochs"] * len(dataloader_train)
-        )
+    # lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+    #     opt, T_max=config["n_epochs"] * len(dataloader_train)
+    #     )
+    
+    lr_scheduler = get_cosine_schedule_with_warmup(
+        optimizer=opt,
+        num_warmup_steps=len(dataloader_train) // 2,
+        num_training_steps=config["n_epochs"] * len(dataloader_train),
+    )
     
     ####################################################
     # !!!!!! dropping this will cause 

@@ -823,6 +823,7 @@ def run():
 
     single_dataset, test_dataset = data_loading.get_val_dataset(
         dataset_name, split, 200, preload=False, return_evecs=True, centering='bbox',
+        recompute_evecs=args.recompute_evecs
         )
     sign_corr_net.cache_dir = single_dataset.lb_cache_dir
 

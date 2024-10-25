@@ -178,28 +178,40 @@ if __name__ == '__main__':
     
     start_dim = 0
 
-    input_channels = 256
+    # input_channels = 256
     
-    feature_dim = 128
-    evecs_per_support = (1, 1, 2, 2)
+    # feature_dim = 128
+    # evecs_per_support = (1, 1, 2, 2)
+    # n_block = 6
+    
+    # n_iter = 50000
+    
+    input_channels = 128
+    
+    feature_dim = 64
+    evecs_per_support = (1,)
     n_block = 6
     
-    n_iter = 50000
-    input_type = 'wks'
+    n_iter = 2000
     
+
+    input_type = 'wks'
     with_mass = True
+    
+    # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
+    # exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
+    
+    train_folder = 'FAUST_original'
+    exp_name = f'signNet_64_FAUST_orig_1k'
+
+
+    experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
+    dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
     
     # train_folder = 'test_partial_isoRemesh_shot'
     # exp_name = 'test_partial_isoRemesh_shot'
     # dataset_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/train/'
 
-    train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
-    exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
-
-    experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
-    
-    
-    dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
     
     ###################################################
     # count the number of output channels
@@ -380,13 +392,15 @@ if __name__ == '__main__':
             train_iterator.set_description(f'loss={torch.mean(losses[-10:]):.3f}')
             
             # plot the losses every 1000 iterations
-            if curr_iter > 0 and curr_iter % (len(train_iterator) // 10) == 0:
-                pd.Series(losses.numpy()).rolling(10).mean().plot()
-                plt.yscale('log')
-                # plt.show()
+            if curr_iter % (len(train_iterator) // 10) == 0:
                 
-                plt.savefig(f'{experiment_dir}/losses_{curr_iter}.png')
-                plt.close()
+                if curr_iter > 0:
+                    pd.Series(losses.numpy()).rolling(10).mean().plot()
+                    plt.yscale('log')
+                    # plt.show()
+                    
+                    plt.savefig(f'{experiment_dir}/losses_{curr_iter}.png')
+                    plt.close()
                 
                 torch.save(
                     net.state_dict(),

@@ -12,9 +12,17 @@ sys.path.append(f'/home/{user_name}/shape_matching')
 
 import my_code.datasets.shape_dataset as shape_dataset
 import my_code.datasets.template_dataset as template_dataset
+import time
 
-
-def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, canonicalize_fmap=None):
+def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, canonicalize_fmap=None,
+                    recompute_evecs=False):
+    
+    if recompute_evecs:
+        curr_time = time.time()
+        lb_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/lb_cache/{curr_time}'
+    else:
+        lb_base_dir = 'data'    
+    
     
     if name == 'SURREAL':
         dataset_single = shape_dataset.SingleShapeDataset(
@@ -144,7 +152,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/FAUST_r',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/FAUST_r/diffusion',
+            # lb_cache_dir=f'data/FAUST_r/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/FAUST_r/diffusion',
             return_evecs=return_evecs,
         )
         dataset_pair = shape_dataset.PairShapeDataset(
@@ -157,7 +166,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/FAUST_a',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/FAUST_a/diffusion',
+            # lb_cache_dir=f'data/FAUST_a/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/FAUST_a/diffusion',
             return_evecs=return_evecs,
         )
         dataset_pair = shape_dataset.PairShapeDataset(
@@ -170,7 +180,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/SHREC19_r',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/SHREC19_r/diffusion',
+            # lb_cache_dir=f'data/SHREC19_r/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/SHREC19_r/diffusion',
             return_evecs=return_evecs,
             return_corr=False,
         )
@@ -185,7 +196,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/SCAPE_r',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/SCAPE_r/diffusion',
+            # lb_cache_dir=f'data/SCAPE_r/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/SCAPE_r/diffusion',
             return_evecs=return_evecs,
         )
         dataset_pair = shape_dataset.PairShapeDataset(
@@ -198,7 +210,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/SCAPE_a',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/SCAPE_a/diffusion',
+            # lb_cache_dir=f'data/SCAPE_a/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/SCAPE_a/diffusion',
             return_evecs=return_evecs,
         )
         dataset_pair = shape_dataset.PairShapeDataset(
@@ -212,7 +225,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root = 'data/DT4D_r',
             centering = centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/DT4D_r/diffusion',
+            # lb_cache_dir=f'data/DT4D_r/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/DT4D_r/diffusion',
             return_evecs=return_evecs,
             )
         dataset_pair = shape_dataset.PairDT4DDataset(
@@ -227,7 +241,8 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             data_root='data/DT4D_r',
             centering=centering,
             num_evecs=num_evecs,
-            lb_cache_dir=f'data/DT4D_r/diffusion',
+            # lb_cache_dir=f'data/DT4D_r/diffusion',
+            lb_cache_dir=f'{lb_base_dir}/DT4D_r/diffusion',
             return_evecs=return_evecs,
             )
         dataset_pair = shape_dataset.PairDT4DDataset(

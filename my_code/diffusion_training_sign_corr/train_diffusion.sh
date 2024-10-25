@@ -25,13 +25,13 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 # block_out_channels='64,128,128'
 
 
-experiment_name='single_128_1-1-2-2ev_128-256-256_remeshed_bbox'
-dataset_name='SURREAL_128_1-1-2-2ev_template_remeshed_augShapes_bbox'
+experiment_name='single_128_1-2-2-2ev_64-128-128_remeshed_bbox'
+dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
 
 fmap_direction='yx'
 sample_size=128
 
-block_out_channels='128,256,256'
+block_out_channels='64,128,128'
 # block_out_channels='32,64,64'
 
 
