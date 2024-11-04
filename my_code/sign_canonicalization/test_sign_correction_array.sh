@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 24:00:00
-#SBATCH --array=0-2
+#SBATCH --array=0-3
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_medium
 #SBATCH --account=ag_ifi_laehner
@@ -17,14 +17,24 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 # put all dataset names and splits in a list
 job_list=(
-    'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
-    'signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
-    'signNet_128_remeshed_mass_6b_1-2-2-4ev_10_0.2_0.8'
+    # 'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
+    # 'signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
+    # 'signNet_128_remeshed_mass_6b_1-2-2-4ev_10_0.2_0.8'
 
     # 'signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
     # 'signNet_24_remeshed_mass_6b_1ev_10_0.2_0.8'
     # 'signNet_48_remeshed_mass_6b_1ev_10_0.2_0.8'
     # 'signNet_64_remeshed_mass_6b_1ev_10_0.2_0.8'
+
+    # 'signNet_remeshed_mass_6b_1ev_10_0.2_0.8'
+    # 'signNet_64_remeshed_mass_6b_1-2ev_10_0.2_0.8'
+    # 'signNet_96_remeshed_mass_6b_1-2-4ev_10_0.2_0.8'
+
+
+    'signNet_96_remeshed_mass_6b_1-2-2ev_10_0.2_0.8'
+    'signNet_128_remeshed_mass_6b_1-2-2-4ev_10_0.2_0.8'
+    'signNet_128_remeshed_mass_6b_1-2-4-4ev_10_0.2_0.8'
+    'signNet_128_remeshed_mass_6b_1-2-4-8ev_10_0.2_0.8'
 )
 
 partial=-1

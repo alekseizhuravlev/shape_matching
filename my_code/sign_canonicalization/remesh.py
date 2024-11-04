@@ -125,7 +125,24 @@ def augmentation_pipeline_partial(verts_orig, faces_orig, augmentations):
 
 
 
+def fill_holes(verts, faces):
 
+    mesh = pymeshlab.Mesh(verts, faces)
+    ms.add_mesh(mesh)
+
+    ms.meshing_repair_non_manifold_edges()
+    ms.meshing_close_holes(maxholesize=150, refinehole=True)
+    
+    v = torch.tensor(
+        ms.current_mesh().vertex_matrix(), dtype=torch.float32
+    )
+    f = torch.tensor(
+        ms.current_mesh().face_matrix(), dtype=torch.int32
+    )
+    
+    ms.clear()
+    
+    return v, f
 
 
 def remesh_simplify_iso(

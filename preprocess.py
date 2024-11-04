@@ -39,7 +39,7 @@ if __name__ == '__main__':
         os.makedirs(dist_dir, exist_ok=True)
 
     # read .off files
-    off_files = sorted(glob(os.path.join(data_root, 'off', '*.off')))
+    off_files = sorted(glob(os.path.join(data_root, 'off', '**.off')))
     assert len(off_files) != 0
 
     for off_file in tqdm(off_files):

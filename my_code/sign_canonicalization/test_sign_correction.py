@@ -25,27 +25,36 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, smoothing_ty
         verts_orig = train_shape_orig['verts']
         faces_orig = train_shape_orig['faces']
         
-        verts, faces = remesh.remesh_simplify_iso(
-            verts_orig,
-            faces_orig,
-            n_remesh_iters=10,
-            remesh_targetlen=remesh_targetlen,
-            simplify_strength=1,
-        )
         
-        mesh_anis_remeshed = trimesh.Trimesh(verts, faces, process=False)
-        # apply laplacian smoothing
-        
-        if smoothing_type == 'laplacian':
-            trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        elif smoothing_type == 'taubin':
-            trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        else:
-            raise ValueError(f'Unknown smoothing type {smoothing_type}')
+        if smoothing_type == 'fill_holes':
+            verts, faces = remesh.fill_holes(
+                verts_orig,
+                faces_orig,
+            )
             
-        # trimesh.smoothing.filter_laplacian(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        # trimesh.smoothing.filter_taubin(mesh_anis_remeshed, lamb=0.5, iterations=smoothing_iter)
-        
+        else:
+            verts_iso, faces_iso = remesh.remesh_simplify_iso(
+                verts_orig,
+                faces_orig,
+                n_remesh_iters=10,
+                remesh_targetlen=remesh_targetlen,
+                simplify_strength=1,
+            )
+            
+            mesh_remeshed = trimesh.Trimesh(verts_iso, faces_iso, process=False)
+            # apply laplacian smoothing
+            
+            if smoothing_type == 'laplacian':
+                trimesh.smoothing.filter_laplacian(mesh_remeshed, lamb=0.5, iterations=smoothing_iter)
+            elif smoothing_type == 'taubin':
+                trimesh.smoothing.filter_taubin(mesh_remeshed, lamb=0.5, iterations=smoothing_iter)
+            else:
+                raise ValueError(f'Unknown smoothing type {smoothing_type}')
+            
+            verts = torch.tensor(mesh_remeshed.vertices).float()
+            faces = torch.tensor(mesh_remeshed.faces).int()
+            
+
         corr_orig_to_remeshed = fmap_util.nn_query(
             verts,
             verts_orig, 
@@ -55,8 +64,8 @@ def remesh_dataset(dataset, name, remesh_targetlen, smoothing_iter, smoothing_ty
             'verts_orig': verts_orig,
             'faces_orig': faces_orig,
             'corr_orig_to_remeshed': corr_orig_to_remeshed,
-            'verts': torch.tensor(mesh_anis_remeshed.vertices).float(),
-            'faces': torch.tensor(mesh_anis_remeshed.faces).int(),
+            'verts': verts,
+            'faces': faces,
         }
         train_shape = preprocessing.get_spectral_ops(train_shape, num_evecs=num_evecs,
                                     cache_dir=None)
@@ -296,14 +305,14 @@ if __name__ == '__main__':
             # (config["train_folder"], 'train'),
             
             ('FAUST_a', 'test'),
-            ('SHREC19_r', 'train'), 
+            ('SHREC19_r', 'test'), 
             ('FAUST_r', 'test'),
-            ('FAUST_orig', 'test'), 
-            ('FAUST_r', 'train'), 
-            ('FAUST_orig', 'train'), 
+            # ('FAUST_orig', 'test'), 
+            # ('FAUST_r', 'train'), 
+            # ('FAUST_orig', 'train'), 
             ('SCAPE_r_pair', 'test'),
             ('SCAPE_a_pair', 'test'),
-            ('SCAPE_r_pair', 'train'),
+            # ('SCAPE_r_pair', 'train'),
             
             # ('DT4D_intra_pair', 'test'),
             # ('DT4D_intra_pair', 'train'),
@@ -351,7 +360,7 @@ if __name__ == '__main__':
                         )
                 
                 mean_incorrect_signs, max_incorrect_signs = test_on_dataset(
-                    net, test_dataset_curr, n_epochs=25, config=config)
+                    net, test_dataset_curr, n_epochs=100, config=config)
     
             
             print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')

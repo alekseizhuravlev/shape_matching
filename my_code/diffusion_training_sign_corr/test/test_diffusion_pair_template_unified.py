@@ -4,6 +4,7 @@ import os
 import shutil
 from tqdm import tqdm
 import yaml
+import json
 
 import sys
 import os
@@ -32,6 +33,8 @@ import my_code.sign_canonicalization.test_sign_correction as test_sign_correctio
 import networks.fmap_network as fmap_network
 from my_code.utils.median_p2p_map import dirichlet_energy
 import random
+import time
+from datetime import datetime
 
 tqdm._instances.clear()
 
@@ -511,7 +514,7 @@ def get_p2p_maps_template(
 
 
 def get_pairwise_error(
-    data_range_pair, test_dataset, num_evecs, args, log_file_name, fmnet
+    data_range_pair, test_dataset, num_evecs, args, log_file_name, fmnet, pairwise_results_file_name
 ):
        
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -524,7 +527,9 @@ def get_pairwise_error(
     geo_errs_median_filtered_noZo = []
     geo_errs_dirichlet_pairzo = []
     geo_errs_median_pairzo = []
-    
+        
+    pairwise_results_list = []
+    geo_errs_pck_list = []
 
     for i in tqdm(data_range_pair, desc='Calculating pair fmaps'):
         
@@ -659,10 +664,11 @@ def get_pairwise_error(
         geo_err_dirichlet_pairzo = geodist_metric.calculate_geodesic_error(
             dist_x, corr_first.cpu(), corr_second.cpu(), p2p_dirichlet_pairzo, return_mean=True
         ) * 100
-        geo_err_median_pairzo = geodist_metric.calculate_geodesic_error(
-            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_median_pairzo, return_mean=True
-        ) * 100
-        
+        geo_err_median_pairzo_full = geodist_metric.calculate_geodesic_error(
+            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_median_pairzo, return_mean=False
+        )
+        geo_err_median_pairzo = geo_err_median_pairzo_full.mean() * 100
+          
         
         ###############################################
         # Logging
@@ -671,15 +677,15 @@ def get_pairwise_error(
         # replace code above with writing to log file
         with open(log_file_name, 'a') as f:
             f.write(f'{i}: {data["first"]["id"]}, {data["second"]["id"]}\n')
-            f.write(f'Geo error GT: {geo_err_gt:.2f}\n')
-            f.write(f'Geo error est pairzo: {geo_err_est_pairzo}\n')
-            f.write(f'Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
-            f.write(f'Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
-            f.write(f'Geo error est median: {geo_err_est_median:.2f}\n')
-            f.write(f'Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
-            f.write(f'Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
-            f.write(f'Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
-            f.write(f'Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error GT: {geo_err_gt:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo: {geo_err_est_pairzo}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median: {geo_err_est_median:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
+            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
             f.write('-----------------------------------\n')
         
         geo_errs_gt.append(geo_err_gt)
@@ -690,6 +696,21 @@ def get_pairwise_error(
         geo_errs_median_filtered_noZo.append(geo_err_est_median_filtered_noZo)
         geo_errs_dirichlet_pairzo.append(geo_err_dirichlet_pairzo)
         geo_errs_median_pairzo.append(geo_err_median_pairzo)
+        
+        
+        # add the p2p maps and per-vertex errors to the results list
+        pairwise_results_list.append({
+            'first_id': data['first']['id'].item(),
+            'second_id': data['second']['id'].item(),
+            'p2p_median_first': p2p_median_first.cpu().tolist(),
+            'p2p_median_second': p2p_median_second.cpu().tolist(),
+            'p2p_median_pairzo': p2p_median_pairzo.cpu().tolist(),
+            'geo_err_median_pairzo': geo_err_median_pairzo.item(),
+            # 'geo_err_median_pairzo_full': geo_err_median_pairzo_full.cpu().tolist(),
+        })
+        # geo_errs_pck_list.append(geo_err_median_pairzo_full.cpu().tolist())
+        # add geo_err_median_pairzo_full.cpu().tolist() to geo_errs_pck_list
+        geo_errs_pck_list.extend(geo_err_median_pairzo_full.cpu().tolist())
 
 
     geo_errs_gt = torch.tensor(geo_errs_gt)
@@ -700,6 +721,13 @@ def get_pairwise_error(
     geo_errs_median_filtered_noZo = torch.tensor(geo_errs_median_filtered_noZo)
     geo_errs_dirichlet_pairzo = torch.tensor(geo_errs_dirichlet_pairzo)
     geo_errs_median_pairzo = torch.tensor(geo_errs_median_pairzo)
+    
+    
+    auc, pcks, thresholds = geodist_metric.plot_pck(
+        geo_errs_pck_list, 
+        threshold=0.10, steps=40, show_figure=False)
+    
+    
         
     # replace code above with writing to log file
     with open(log_file_name, 'a') as f:
@@ -738,6 +766,14 @@ def get_pairwise_error(
         f.write(f'Median pairzoomout geo err median: {geo_errs_median_pairzo.median():.2f}\n')
         f.write('-----------------------------------\n')
 
+
+    # log pairwise_results with json
+    with open(pairwise_results_file_name, 'w') as f:
+        # yaml.dump(pairwise_results_list, f, sort_keys=False)
+        json.dump(pairwise_results_list, f, indent=4)
+
+
+
     data_to_log = {
         # 'experiment_name': args.experiment_name,
         # 'checkpoint_name': args.checkpoint_name, 
@@ -758,9 +794,16 @@ def get_pairwise_error(
         'filtered_noZo': geo_errs_median_filtered_noZo.mean().item(),
         'dirichlet_pairzo': geo_errs_dirichlet_pairzo.mean().item(),
         'median_pairzo': geo_errs_median_pairzo.mean().item(),
+        
+        # auc, pcks, thresholds are numpy arrays
+        'auc': auc.item(),
+        'pcks': pcks.tolist(),
+        'thresholds': thresholds.tolist(),
         }
     
-    return data_to_log
+    log_to_database(data_to_log, args.log_subdir)
+    
+    # return data_to_log
 
 
 def run():
@@ -851,13 +894,17 @@ def run():
     else:
         test_name = 'no_smoothing'
     
-    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}/{test_name}'
+    
+    curr_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    log_dir = f'{exp_base_folder}/eval/{checkpoint_name}/{dataset_name}-{split}/{test_name}/{curr_time}'
     os.makedirs(log_dir, exist_ok=True)
 
-    fig_dir = f'{log_dir}/figs'
-    os.makedirs(fig_dir, exist_ok=True)
+    # fig_dir = f'{log_dir}/figs'
+    # os.makedirs(fig_dir, exist_ok=True)
 
     log_file_name = f'{log_dir}/log_{test_name}.txt'
+    pairwise_results_file_name = f'{log_dir}/pairwise_results.json'
     
     
     ##########################################
@@ -926,11 +973,11 @@ def run():
         
     test_dataset.dataset = single_dataset
     
-    data_to_save = get_pairwise_error(
-        data_range_2, test_dataset, num_evecs, args, log_file_name, fmnet
+    get_pairwise_error(
+        data_range_2, test_dataset, num_evecs, args, log_file_name, fmnet, pairwise_results_file_name
     )
      
-    log_to_database(data_to_save, args.log_subdir)
+    # log_to_database(data_to_save, args.log_subdir)
         
         
 if __name__ == '__main__':

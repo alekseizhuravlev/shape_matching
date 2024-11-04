@@ -34,7 +34,7 @@ confidence_threshold=0.2
 
 log_subdir="logs_robustMedian_fixedSmoothing_${num_iters_avg}_${num_samples_median}_${confidence_threshold}"
 
-random_seed=12345
+random_seed=1
 
 recompute_evecs=1
 
@@ -84,7 +84,7 @@ echo "Log directory: $log_subdir"
 srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir --random_seed $random_seed --recompute_evecs $recompute_evecs
 
 # rewrite the line above with values instead of variables
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_64_1-2ev_64-128-128_remeshed_fixed --checkpoint_name epoch_99 --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test --reduced --random_seed 1
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_64_1-2ev_64-128-128_remeshed_fixed --checkpoint_name epoch_99 --dataset_name FAUST_r_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_test --reduced --random_seed 1 --recompute_evecs 0
 
 # taubin 5
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type taubin --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir
@@ -92,6 +92,8 @@ srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_co
 # laplacian 5
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --smoothing_type laplacian --smoothing_iter 5 --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir --dirichlet_energy_threshold_template $dirichlet_energy_threshold_template --zoomout_num_evecs_template $zoomout_num_evecs_template
 
+# fill_holes
+# srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg --num_samples_median $num_samples_median --confidence_threshold $confidence_threshold --log_subdir $log_subdir --random_seed $random_seed --recompute_evecs $recompute_evecs --smoothing_type fill_holes --smoothing_iter 0
 
 
 # pairwise
@@ -100,7 +102,7 @@ srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_co
 # srun python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond.py --experiment_name $experiment_name --checkpoint_name $checkpoint_name --dataset_name $dataset_name --split $split --num_iters_avg $num_iters_avg
 
 # write the line above, with values instead of variables
-# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_48_remeshed_noAcc_yx_64_128_128 --checkpoint_name checkpoint_90.pt --dataset_name DT4D_inter_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_templateZoomout --smoothing_type laplacian --smoothing_iter 5 --dirichlet_energy_threshold_template 30 --zoomout_num_evecs_template 200
+# python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_pair_template_unified.py --experiment_name single_48_remeshed_noAcc_yx_64_128_128 --checkpoint_name checkpoint_90.pt --dataset_name DT4D_inter_pair --split test --num_iters_avg 32 --num_samples_median 4 --confidence_threshold 0.2 --log_subdir logs_templateZoomout --smoothing_type fill_holes --smoothing_iter 0
 
 # python /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/test_diffusion_cond_smooth.py --experiment_name pair_5_xy_distributed --checkpoint_name epoch_99 --dataset_name SHREC19_r_pair --split test --num_iters_avg 16 --smoothing_type taubin --smoothing_iter 5
 

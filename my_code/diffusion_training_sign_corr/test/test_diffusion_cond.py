@@ -44,7 +44,7 @@ def parse_args():
     parser.add_argument('--dataset_name', type=str, required=True)
     parser.add_argument('--split', type=str, required=True)
     
-    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin'], required=False)
+    parser.add_argument('--smoothing_type', choices=['laplacian', 'taubin', 'fill_holes'], required=False)
     parser.add_argument('--smoothing_iter', type=int, required=False)
     
     
