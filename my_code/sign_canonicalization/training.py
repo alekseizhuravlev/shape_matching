@@ -188,7 +188,7 @@ if __name__ == '__main__':
     
     input_channels = 128
     
-    feature_dim = 64
+    feature_dim = 32
     evecs_per_support = (1,)
     n_block = 6
     
@@ -201,15 +201,13 @@ if __name__ == '__main__':
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
     
-    train_folder = 'FAUST_original'
-    exp_name = f'signNet_64_FAUST_orig_1k'
+    train_folder = 'SMAL_r'
+    exp_name = f'signNet_32_SMAL'
 
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
     dataset_base_dir = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train'
-    
-    # train_folder = 'test_partial_isoRemesh_shot'
-    # exp_name = 'test_partial_isoRemesh_shot'
+
     # dataset_base_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/data_sign_training/train/'
 
     

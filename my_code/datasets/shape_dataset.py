@@ -551,15 +551,19 @@ class PairShrec19Dataset(Dataset):
 
 
 
+# class PairSmalDataset(PairShapeDataset):
+#     def __init__(self, data_root, phase='train',
+#                  category=True, return_faces=True,
+#                  return_evecs=True, num_evecs=200,
+#                  return_corr=True, return_dist=False):
+#         dataset = SingleSmalDataset(data_root, phase, category, return_faces,
+#                                     return_evecs, num_evecs,
+#                                     return_corr, return_dist)
+#         super(PairSmalDataset, self).__init__(dataset=dataset)
+
 class PairSmalDataset(PairShapeDataset):
-    def __init__(self, data_root, phase='train',
-                 category=True, return_faces=True,
-                 return_evecs=True, num_evecs=200,
-                 return_corr=True, return_dist=False):
-        dataset = SingleSmalDataset(data_root, phase, category, return_faces,
-                                    return_evecs, num_evecs,
-                                    return_corr, return_dist)
-        super(PairSmalDataset, self).__init__(dataset=dataset)
+    def __init__(self, dataset, **kwargs):
+        super(PairSmalDataset, self).__init__(dataset=dataset, **kwargs)
 
 
 

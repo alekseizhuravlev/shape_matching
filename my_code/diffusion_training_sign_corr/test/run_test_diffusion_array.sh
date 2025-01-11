@@ -2,7 +2,7 @@
 
 #SBATCH -n 1
 #SBATCH -t 7-00:00:00
-#SBATCH --array=0-4
+#SBATCH --array=0-1
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
@@ -53,14 +53,14 @@ checkpoint_name=$2
 job_list=(
     # 'FAUST_orig_pair test'
 
-    'FAUST_r_pair test'
-    'FAUST_a_pair test'
-    'SHREC19_r_pair test'
-    'SCAPE_r_pair test'
-    'SCAPE_a_pair test'
+    # 'FAUST_r_pair test'
+    # 'FAUST_a_pair test'
+    # 'SHREC19_r_pair test'
+    # 'SCAPE_r_pair test'
+    # 'SCAPE_a_pair test'
 
-    # 'DT4D_inter_pair test'
-    # 'DT4D_intra_pair test'
+    'DT4D_inter_pair test'
+    'DT4D_intra_pair test'
 )
 
 # worker id = id of the current job in the job list

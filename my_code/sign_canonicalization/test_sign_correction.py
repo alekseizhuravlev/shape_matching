@@ -302,6 +302,9 @@ if __name__ == '__main__':
         ]
     else:    
         dataset_list = [
+            
+            ('SMAL_cat_pair', 'test'),
+            
             # (config["train_folder"], 'train'),
             
             ('FAUST_a', 'test'),

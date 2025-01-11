@@ -9,7 +9,8 @@ def plot_Cxy(figure, axis, Cxy_plt, title, min_dim, max_dim, show_grid, show_col
     if show_colorbar:
         figure.colorbar(axis_plot, ax=axis)
     
-    axis.set_title(f'{title}: {min_dim}-{max_dim}')
+    if title is not None:
+        axis.set_title(f'{title}: {min_dim}-{max_dim}')
 
     axis.set_xticks(np.arange(-0.5, max_dim - min_dim, 1.0))
     axis.set_yticks(np.arange(-0.5, max_dim - min_dim, 1.0)) 

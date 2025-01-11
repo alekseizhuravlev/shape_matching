@@ -19,10 +19,10 @@ __pycache__/
 *.npz
 *.pkl
 *.npy
-
+*.csv
 # C extensions
 *.so
-
+*.tgz
 # Distribution / packaging
 .Python
 build/

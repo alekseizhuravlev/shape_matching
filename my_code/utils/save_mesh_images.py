@@ -41,7 +41,6 @@ if __name__ == '__main__':
 
     import os
     os.chdir('/home/s94zalek/shape_matching')
-    # os.environ['DISPLAY'] = ':1'
     os.environ['PYOPENGL_PLATFORM'] = 'egl'
 
     import trimesh

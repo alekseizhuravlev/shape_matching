@@ -251,6 +251,38 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
             cache_base_dataset=preload,
         )
         
+    elif name == 'SMAL_cat_pair':
+        dataset_single = shape_dataset.SingleSmalDataset(
+            phase=phase,
+            category=True,
+            data_root='data/SMAL_r',
+            centering=centering,
+            num_evecs=num_evecs,
+            lb_cache_dir=f'{lb_base_dir}/SMAL_r/diffusion',
+            return_evecs=return_evecs,
+            )
+        
+        dataset_pair = shape_dataset.PairSmalDataset(
+            dataset=dataset_single,
+            cache_base_dataset=preload,
+        )
+        
+    elif name == 'SMAL_nocat_pair':
+        dataset_single = shape_dataset.SingleSmalDataset(
+            phase=phase,
+            category=True,
+            data_root='data/SMAL_r',
+            centering=centering,
+            num_evecs=num_evecs,
+            lb_cache_dir=f'{lb_base_dir}/SMAL_r/diffusion',
+            return_evecs=return_evecs,
+            )
+        
+        dataset_pair = shape_dataset.PairSmalDataset(
+            dataset=dataset_single,
+            cache_base_dataset=preload,
+        )
+        
     ############################################################
     # Partial datasets
     ############################################################
