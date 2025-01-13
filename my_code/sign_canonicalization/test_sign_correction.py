@@ -304,18 +304,19 @@ if __name__ == '__main__':
         dataset_list = [
             
             ('SMAL_cat_pair', 'test'),
+            # ('SMAL_cat_pair', 'train'),
             
             # (config["train_folder"], 'train'),
             
-            ('FAUST_a', 'test'),
-            ('SHREC19_r', 'test'), 
-            ('FAUST_r', 'test'),
-            # ('FAUST_orig', 'test'), 
-            # ('FAUST_r', 'train'), 
-            # ('FAUST_orig', 'train'), 
-            ('SCAPE_r_pair', 'test'),
-            ('SCAPE_a_pair', 'test'),
-            # ('SCAPE_r_pair', 'train'),
+            # ('FAUST_a', 'test'),
+            # ('SHREC19_r', 'test'), 
+            # ('FAUST_r', 'test'),
+            # # ('FAUST_orig', 'test'), 
+            # # ('FAUST_r', 'train'), 
+            # # ('FAUST_orig', 'train'), 
+            # ('SCAPE_r_pair', 'test'),
+            # ('SCAPE_a_pair', 'test'),
+            # # ('SCAPE_r_pair', 'train'),
             
             # ('DT4D_intra_pair', 'test'),
             # ('DT4D_intra_pair', 'train'),
@@ -332,8 +333,8 @@ if __name__ == '__main__':
     last_checkpoint = checkpoint_files[-1]
     
 
-    for n_iter in [last_checkpoint]:
-    # for n_iter in [200, 600, 1000, 1400, 2000]:
+    # for n_iter in [last_checkpoint]:
+    for n_iter in [2000, 4000, 6000, 8000, 12000]:
 
         net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
 

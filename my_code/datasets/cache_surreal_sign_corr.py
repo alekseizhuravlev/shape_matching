@@ -415,9 +415,28 @@ if __name__ == '__main__':
                 },
             },
         }
-    else:
-        # full
+    elif 'SMAL' in args.dataset_name:
         
+        augmentations = None
+        
+        dataset = TemplateSurrealDataset3DC(
+            shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SMAL_shapes_train_32.pt',
+            num_evecs=128,
+            cache_lb_dir=None,
+            return_evecs=True,
+            return_fmap=False,
+            mmap=True,
+            augmentations=augmentations,
+            template_path=f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{args.template_type}/template.off',
+            template_corr=np.loadtxt(
+                f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{args.template_type}/corr.txt',
+                dtype=np.int32) - 1,
+            mesh_orig_faces_path='/home/s94zalek_hpc/shape_matching/data/SMAL_templates/original/template.off',
+            centering=args.centering,
+            return_shot=sign_net_config['net_params']['input_type'] == 'shot',
+        )  
+        
+    else: 
         augmentations = {
             "remesh": {
                 "isotropic": {
@@ -438,24 +457,23 @@ if __name__ == '__main__':
                 },
             },
         }
-    
-     
-    
-    dataset = TemplateSurrealDataset3DC(
-        shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
-        num_evecs=128,
-        cache_lb_dir=None,
-        return_evecs=True,
-        return_fmap=False,
-        mmap=True,
-        augmentations=augmentations,
-        template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/template.off',
-        template_corr=np.loadtxt(
-            f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
-            dtype=np.int32) - 1,
-        centering=args.centering,
-        return_shot=sign_net_config['net_params']['input_type'] == 'shot',
-    )   
+        dataset = TemplateSurrealDataset3DC(
+            shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/mmap_datas_surreal_train.pth',
+            num_evecs=128,
+            cache_lb_dir=None,
+            return_evecs=True,
+            return_fmap=False,
+            mmap=True,
+            augmentations=augmentations,
+            template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/template.off',
+            template_corr=np.loadtxt(
+                f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{args.template_type}/corr.txt',
+                dtype=np.int32) - 1,
+            mesh_orig_faces_path='/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/3DC/template.ply',
+            centering=args.centering,
+            return_shot=sign_net_config['net_params']['input_type'] == 'shot',
+        )   
+        
     
     print('Dataset created')
     
@@ -483,6 +501,7 @@ if __name__ == '__main__':
         f'{args.net_path}/{sign_net_config["n_iter"]}.pth',
         map_location=device))
     
+    print(f'loaded sign net from {args.net_path}/{sign_net_config["n_iter"]}.pth')
     
     ####################################################  
     # update the config

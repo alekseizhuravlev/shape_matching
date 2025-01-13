@@ -34,6 +34,7 @@ class TemplateSurrealDataset3DC(Dataset):
                  augmentations,
                  template_path,
                  template_corr,
+                 mesh_orig_faces_path,
                  centering,
                  return_shot=False,
                  ):
@@ -62,10 +63,10 @@ class TemplateSurrealDataset3DC(Dataset):
         self.template_mesh = trimesh.load(
             template_path
         )
-        self.mesh_3dc = trimesh.load(
-            '/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/3DC/template.ply'
+        self.mesh_orig_faces = trimesh.load(
+            mesh_orig_faces_path
         )
-        self.faces = torch.tensor(self.mesh_3dc.faces).int()
+        self.faces = torch.tensor(self.mesh_orig_faces.faces).int()
         # f'/home/{user_name}/shape_matching/data/SURREAL_full/template/template.ply'
 
         # sanity check
@@ -156,7 +157,6 @@ class TemplateSurrealDataset3DC(Dataset):
         
         item['id'] = torch.tensor(index)        
         item['verts'] = self.shapes[index]
-        # item['faces'] = self.mesh_3dc['faces']
         item['faces'] = self.faces
         
         # augmentations

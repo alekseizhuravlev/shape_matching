@@ -20,9 +20,9 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "SURREAL_isoRemesh_0.2_0.8_smooth_taubin_5_6",
+        "dataset_name": "SMAL_isoRemesh_0.2_0.8",
         
-        "n_shapes": 1000,
+        "n_shapes": 986,
         "lapl_type": "mesh",
         
         "split": "train",
@@ -64,13 +64,16 @@ if __name__ == '__main__':
         }
     }
     
-    train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
+    # train_diff_folder = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL/diffusion'
+    train_diff_folder = None
+    
     train_dataset = shape_dataset.SingleShapeDataset(
-        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SURREAL',
+        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SMAL_train',
         centering = 'bbox',
         num_evecs=128,
         lb_cache_dir=train_diff_folder,
-        return_evecs=False
+        return_evecs=False,
+        return_corr=False
     )
     
     # prepare the folders

@@ -188,11 +188,11 @@ if __name__ == '__main__':
     
     input_channels = 128
     
-    feature_dim = 32
-    evecs_per_support = (1,)
+    feature_dim = 64
+    evecs_per_support = (2, 4,)
     n_block = 6
     
-    n_iter = 2000
+    n_iter = 20000
     
 
     input_type = 'wks'
@@ -201,8 +201,8 @@ if __name__ == '__main__':
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
     
-    train_folder = 'SMAL_r'
-    exp_name = f'signNet_32_SMAL'
+    train_folder = 'SMAL_train_435'
+    exp_name = f'signNet_64_SMAL_train_435_2-4ev'
 
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
@@ -229,7 +229,7 @@ if __name__ == '__main__':
     ################################################### 
     
     # shutil.rmtree(experiment_dir, ignore_errors=True)
-    os.makedirs(experiment_dir)
+    os.makedirs(experiment_dir, exist_ok=True)
     
     with open(f'{dataset_base_dir}/{train_folder}/config.yaml', 'r') as f:
         dataset_config = yaml.load(f, Loader=yaml.FullLoader)

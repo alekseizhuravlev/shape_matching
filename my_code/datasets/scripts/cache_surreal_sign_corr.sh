@@ -10,16 +10,21 @@
 #SBATCH --error=/home/s94zalek_hpc/shape_matching/SLURM_logs/cache_surreal_%A_%a.err
 
 source /home/s94zalek_hpc/.bashrc
-conda activate pyshot_new
+conda activate fmnet
 cd /home/s94zalek_hpc/shape_matching
 module load libGLU Xvfb
 export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 
 train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 
-num_evecs=128
-net_name='signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
-dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
+# num_evecs=128
+# net_name='signNet_128_remeshed_mass_6b_1-2-2-2ev_10_0.2_0.8'
+# dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
+
+num_evecs=32
+net_name='signNet_32_SMAL_train_435_2ev'
+dataset_name='SMAL_32_SMAL_train_435_2ev_6000'
+
 
 regularization_lambda=-1
 partial=-1
@@ -30,7 +35,7 @@ partial=-1
 # regularization_lambda=0.01
 # partial=0.8
 
-template_type='remeshed'
+template_type='original'
 pair_type='template'
 n_pairs=1
 centering='bbox'
