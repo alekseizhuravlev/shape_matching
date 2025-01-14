@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH -t 7-00:00:00
 #SBATCH --mem=50G
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/train_diffusion_%j.out
@@ -25,14 +25,13 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 # block_out_channels='64,128,128'
 
 
-experiment_name='single_128_1-2-2-2ev_64-128-128_remeshed_bbox'
-dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
+experiment_name='single_SMAL_32_SMAL_isoRemesh_0.2_0.8_40000'
+dataset_name='SMAL_32_SMAL_isoRemesh_0.2_0.8_40000'
 
 fmap_direction='yx'
-sample_size=128
+sample_size=32
 
-block_out_channels='64,128,128'
-# block_out_channels='32,64,64'
+block_out_channels='32,64,64'
 
 
 # experiment_name='partial_isoRemesh_shot_lambda_0.01_anisRemesh_holes_partial_0.8_yx'

@@ -141,7 +141,9 @@ if __name__ == '__main__':
     
     dataset_name_list = [
         # 'SURREAL_128_1-1-2-2ev_template_remeshed_augShapes_bbox',
-        'SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox',
+        # 'SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox',
+        'SMAL_32_SMAL_isoRemesh_0.2_0.8_50000_aug',
+        'SMAL_32_SMAL_train_50000_aug'
     ]
     
     prefix_list = [

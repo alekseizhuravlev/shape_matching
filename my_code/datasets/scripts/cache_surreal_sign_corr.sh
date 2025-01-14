@@ -22,8 +22,8 @@ train_worker_count=$((SLURM_ARRAY_TASK_COUNT - 1))
 # dataset_name='SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox'
 
 num_evecs=32
-net_name='signNet_32_SMAL_train_435_2ev'
-dataset_name='SMAL_32_SMAL_train_435_2ev_6000'
+net_name='signNet_32_SMAL_isoRemesh_0.2_0.8_50000'
+dataset_name='SMAL_32_SMAL_isoRemesh_0.2_0.8_50000_aug'
 
 
 regularization_lambda=-1
@@ -35,7 +35,7 @@ partial=-1
 # regularization_lambda=0.01
 # partial=0.8
 
-template_type='original'
+template_type='remeshed'
 pair_type='template'
 n_pairs=1
 centering='bbox'

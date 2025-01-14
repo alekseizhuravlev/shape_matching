@@ -417,7 +417,28 @@ if __name__ == '__main__':
         }
     elif 'SMAL' in args.dataset_name:
         
-        augmentations = None
+        # augmentations = None
+        
+        augmentations = {
+            "remesh": {
+                "isotropic": {
+                    "n_remesh_iters": 10,
+                    "remesh_targetlen": 1,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.8,
+                },
+                "anisotropic": {
+                    "probability": 0.35,
+                        
+                    "n_remesh_iters": 10,
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
+            },
+        }
         
         dataset = TemplateSurrealDataset3DC(
             shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SMAL_shapes_train_32.pt',

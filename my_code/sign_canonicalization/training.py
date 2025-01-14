@@ -188,11 +188,11 @@ if __name__ == '__main__':
     
     input_channels = 128
     
-    feature_dim = 64
-    evecs_per_support = (2, 4,)
+    feature_dim = 32
+    evecs_per_support = (1,)
     n_block = 6
     
-    n_iter = 20000
+    n_iter = 50000
     
 
     input_type = 'wks'
@@ -201,8 +201,8 @@ if __name__ == '__main__':
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
     
-    train_folder = 'SMAL_train_435'
-    exp_name = f'signNet_64_SMAL_train_435_2-4ev'
+    train_folder = 'SMAL_train'
+    exp_name = f'signNet_SMAL_train_50000'
 
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'
@@ -225,6 +225,18 @@ if __name__ == '__main__':
         out_channels += channels_per_entry // evecs_num
         
     print('out_channels', out_channels)
+      
+      
+    ###################################################
+    
+    train_shapes, train_diff_folder = load_cached_shapes(
+        # f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
+        f'{dataset_base_dir}/{train_folder}',
+        unsqueeze=True
+    ) 
+    
+    # make n_iter a multiple of the number of shapes
+    n_iter = len(train_shapes) * (n_iter // len(train_shapes))
       
     ################################################### 
     
@@ -264,13 +276,7 @@ if __name__ == '__main__':
     scheduler = torch.optim.lr_scheduler.LinearLR(
         opt, start_factor=1, end_factor=0.1, 
         total_iters=n_iter)
-    
-    
-    train_shapes, train_diff_folder = load_cached_shapes(
-        # f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/{train_folder}',
-        f'{dataset_base_dir}/{train_folder}',
-        unsqueeze=True
-    )        
+           
     
     loss_fn = torch.nn.MSELoss()
     losses = torch.tensor([])

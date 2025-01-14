@@ -78,7 +78,7 @@ class TemplateSurrealDataset3DC(Dataset):
             'id': torch.tensor(-1),
             'verts': torch.tensor(self.template_mesh.vertices).float(),
             'faces': torch.tensor(self.template_mesh.faces).int(),
-            'corr': torch.tensor(template_corr),
+            'corr': torch.tensor(template_corr).int(),
             # 'corr': torch.tensor(list(range(len(self.template_mesh.vertices)))),
         }
         # center the template
