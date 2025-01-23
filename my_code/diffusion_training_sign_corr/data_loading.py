@@ -270,7 +270,7 @@ def get_val_dataset(name, phase, num_evecs, preload, return_evecs, centering, ca
     elif name == 'SMAL_nocat_pair':
         dataset_single = shape_dataset.SingleSmalDataset(
             phase=phase,
-            category=True,
+            category=False,
             data_root='data/SMAL_r',
             centering=centering,
             num_evecs=num_evecs,

@@ -237,13 +237,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     parser.add_argument('--exp_name', type=str, required=True)
-    parser.add_argument('--remesh_targetlen', type=float)
+    parser.add_argument('--remesh_targetlen', type=float, required=False, default=-1)
     parser.add_argument('--smoothing_type', 
-                        choices=['laplacian', 'taubin'])
-                        
-    parser.add_argument('--smoothing_iter', type=int)
+                        choices=['laplacian', 'taubin', None], required=False, default=None)                        
+    parser.add_argument('--smoothing_iter', type=int, required=False, default=-1)
     
-    parser.add_argument('--partial', type=int, required=True)
+    parser.add_argument('--partial', type=int, required=False, default=-1)
     
     args = parser.parse_args()
     
@@ -333,8 +332,8 @@ if __name__ == '__main__':
     last_checkpoint = checkpoint_files[-1]
     
 
-    # for n_iter in [last_checkpoint]:
-    for n_iter in [2000, 4000, 6000, 8000, 12000]:
+    for n_iter in [last_checkpoint]:
+    # for n_iter in [2000, 4000, 6000, 8000, 12000]:
 
         net.load_state_dict(torch.load(f'{exp_dir}/{n_iter}.pth'))
 

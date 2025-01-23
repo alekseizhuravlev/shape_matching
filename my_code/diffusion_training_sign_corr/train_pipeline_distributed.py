@@ -71,8 +71,8 @@ def main():
         'conditioning_types': {'evecs'},
         
         'n_epochs': 100,
-        'validate_every': 5,
-        'checkpoint_every': 5,
+        'validate_every': 10,
+        'checkpoint_every': 10,
         
         'batch_size': 64,
         'eval_batch_size': 64,
@@ -219,8 +219,11 @@ def main():
                                     lr_scheduler=lr_scheduler)
         
         # save the losses to tensorboard
-        for i, loss_value in enumerate(losses):
-            accelerator.log({f'loss/train': loss_value}, step = epoch * len(dataloader_train) + i)
+        # for i, loss_value in enumerate(losses):
+        #     accelerator.log({f'loss/train': loss_value}, step = epoch * len(dataloader_train) + i)
+        
+        # only log the last loss
+        accelerator.log({f'loss/train': losses[-1]}, step = epoch * len(dataloader_train))
             
             
         train_iterator.set_description(f'Epoch {epoch}, loss: {sum(losses[-100:])/100:.4f}')

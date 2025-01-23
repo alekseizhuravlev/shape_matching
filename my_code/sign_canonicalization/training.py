@@ -186,10 +186,11 @@ if __name__ == '__main__':
     
     # n_iter = 50000
     
+    # input_channels = 3
     input_channels = 128
     
-    feature_dim = 32
-    evecs_per_support = (1,)
+    feature_dim = 96
+    evecs_per_support = (1, 2, 8,)
     n_block = 6
     
     n_iter = 50000
@@ -198,11 +199,13 @@ if __name__ == '__main__':
     input_type = 'wks'
     with_mass = True
     
+    print(f'Using {input_type} input')
+    
     # train_folder = 'SURREAL_train_remesh_iters_10_simplify_0.20_0.80_rot_0_90_0_normal_True_noise_0.0_-0.05_0.05_lapl_mesh_scale_0.9_1.1'
     # exp_name = f'signNet_128_remeshed_mass_6b_1-1-2-2ev_10_0.2_0.8'
     
-    train_folder = 'SMAL_train'
-    exp_name = f'signNet_SMAL_train_50000'
+    train_folder = 'SMAL_isoRemesh_0.2_0.8_nocat'
+    exp_name = f'signNet_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev'
 
 
     experiment_dir = f'/home/s94zalek_hpc/shape_matching/my_code/experiments/sign_net/{exp_name}'

@@ -20,9 +20,9 @@ if __name__ == '__main__':
     
     config = {
     
-        "dataset_name": "SMAL_isoRemesh_0.2_0.8",
+        "dataset_name": "SMAL_isoRemesh_0.2_0.8_nocat",
         
-        "n_shapes": 986,
+        "n_shapes": 992,
         "lapl_type": "mesh",
         
         "split": "train",
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     train_diff_folder = None
     
     train_dataset = shape_dataset.SingleShapeDataset(
-        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SMAL_train',
+        data_root = f'/home/s94zalek_hpc/shape_matching/data_sign_training/train/SMAL_train_nocat',
         centering = 'bbox',
         num_evecs=128,
         lb_cache_dir=train_diff_folder,

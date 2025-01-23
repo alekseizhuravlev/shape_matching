@@ -530,6 +530,8 @@ def get_pairwise_error(
         
     pairwise_results_list = []
     geo_errs_pck_list = []
+    
+    f = open(log_file_name, 'a', buffering=1)
 
     for i in tqdm(data_range_pair, desc='Calculating pair fmaps'):
         
@@ -675,18 +677,17 @@ def get_pairwise_error(
         ###############################################
 
         # replace code above with writing to log file
-        with open(log_file_name, 'a') as f:
-            f.write(f'{i}: {data["first"]["id"]}, {data["second"]["id"]}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error GT: {geo_err_gt:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo: {geo_err_est_pairzo}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median: {geo_err_est_median:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
-            f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
-            f.write('-----------------------------------\n')
+        f.write(f'{i}: {data["first"]["id"]}, {data["second"]["id"]}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error GT: {geo_err_gt:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo: {geo_err_est_pairzo}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est pairzo mean: {geo_err_est_pairzo.mean():.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est dirichlet: {geo_err_est_dirichlet:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median: {geo_err_est_median:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered: {geo_err_est_median_filtered:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
+        f.write('-----------------------------------\n')
         
         geo_errs_gt.append(geo_err_gt)
         geo_errs_pairzo.append(geo_err_est_pairzo.mean())
@@ -730,42 +731,42 @@ def get_pairwise_error(
     
         
     # replace code above with writing to log file
-    with open(log_file_name, 'a') as f:
-        f.write('-----------------------------------\n')
-        f.write('Total statistics\n')
-        f.write('-----------------------------------\n')
-        f.write(f'GT geo err mean: {geo_errs_gt.mean():.2f}\n')
-        f.write('\n')
-        f.write(f'Pairzoomout geo err mean: {geo_errs_pairzo.mean():.2f}\n')
-        f.write(f'Pairzoomout geo err median: {geo_errs_pairzo.median():.2f}\n')
-        f.write(f'Pairzoomout geo err min: {geo_errs_pairzo.min():.2f}\n')
-        f.write(f'Pairzoomout geo err max: {geo_errs_pairzo.max():.2f}\n')      
-        f.write('\n')
-        f.write(f'Dirichlet geo err mean: {geo_errs_dirichlet.mean():.2f}\n')
-        f.write(f'Dirichlet geo err median: {geo_errs_dirichlet.median():.2f}\n')
-        f.write(f'Dirichlet geo err min: {geo_errs_dirichlet.min():.2f}\n')
-        f.write(f'Dirichlet geo err max: {geo_errs_dirichlet.max():.2f}\n')
-        f.write('\n')
-        f.write(f'Median geo err mean: {geo_errs_median.mean():.2f}\n')
-        f.write(f'Median geo err median: {geo_errs_median.median():.2f}\n')
-        f.write(f'Median geo err min: {geo_errs_median.min():.2f}\n')
-        f.write(f'Median geo err max: {geo_errs_median.max():.2f}\n')
-        f.write('\n')
-        f.write(f'Median geo err filtered mean: {geo_errs_median_filtered.mean():.2f}\n')
-        f.write(f'Median geo err filtered median: {geo_errs_median_filtered.median():.2f}\n')
-        f.write(f'Median geo err filtered min: {geo_errs_median_filtered.min():.2f}\n')
-        f.write(f'Median geo err filtered max: {geo_errs_median_filtered.max():.2f}\n')
-        f.write('\n')
-        f.write(f'Median geo err filtered noZo mean: {geo_errs_median_filtered_noZo.mean():.2f}\n')
-        f.write(f'Median geo err filtered noZo median: {geo_errs_median_filtered_noZo.median():.2f}\n')
-        f.write('\n')
-        f.write(f'Dirichlet pairzoomout geo err mean: {geo_errs_dirichlet_pairzo.mean():.2f}\n')
-        f.write(f'Dirichlet pairzoomout geo err median: {geo_errs_dirichlet_pairzo.median():.2f}\n')
-        f.write('\n')
-        f.write(f'Median pairzoomout geo err mean: {geo_errs_median_pairzo.mean():.2f}\n')
-        f.write(f'Median pairzoomout geo err median: {geo_errs_median_pairzo.median():.2f}\n')
-        f.write('-----------------------------------\n')
+    f.write('-----------------------------------\n')
+    f.write('Total statistics\n')
+    f.write('-----------------------------------\n')
+    f.write(f'GT geo err mean: {geo_errs_gt.mean():.2f}\n')
+    f.write('\n')
+    f.write(f'Pairzoomout geo err mean: {geo_errs_pairzo.mean():.2f}\n')
+    f.write(f'Pairzoomout geo err median: {geo_errs_pairzo.median():.2f}\n')
+    f.write(f'Pairzoomout geo err min: {geo_errs_pairzo.min():.2f}\n')
+    f.write(f'Pairzoomout geo err max: {geo_errs_pairzo.max():.2f}\n')      
+    f.write('\n')
+    f.write(f'Dirichlet geo err mean: {geo_errs_dirichlet.mean():.2f}\n')
+    f.write(f'Dirichlet geo err median: {geo_errs_dirichlet.median():.2f}\n')
+    f.write(f'Dirichlet geo err min: {geo_errs_dirichlet.min():.2f}\n')
+    f.write(f'Dirichlet geo err max: {geo_errs_dirichlet.max():.2f}\n')
+    f.write('\n')
+    f.write(f'Median geo err mean: {geo_errs_median.mean():.2f}\n')
+    f.write(f'Median geo err median: {geo_errs_median.median():.2f}\n')
+    f.write(f'Median geo err min: {geo_errs_median.min():.2f}\n')
+    f.write(f'Median geo err max: {geo_errs_median.max():.2f}\n')
+    f.write('\n')
+    f.write(f'Median geo err filtered mean: {geo_errs_median_filtered.mean():.2f}\n')
+    f.write(f'Median geo err filtered median: {geo_errs_median_filtered.median():.2f}\n')
+    f.write(f'Median geo err filtered min: {geo_errs_median_filtered.min():.2f}\n')
+    f.write(f'Median geo err filtered max: {geo_errs_median_filtered.max():.2f}\n')
+    f.write('\n')
+    f.write(f'Median geo err filtered noZo mean: {geo_errs_median_filtered_noZo.mean():.2f}\n')
+    f.write(f'Median geo err filtered noZo median: {geo_errs_median_filtered_noZo.median():.2f}\n')
+    f.write('\n')
+    f.write(f'Dirichlet pairzoomout geo err mean: {geo_errs_dirichlet_pairzo.mean():.2f}\n')
+    f.write(f'Dirichlet pairzoomout geo err median: {geo_errs_dirichlet_pairzo.median():.2f}\n')
+    f.write('\n')
+    f.write(f'Median pairzoomout geo err mean: {geo_errs_median_pairzo.mean():.2f}\n')
+    f.write(f'Median pairzoomout geo err median: {geo_errs_median_pairzo.median():.2f}\n')
+    f.write('-----------------------------------\n')
 
+    f.close()
 
     # log pairwise_results with json
     with open(pairwise_results_file_name, 'w') as f:
@@ -875,15 +876,30 @@ def run():
     ##########################################
     # Template
     ##########################################
-
-    template_shape = template_dataset.get_template(
-        num_evecs=single_dataset.num_evecs,
-        centering='bbox',
-        template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/template.off',
-        template_corr=np.loadtxt(
-            f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/corr.txt',
-            dtype=np.int32) - 1
-        )    
+    
+    if 'SMAL' in dataset_name:
+        print('Using SMAL template')
+        
+        template_shape = template_dataset.get_template(
+            num_evecs=single_dataset.num_evecs,
+            centering='bbox',
+            template_path=f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{config["sign_net"]["template_type"]}/template.off',
+            template_corr=np.loadtxt(
+                    f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{config["sign_net"]["template_type"]}/corr.txt',
+                    dtype=np.int32) - 1,
+            )  
+    
+    else:
+        print('Using SURREAL template')
+        
+        template_shape = template_dataset.get_template(
+            num_evecs=single_dataset.num_evecs,
+            centering='bbox',
+            template_path=f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/template.off',
+            template_corr=np.loadtxt(
+                f'/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/{config["sign_net"]["template_type"]}/corr.txt',
+                dtype=np.int32) - 1
+            )    
 
     ##########################################
     # Logging

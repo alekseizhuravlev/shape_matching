@@ -121,14 +121,14 @@ def get_cmap():
     SAMPLES = 100
     ice = px.colors.sample_colorscale(
         
-        # px.colors.cyclical.Edge,
+        px.colors.cyclical.Edge,
         # px.colors.sequential.Jet,
         # px.colors.diverging.Picnic,
-        
+        # px.colors.cyclical.HSV,
         
         # px.colors.cyclical.IceFire,
         
-        px.colors.cyclical.HSV,
+        
         # px.colors.sequential.Blackbody,
         # px.colors.sequential.Viridis,
         SAMPLES)
@@ -169,9 +169,9 @@ if __name__ == '__main__':
 
 
         # dataset_name = 'FAUST_r_pair'
-        dataset_name = 'SCAPE_r_pair'
+        # dataset_name = 'SCAPE_r_pair'
         # dataset_name = 'SHREC19_r_pair'
-        # dataset_name = 'DT4D_inter_pair'
+        dataset_name = 'DT4D_inter_pair'
         # dataset_name = 'DT4D_intra_pair'
 
         single_dataset, pair_dataset = data_loading.get_val_dataset(
@@ -268,13 +268,21 @@ if __name__ == '__main__':
                 
                 with PIL.Image.open(f"{base_path}/single/{k:04d}_1.png") as png2:
             
-                    png_combined = PIL.Image.new('RGB', (png1.width + png2.width, png1.height))
-                    png_combined.paste(png1, (0, 0))
-                    png_combined.paste(png2, (png1.width, 0))
+                    # png_combined = PIL.Image.new('RGB', (png1.width + png2.width, png1.height))
+                    # png_combined.paste(png1, (0, 0))
+                    # png_combined.paste(png2, (png1.width, 0))
                     
-                    # save combined image
+                    # # save combined image
                     
-                    png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
-            
+                    # png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
+                    
+                    with PIL.Image.new('RGB', (png1.width + png2.width, png1.height)) as png_combined:
+                        png_combined.paste(png1, (0, 0))
+                        png_combined.paste(png2, (png1.width, 0))
+                        
+                        # save combined image
+                        
+                        png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
+                    
             
                 

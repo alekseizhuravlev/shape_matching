@@ -113,6 +113,9 @@ def gather_files(data_dir, prefix, remove_after):
         # data_i = np.loadtxt(f'{data_dir}/{file["file"]}')
         # data_i = torch.tensor(data_i)
         
+        # sleep for 1-2 seconds
+        time.sleep(np.random.uniform(1, 2))
+        
         # read the file as torch tensor
         data_i = torch.load(f'{data_dir}/{file["file"]}')
         
@@ -142,30 +145,34 @@ if __name__ == '__main__':
     dataset_name_list = [
         # 'SURREAL_128_1-1-2-2ev_template_remeshed_augShapes_bbox',
         # 'SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox',
-        'SMAL_32_SMAL_isoRemesh_0.2_0.8_50000_aug',
-        'SMAL_32_SMAL_train_50000_aug'
+        
+        
+        # 'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-2ev',
+        'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-4ev',
+        'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev',
     ]
     
     prefix_list = [
-        'evals_first', 'evals_second',
-        'C_gt_xy', 'C_gt_yx', 
+        # 'evals_first', 'evals_second',
+        # 'C_gt_xy',
+        'C_gt_yx', 
         'evecs_cond_first', 'evecs_cond_second'
         ]
     
     for dataset_name in dataset_name_list:
         
         print('Gathering', dataset_name)
-        time.sleep(1)
+        time.sleep(2)
         
         data_dir = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SURREAL/train/{dataset_name}/train'
         
-        verify_integrity(data_dir, prefix_list)
+        # verify_integrity(data_dir, prefix_list)
         
-        check_for_nan(data_dir, prefix_list)
+        # check_for_nan(data_dir, prefix_list)
         
         
         for prefix in prefix_list:
-            gather_files(data_dir, prefix, remove_after=False)
+            gather_files(data_dir, prefix, remove_after=True)
 
     
     

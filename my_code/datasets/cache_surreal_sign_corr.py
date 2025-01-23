@@ -305,8 +305,8 @@ def save_train_dataset(
             print(f'{i}/{len(train_indices)}, time: {time_elapsed:.2f}, avg: {time_elapsed / (i + 1):.2f}, second_indices: {second_indices}',
                 flush=True)
             
-        if i < 5 or i % 1000 == 0:
-        # if i % 1000 == 0:
+        # if i < 5 or i % 1000 == 0:
+        if i % 1000 == 0:
             data['second']['C_gt_xy'], data['second']['C_gt_yx'] =\
                 dataset.get_functional_map(data['first'], data['second'])
             
@@ -315,9 +315,9 @@ def save_train_dataset(
                 evecs_cond_first, evecs_cond_second,
                 figures_folder, idx)
             
-    torch.save(evals_first_tensor, f'{train_folder}/evals_first_{start_idx}_{end_idx}.pt')
-    torch.save(evals_second_tensor, f'{train_folder}/evals_second_{start_idx}_{end_idx}.pt')
-    torch.save(fmaps_xy_tensor, f'{train_folder}/C_gt_xy_{start_idx}_{end_idx}.pt')
+    # torch.save(evals_first_tensor, f'{train_folder}/evals_first_{start_idx}_{end_idx}.pt')
+    # torch.save(evals_second_tensor, f'{train_folder}/evals_second_{start_idx}_{end_idx}.pt')
+    # torch.save(fmaps_xy_tensor, f'{train_folder}/C_gt_xy_{start_idx}_{end_idx}.pt')
     torch.save(fmaps_yx_tensor, f'{train_folder}/C_gt_yx_{start_idx}_{end_idx}.pt')
     torch.save(evecs_cond_first_tensor, f'{train_folder}/evecs_cond_first_{start_idx}_{end_idx}.pt')
     torch.save(evecs_cond_second_tensor, f'{train_folder}/evecs_cond_second_{start_idx}_{end_idx}.pt')
@@ -415,7 +415,9 @@ if __name__ == '__main__':
                 },
             },
         }
-    elif 'SMAL' in args.dataset_name:
+    elif 'SMAL_cat' in args.dataset_name:
+        
+        print('SMAL category dataset')
         
         # augmentations = None
         
@@ -457,7 +459,55 @@ if __name__ == '__main__':
             return_shot=sign_net_config['net_params']['input_type'] == 'shot',
         )  
         
-    else: 
+        
+    elif 'SMAL_nocat' in args.dataset_name:
+        
+        print('SMAL no-category dataset')
+        
+        # augmentations = None
+        
+        augmentations = {
+            "remesh": {
+                "isotropic": {
+                    "n_remesh_iters": 10,
+                    "remesh_targetlen": 1,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.8,
+                },
+                "anisotropic": {
+                    "probability": 0.35,
+                        
+                    "n_remesh_iters": 10,
+                    "fraction_to_simplify_min": 0.2,
+                    "fraction_to_simplify_max": 0.6,
+                    "simplify_strength_min": 0.2,
+                    "simplify_strength_max": 0.5,
+                    "weighted_by": "face_count",
+                },
+            },
+        }
+        
+        dataset = TemplateSurrealDataset3DC(
+            # shape_path='/lustre/mlnvme/data/s94zalek_hpc-shape_matching/SMAL_shapes_train_nocat.pt',
+            # shape_path='/home/s94zalek_hpc/shape_matching/data/SMAL_shapes_train_nocat.pt',
+            shape_path='/home/s94zalek_hpc/shape_matching/data/SMAL_shapes_train_nocat_64k.pt',
+            num_evecs=128,
+            cache_lb_dir=None,
+            return_evecs=True,
+            return_fmap=False,
+            mmap=True,
+            augmentations=augmentations,
+            template_path=f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{args.template_type}/template.off',
+            template_corr=np.loadtxt(
+                f'/home/s94zalek_hpc/shape_matching/data/SMAL_templates/{args.template_type}/corr.txt',
+                dtype=np.int32) - 1,
+            mesh_orig_faces_path='/home/s94zalek_hpc/shape_matching/data/SMAL_templates/original/template.off',
+            centering=args.centering,
+            return_shot=sign_net_config['net_params']['input_type'] == 'shot',
+        )  
+        
+        
+    elif 'SURREAL' in args.dataset_name: 
         augmentations = {
             "remesh": {
                 "isotropic": {
@@ -493,7 +543,10 @@ if __name__ == '__main__':
             mesh_orig_faces_path='/home/s94zalek_hpc/shape_matching/data/SURREAL_full/template/3DC/template.ply',
             centering=args.centering,
             return_shot=sign_net_config['net_params']['input_type'] == 'shot',
-        )   
+        )  
+        
+    else:
+        raise ValueError(f'Unknown dataset name: {args.dataset_name}') 
         
     
     print('Dataset created')
