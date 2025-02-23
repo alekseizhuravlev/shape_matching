@@ -36,10 +36,10 @@ def write_obj_pair(file_name1, file_name2, verts1, faces1, verts2, faces2, Pyx, 
 def generate_tex_coords(verts, col1=1, col2=0, mult_const=1):
     
     # compute std along each axis (x, y, z), sort in descending order
-    ind = np.argsort(np.std(verts, axis=0))[::-1]
+    # ind = np.argsort(np.std(verts, axis=0))[::-1]
     
     # rearrange the axes in descending order of std
-    verts = verts[:, ind]
+    # verts = verts[:, ind]
     
     # choose 2 axes with max std
     # put highest to axis 1, second highest to axis 0
@@ -54,8 +54,8 @@ def generate_tex_coords(verts, col1=1, col2=0, mult_const=1):
     vt = mult_const * vt / np.max(vt)
     
     
-    vt[:, 0] = (vt[:, 0] - vt[:, 0].min()) / (vt[:, 0].max() - vt[:, 0].min())
-    vt[:, 1] = (vt[:, 1] - vt[:, 1].min()) / (vt[:, 1].max() - vt[:, 1].min())
+    # vt[:, 0] = (vt[:, 0] - vt[:, 0].min()) / (vt[:, 0].max() - vt[:, 0].min())
+    # vt[:, 1] = (vt[:, 1] - vt[:, 1].min()) / (vt[:, 1].max() - vt[:, 1].min())
     return vt
 
 

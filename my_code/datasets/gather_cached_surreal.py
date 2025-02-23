@@ -147,9 +147,8 @@ if __name__ == '__main__':
         # 'SURREAL_128_1-2-2-2ev_template_remeshed_augShapes_bbox',
         
         
-        # 'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-2ev',
-        'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-4ev',
-        'SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev',
+        'SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_32k',
+        'SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_64k',
     ]
     
     prefix_list = [

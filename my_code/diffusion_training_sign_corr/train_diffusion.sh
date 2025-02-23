@@ -3,7 +3,7 @@
 #SBATCH -n 1
 #SBATCH -t 7-00:00:00
 #SBATCH --mem=50G
-#SBATCH --gres=gpu:8
+#SBATCH --gres=gpu:2
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
 #SBATCH --output=/home/s94zalek_hpc/shape_matching/SLURM_logs/train_diffusion_%j.out
@@ -20,8 +20,8 @@ export PYTHONPATH=${PYTHONPATH}:/home/s94zalek_hpc/shape_matching
 # dataset_name='SURREAL_64_template_remeshed_augShapes'
 
 
-experiment_name='single_96_SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev'
-dataset_name='SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev'
+experiment_name='test_runtime_96_SMAL'
+dataset_name='SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-4ev'
 
 
 fmap_direction='yx'

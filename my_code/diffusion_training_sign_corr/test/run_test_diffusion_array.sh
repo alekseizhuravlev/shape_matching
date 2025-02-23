@@ -1,8 +1,8 @@
 #!/bin/bash
 
 #SBATCH -n 1
-#SBATCH -t 7-00:00:00
-#SBATCH --array=0-0
+#SBATCH -t 4-18:00:00
+#SBATCH --array=0-1
 #SBATCH --gres=gpu:1
 #SBATCH --partition=mlgpu_long
 #SBATCH --account=ag_ifi_laehner
@@ -32,9 +32,9 @@ num_samples_median=16
 
 confidence_threshold=0.2
 
-# log_subdir="logs_robustMedian_fixedSmoothing_${num_iters_avg}_${num_samples_median}_${confidence_threshold}"
+log_subdir="logs_robustMedian_fixedSmoothing_${num_iters_avg}_${num_samples_median}_${confidence_threshold}"
 
-log_subdir="logs_smal"
+# log_subdir="logs_smal"
 
 random_seed=1
 
@@ -61,11 +61,11 @@ job_list=(
     # 'SCAPE_r_pair test'
     # 'SCAPE_a_pair test'
 
-    # 'DT4D_inter_pair test'
-    # 'DT4D_intra_pair test'
+    'DT4D_inter_pair test'
+    'DT4D_intra_pair test'
 
     # 'SMAL_cat_pair test'
-    'SMAL_nocat_pair test'
+    # 'SMAL_nocat_pair test'
     # 'SMAL_cat_pair train'
 )
 

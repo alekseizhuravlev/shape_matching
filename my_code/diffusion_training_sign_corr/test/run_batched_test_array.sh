@@ -1,16 +1,16 @@
 experiment_names=(
-    # # # 'single_24_remeshed_noAcc_yx'
+    # # 'single_24_remeshed_noAcc_yx'
     # 'single_template_remeshed'
-    # # # 'single_48_remeshed_noAcc_yx_64_128_128'
-    # # 'single_64_1-1ev_64-128-128_remeshed'
+    # # 'single_48_remeshed_noAcc_yx_64_128_128'
+    # 'single_64_1-1ev_64-128-128_remeshed'
     # 'single_64_1-2ev_64-128-128_remeshed_fixed'
     # 'single_64_1-4ev_64-128-128_remeshed_fixed'
-    # # # 'single_64_2-2ev_64-128-128_remeshed_fixed'
-    # # # 'single_64_2-4ev_64-128-128_remeshed_fixed'
+    # # 'single_64_2-2ev_64-128-128_remeshed_fixed'
+    # # 'single_64_2-4ev_64-128-128_remeshed_fixed'
     # 'single_96_1-2-2ev_64-128-128_remeshed'
-    # 'single_96_1-2-4ev_64-128-128_remeshed'
-    # # 'single_96_2-2-2ev_64-128-128_remeshed'
-    # # 'single_96_2-2-4ev_64-128-128_remeshed'
+    'single_96_1-2-4ev_64-128-128_remeshed'
+    # 'single_96_2-2-2ev_64-128-128_remeshed'
+    # 'single_96_2-2-4ev_64-128-128_remeshed'
 
 
     # 'single_128_1-2-2-4ev_64-128-128_remeshed'
@@ -23,37 +23,35 @@ experiment_names=(
     # 'single_128_1-2-2-4ev_128-256-256_remeshed'
 
 
-    'single_96_SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-2ev'
-    'single_96_SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-4ev'
-    'single_96_SMAL_nocat_96_SMAL_isoRemesh_0.2_0.8_nocat_1-2-8ev'
+    # 'single_64_SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_32k'
+    # 'single_64_SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_64k'
 )
 checkpoint_names=(
-    # # 'checkpoint_99.pt'
     # 'checkpoint_99.pt'
-    # # 'checkpoint_95.pt'
-    # # 'epoch_99'
+    # 'checkpoint_99.pt'
+    # 'checkpoint_95.pt'
     # 'epoch_99'
     # 'epoch_99'
-    # # 'epoch_99'
-    # # 'epoch_99'
     # 'epoch_99'
     # 'epoch_99'
-    # # 'epoch_99'
-    # # 'epoch_99'
-
-
+    # 'epoch_99'
     # 'epoch_99'
     # 'epoch_99'
     # 'epoch_99'
     # 'epoch_99'
 
+
     # 'epoch_99'
     # 'epoch_99'
+    # 'epoch_99'
+    # 'epoch_99'
+
+    # 'epoch_99'
+    'epoch_99'
     # 'epoch_80'
 
-    'epoch_99'
-    'epoch_99'
-    'epoch_99'
+    # 'epoch_99'
+    # 'epoch_99'
 )
 
 # run sbatch /home/s94zalek_hpc/shape_matching/my_code/diffusion_training_sign_corr/test/run_test_diffusion_array.sh with each experiment name

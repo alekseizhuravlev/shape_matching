@@ -527,6 +527,10 @@ def get_pairwise_error(
     geo_errs_median_filtered_noZo = []
     geo_errs_dirichlet_pairzo = []
     geo_errs_median_pairzo = []
+    
+    # no zoomout
+    geo_errs_dirichlet_nozo = []
+    geo_errs_median_nozo = []
         
     pairwise_results_list = []
     geo_errs_pck_list = []
@@ -671,6 +675,44 @@ def get_pairwise_error(
         )
         geo_err_median_pairzo = geo_err_median_pairzo_full.mean() * 100
           
+          
+        ###############################################
+        # Without Zoomout
+        ###############################################
+        
+        geo_err_est_nozo = []
+        p2p_est_nozo = []
+        for k in range(args.num_iters_avg):
+            geo_err_k, p2p_k = get_geo_error(
+                p2p_est_first[k], p2p_est_second[k],
+                evecs_first, evecs_second,
+                corr_first, corr_second,
+                num_evecs, False,
+                dist_x, A2=mass_second,
+                return_p2p=True
+                )
+            geo_err_est_nozo.append(geo_err_k)
+            p2p_est_nozo.append(p2p_k)
+            
+        geo_err_est_nozo = torch.tensor(geo_err_est_nozo)
+        p2p_est_nozo = torch.stack(p2p_est_nozo)
+          
+        # dirichlet and median maps
+        p2p_dirichlet_nozo, p2p_median_nozo, _, _ = select_p2p_map_dirichlet(
+            p2p_est_nozo,
+            data['first']['verts'],
+            data['second']['L'], 
+            dist_x,
+            num_samples_median=args.num_samples_median
+            )
+        
+        geo_err_dirichlet_nozo = geodist_metric.calculate_geodesic_error(
+            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_dirichlet_nozo, return_mean=True
+        ) * 100
+        geo_err_median_nozo = geodist_metric.calculate_geodesic_error(
+            dist_x, corr_first.cpu(), corr_second.cpu(), p2p_median_nozo, return_mean=True
+        ) * 100
+          
         
         ###############################################
         # Logging
@@ -687,6 +729,8 @@ def get_pairwise_error(
         f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error est median filtered noZo: {geo_err_est_median_filtered_noZo:.2f}\n')
         f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error dirichlet pairzo: {geo_err_dirichlet_pairzo:.2f}\n')
         f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error median pairzo: {geo_err_median_pairzo:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error dirichlet nozo: {geo_err_dirichlet_nozo:.2f}\n')
+        f.write(f'{data["first"]["id"]}, {data["second"]["id"]}: Geo error median nozo: {geo_err_median_nozo:.2f}\n')
         f.write('-----------------------------------\n')
         
         geo_errs_gt.append(geo_err_gt)
@@ -698,6 +742,8 @@ def get_pairwise_error(
         geo_errs_dirichlet_pairzo.append(geo_err_dirichlet_pairzo)
         geo_errs_median_pairzo.append(geo_err_median_pairzo)
         
+        geo_errs_dirichlet_nozo.append(geo_err_dirichlet_nozo)
+        geo_errs_median_nozo.append(geo_err_median_nozo)
         
         # add the p2p maps and per-vertex errors to the results list
         pairwise_results_list.append({
@@ -722,6 +768,9 @@ def get_pairwise_error(
     geo_errs_median_filtered_noZo = torch.tensor(geo_errs_median_filtered_noZo)
     geo_errs_dirichlet_pairzo = torch.tensor(geo_errs_dirichlet_pairzo)
     geo_errs_median_pairzo = torch.tensor(geo_errs_median_pairzo)
+    
+    geo_errs_dirichlet_nozo = torch.tensor(geo_errs_dirichlet_nozo)
+    geo_errs_median_nozo = torch.tensor(geo_errs_median_nozo)
     
     
     auc, pcks, thresholds = geodist_metric.plot_pck(
@@ -764,6 +813,13 @@ def get_pairwise_error(
     f.write('\n')
     f.write(f'Median pairzoomout geo err mean: {geo_errs_median_pairzo.mean():.2f}\n')
     f.write(f'Median pairzoomout geo err median: {geo_errs_median_pairzo.median():.2f}\n')
+    f.write('\n')
+    f.write('No Zoomout\n\n')
+    f.write(f'Dirichlet no zoomout geo err mean: {geo_errs_dirichlet_nozo.mean():.2f}\n')
+    f.write(f'Dirichlet no zoomout geo err median: {geo_errs_dirichlet_nozo.median():.2f}\n')
+    f.write('\n')
+    f.write(f'Median no zoomout geo err mean: {geo_errs_median_nozo.mean():.2f}\n')
+    f.write(f'Median no zoomout geo err median: {geo_errs_median_nozo.median():.2f}\n')
     f.write('-----------------------------------\n')
 
     f.close()
@@ -795,6 +851,9 @@ def get_pairwise_error(
         'filtered_noZo': geo_errs_median_filtered_noZo.mean().item(),
         'dirichlet_pairzo': geo_errs_dirichlet_pairzo.mean().item(),
         'median_pairzo': geo_errs_median_pairzo.mean().item(),
+        
+        'dirichlet_nozo': geo_errs_dirichlet_nozo.mean().item(),
+        'median_nozo': geo_errs_median_nozo.mean().item(),
         
         # auc, pcks, thresholds are numpy arrays
         'auc': auc.item(),

@@ -13,6 +13,9 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import os
 import PIL.Image
+import utils.texture_util as texture_util
+from PIL import Image
+
 
 
 def interpolate_colors(values, cmap, dtype=np.uint8):
@@ -26,12 +29,12 @@ def interpolate_colors(values, cmap, dtype=np.uint8):
     return rgba
 
 
-def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, axes_color_gradient=[0, 1],
+def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, Pyx, dataset_name, axes_color_gradient=[0, 1],
                  base_cmap='jet'):
     
     # assert axes_color_gradient is a list or tuple
     assert isinstance(axes_color_gradient, (list, tuple)), "axes_color_gradient must be a list or tuple"
-    assert verts_y.shape[0] == len(p2p), f"verts_y {verts_y.shape} and p2p {p2p.shape} must have the same length"
+    # assert verts_y.shape[0] == len(p2p), f"verts_y {verts_y.shape} and p2p {p2p.shape} must have the same length"
     
     
     if 'DT4D' in dataset_name:
@@ -46,35 +49,49 @@ def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, ax
         verts_y[:, 0] = verts_y_cloned[:, 0]
         verts_y[:, 1] = verts_y_cloned[:, 2]
         verts_y[:, 2] = -verts_y_cloned[:, 1]
+        
+    elif 'SMAL' in dataset_name:
+
+        verts_x_cloned = verts_x.clone()
+        
+        verts_x[:, 0] = verts_x_cloned[:, 2]
+        verts_x[:, 1] = -verts_x_cloned[:, 1]
+        verts_x[:, 2] = verts_x_cloned[:, 0]
+        
+        verts_y_cloned = verts_y.clone()
+        
+        verts_y[:, 0] = verts_y_cloned[:, 2]
+        verts_y[:, 1] = -verts_y_cloned[:, 1]
+        verts_y[:, 2] = verts_y_cloned[:, 0]
+        
+    ##################################################
+    # Inertia transform
+    ##################################################
     
+    if 'SMAL' in dataset_name:
+        
+        mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, process=False, validate=False)
+        mesh2 = trimesh.Trimesh(vertices=verts_y, faces=faces_y, process=False, validate=False)    
+        
+        mesh1.apply_transform(mesh1.principal_inertia_transform)
+        mesh2.apply_transform(mesh2.principal_inertia_transform)
+        
+        verts_x = torch.tensor(mesh1.vertices, dtype=torch.float32)
+        verts_y = torch.tensor(mesh2.vertices, dtype=torch.float32)
+    
+
     ##################################################
     # color gradient
     ##################################################
     
-    coords_x_norm = torch.zeros_like(verts_x)
-    for i in range(3):
-        coords_x_norm[:, i] = (verts_x[:, i] - verts_x[:, i].min()) / (verts_x[:, i].max() - verts_x[:, i].min())
-
-    coords_interpolated = torch.zeros(verts_x.shape[0])
-    for i in axes_color_gradient:
-        coords_interpolated += coords_x_norm[:, i]
-        
-    if type(base_cmap) == str:
-        cmap = trimesh.visual.color.interpolate(coords_interpolated, base_cmap)
-    else:
-        cmap = interpolate_colors(coords_interpolated, base_cmap)
-        
-    cmap2 = cmap[p2p].clip(0, 255)
-
     ##################################################
     # add the meshes
     ################################################
 
     # 1
-    mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, validate=True)
-    mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
+    mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, validate=False, process=False)
+    # mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     
-    # mesh1.apply_transform(mesh1.principal_inertia_transform)
             
     #         # rotate by 90 degrees along the x-axis and 90 degrees along the z-axis
     # mesh1.apply_transform(trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0], [0, 0, 0]))
@@ -83,8 +100,8 @@ def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, ax
     
            
     # 2
-    mesh2 = trimesh.Trimesh(vertices=verts_y, faces=faces_y, validate=True)
-    mesh2.visual.vertex_colors = cmap2[:len(mesh2.vertices)]
+    mesh2 = trimesh.Trimesh(vertices=verts_y, faces=faces_y, validate=False, process=False)
+    # mesh2.visual.vertex_colors = cmap2[:len(mesh2.vertices)]
     
     # mesh1.vertices -= np.mean(mesh1.vertices, axis=0)
     # mesh2.vertices -= np.mean(mesh2.vertices, axis=0)
@@ -101,6 +118,31 @@ def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, ax
     
     mesh1.apply_transform(trimesh.transformations.rotation_matrix(np.pi/8, [0, 1, 0], [0, 0, 0]))
     mesh2.apply_transform(trimesh.transformations.rotation_matrix(np.pi/8, [0, 1, 0], [0, 0, 0]))
+    
+    
+    
+    uv1 = texture_util.generate_tex_coords(mesh1.vertices, col1=0, col2=1) * 2
+    uv2 = Pyx @ uv1
+    
+    
+    texture_img = Image.open('/home/s94zalek_hpc/shape_matching/figures/texture.png')
+    material=trimesh.visual.material.SimpleMaterial(
+        image=texture_img,
+        diffuse=[255, 255, 255, 255],
+    )
+
+    texture_visuals = trimesh.visual.texture.TextureVisuals(
+        uv=uv1[:len(mesh1.vertices)],
+        material=material
+    )
+    mesh1.visual = texture_visuals
+    
+    texture_visuals_2 = trimesh.visual.texture.TextureVisuals(
+        uv=uv2[:len(mesh2.vertices)],
+        material=material
+    )
+    mesh2.visual = texture_visuals_2
+
     
     return mesh1, mesh2
     
@@ -121,14 +163,21 @@ def get_cmap():
     SAMPLES = 100
     ice = px.colors.sample_colorscale(
         
+        # DT4D
         px.colors.cyclical.Edge,
+        
+        # FAUST
         # px.colors.sequential.Jet,
+        
+        # SHREC19
         # px.colors.diverging.Picnic,
         
+        # SCAPE
+        # px.colors.cyclical.HSV,
         
         # px.colors.cyclical.IceFire,
         
-        # px.colors.cyclical.HSV,
+        
         # px.colors.sequential.Blackbody,
         # px.colors.sequential.Viridis,
         SAMPLES)
@@ -170,9 +219,10 @@ if __name__ == '__main__':
 
         # dataset_name = 'FAUST_r_pair'
         # dataset_name = 'SCAPE_r_pair'
-        # dataset_name = 'SHREC19_r_pair'
+        dataset_name = 'SHREC19_r_pair'
         # dataset_name = 'DT4D_inter_pair'
-        dataset_name = 'DT4D_intra_pair'
+        # dataset_name = 'DT4D_intra_pair'
+        # dataset_name = 'SMAL_nocat_pair'
 
         single_dataset, pair_dataset = data_loading.get_val_dataset(
             dataset_name, 'test', 128, preload=False, return_evecs=True, centering='bbox'
@@ -189,6 +239,8 @@ if __name__ == '__main__':
             file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_1-2ev_64-128-128_remeshed_fixed/eval/epoch_99/FAUST_r_pair-test/no_smoothing/2024-11-04_22-27-59/pairwise_results.json'
         elif dataset_name == 'SCAPE_r_pair':
             file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_1-2ev_64-128-128_remeshed_fixed/eval/epoch_99/SCAPE_r_pair-test/no_smoothing/2024-11-04_22-27-59/pairwise_results.json'
+        elif dataset_name == 'SMAL_nocat_pair':
+            file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_64k/eval/epoch_99/SMAL_nocat_pair-test/no_smoothing/2025-01-24_16-01-31/pairwise_results.json'
                 
         with open(file_name, 'r') as f:
             p2p_saved = json.load(f)
@@ -198,7 +250,7 @@ if __name__ == '__main__':
         idxs_geo_err = torch.argsort(geo_err_list, descending=True)
 
 
-        base_path = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/figures/p2p_baseline_consistfm/{dataset_name}'
+        base_path = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/figures/p2p_texture_texture.png/{dataset_name}'
         
         # if os.path.exists(base_path):
         #     os.system(f'rm -r {base_path}')
@@ -208,63 +260,35 @@ if __name__ == '__main__':
 
         cmap = get_cmap()
 
-        # random_order = torch.randperm(len(idxs_geo_err))[:400]
-        # random_order = torch.randperm(len(idxs_geo_err))
+        random_order = torch.randperm(len(idxs_geo_err))[:400]
         
         # random_order = [29]
-        
-        random_order = [49, 125, 274, 307, 437, 516, 572, 705, 765]
         
         for k in tqdm(random_order):
             
             indx = k
 
-        # for k in tqdm(range(len(idxs_geo_err))):
-
-            # indx = idxs_geo_err[k]
-            
             data_i = pair_dataset[indx]
             p2p_i = p2p_saved[indx]
             p2p_pairzo = torch.tensor(p2p_i['p2p_median_pairzo'])
+
+
+            Cxy = torch.linalg.lstsq(
+                data_i['second']['evecs'],
+                data_i['first']['evecs'][p2p_pairzo],
+            ).solution
+
+            Pyx = data_i['second']['evecs'] @ Cxy @ data_i['first']['evecs_trans']
+
+
             
-            
-            # ULRSSM
-            # p2p_baseline = torch.load(f'/home/s94zalek_hpc/baselines/Unsupervised-Learning-of-Robust-Spectral-Shape-Matching/results/dt4d_intra_class/visualization/{indx}.pth')
-            
-            # ConsistFM
-            # p2p_baseline = torch.load(f'/home/s94zalek_hpc/baselines/Unsupervised-Learning-of-Robust-Spectral-Shape-Matching/results/dt4d_intra_class/visualization/{indx}.pth')
-
-            path_consistfm = f'/home/s94zalek_hpc/baselines/Spatially-and-Spectrally-Consistent-Deep-Functional-Maps/data/results/DT4D_FS/p2p_21'
-
-            first_idx = data_i['first']['id']
-            second_idx = data_i['second']['id']
-
-            off_first = single_dataset.off_files[first_idx]
-            name_first = off_first.split('/')[-1].split('.')[0]
-            
-            off_second = single_dataset.off_files[second_idx]
-            name_second = off_second.split('/')[-1].split('.')[0]
-
-            p2p_baseline = torch.tensor(
-                np.loadtxt(f'{path_consistfm}/{name_first}_{name_second}.txt')
-            ).int()
-
 
             scene.geometry.clear()
 
             mesh1, mesh2 = get_colored_meshes( 
-                data_i['first']['verts'].clone(), data_i['first']['faces'].clone(),
-                data_i['second']['verts'].clone(), data_i['second']['faces'].clone(),
-                p2p_pairzo,
-                axes_color_gradient=[0, 1],
-                base_cmap=cmap,
-                dataset_name=dataset_name
-            )
-            
-            _, mesh3 = get_colored_meshes( 
-                data_i['first']['verts'].clone(), data_i['first']['faces'].clone(),
-                data_i['second']['verts'].clone(), data_i['second']['faces'].clone(),
-                p2p_baseline,
+                data_i['first']['verts'], data_i['first']['faces'],
+                data_i['second']['verts'], data_i['second']['faces'],
+                Pyx,
                 axes_color_gradient=[0, 1],
                 base_cmap=cmap,
                 dataset_name=dataset_name
@@ -272,7 +296,7 @@ if __name__ == '__main__':
             
             png1 = render_mesh(scene, mesh1)
             png2 = render_mesh(scene, mesh2)
-            png3 = render_mesh(scene, mesh3)
+            
             
 
             # proportion = 1.2 * (data_i['second']['verts'][:, 0].max() - data_i['second']['verts'][:, 0].min()) / (data_i['second']['verts'][:, 1].max() - data_i['second']['verts'][:, 1].min())
@@ -290,48 +314,29 @@ if __name__ == '__main__':
             with open(f"{base_path}/single/{k:04d}_1.png", "wb") as f:
                 f.write(png2)
                 
-            with open(f"{base_path}/single/{k:04d}_2.png", "wb") as f:
-                f.write(png3)
-                
             
             # open pngs again and combine them
             
-            png1= PIL.Image.open(f"{base_path}/single/{k:04d}_0.png")
-            png2= PIL.Image.open(f"{base_path}/single/{k:04d}_1.png")
-            png3= PIL.Image.open(f"{base_path}/single/{k:04d}_2.png")
-            
-            png_combined = PIL.Image.new('RGB', (png1.width + png2.width + png3.width, png1.height))
-            png_combined.paste(png1, (0, 0))
-            png_combined.paste(png2, (png1.width, 0))
-            png_combined.paste(png3, (png1.width + png2.width, 0))
-            
-            # save combined image
-            
-            png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
-
-            # close the images
-            png1.close()
-            png2.close()
-            png3.close()
-            png_combined.close()
-            
-            
-            # with PIL.Image.open(f"{base_path}/single/{k:04d}_0.png") as png1:
+            with PIL.Image.open(f"{base_path}/single/{k:04d}_0.png") as png1:
                 
                 
-            #     with PIL.Image.open(f"{base_path}/single/{k:04d}_1.png") as png2:
+                with PIL.Image.open(f"{base_path}/single/{k:04d}_1.png") as png2:
             
-            #         with PIL.Image.open(f"{base_path}/single/{k:04d}_2.png") as png3:
-                            
-                
-            #             png_combined = PIL.Image.new('RGB', (png1.width + png2.width + png3.width, png1.height))
-            #             png_combined.paste(png1, (0, 0))
-            #             png_combined.paste(png2, (png1.width, 0))
-            #             png_combined.paste(png3, (png1.width + png2.width, 0))
+                    # png_combined = PIL.Image.new('RGB', (png1.width + png2.width, png1.height))
+                    # png_combined.paste(png1, (0, 0))
+                    # png_combined.paste(png2, (png1.width, 0))
+                    
+                    # # save combined image
+                    
+                    # png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
+                    
+                    with PIL.Image.new('RGB', (png1.width + png2.width, png1.height)) as png_combined:
+                        png_combined.paste(png1, (0, 0))
+                        png_combined.paste(png2, (png1.width, 0))
                         
-            #             # save combined image
+                        # save combined image
                         
-            #             png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
-            
+                        png_combined.save(f"{base_path}/combined/{k:04d}_combined_{geo_err_list[indx].item():.1f}.png")
+                    
             
                 

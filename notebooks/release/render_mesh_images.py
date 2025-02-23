@@ -46,7 +46,37 @@ def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, ax
         verts_y[:, 0] = verts_y_cloned[:, 0]
         verts_y[:, 1] = verts_y_cloned[:, 2]
         verts_y[:, 2] = -verts_y_cloned[:, 1]
+        
+    elif 'SMAL' in dataset_name:
+
+        verts_x_cloned = verts_x.clone()
+        
+        verts_x[:, 0] = verts_x_cloned[:, 2]
+        verts_x[:, 1] = -verts_x_cloned[:, 1]
+        verts_x[:, 2] = verts_x_cloned[:, 0]
+        
+        verts_y_cloned = verts_y.clone()
+        
+        verts_y[:, 0] = verts_y_cloned[:, 2]
+        verts_y[:, 1] = -verts_y_cloned[:, 1]
+        verts_y[:, 2] = verts_y_cloned[:, 0]
+        
+    ##################################################
+    # Inertia transform
+    ##################################################
     
+    if 'SMAL' in dataset_name:
+        
+        mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, process=False, validate=False)
+        mesh2 = trimesh.Trimesh(vertices=verts_y, faces=faces_y, process=False, validate=False)    
+        
+        mesh1.apply_transform(mesh1.principal_inertia_transform)
+        mesh2.apply_transform(mesh2.principal_inertia_transform)
+        
+        verts_x = torch.tensor(mesh1.vertices, dtype=torch.float32)
+        verts_y = torch.tensor(mesh2.vertices, dtype=torch.float32)
+    
+
     ##################################################
     # color gradient
     ##################################################
@@ -74,7 +104,6 @@ def get_colored_meshes(verts_x, faces_x, verts_y, faces_y, p2p, dataset_name, ax
     mesh1 = trimesh.Trimesh(vertices=verts_x, faces=faces_x, validate=True)
     mesh1.visual.vertex_colors = cmap[:len(mesh1.vertices)].clip(0, 255)
     
-    # mesh1.apply_transform(mesh1.principal_inertia_transform)
             
     #         # rotate by 90 degrees along the x-axis and 90 degrees along the z-axis
     # mesh1.apply_transform(trimesh.transformations.rotation_matrix(np.pi/2, [1, 0, 0], [0, 0, 0]))
@@ -121,9 +150,16 @@ def get_cmap():
     SAMPLES = 100
     ice = px.colors.sample_colorscale(
         
+        # DT4D
         px.colors.cyclical.Edge,
+        
+        # FAUST
         # px.colors.sequential.Jet,
+        
+        # SHREC19
         # px.colors.diverging.Picnic,
+        
+        # SCAPE
         # px.colors.cyclical.HSV,
         
         # px.colors.cyclical.IceFire,
@@ -171,8 +207,9 @@ if __name__ == '__main__':
         # dataset_name = 'FAUST_r_pair'
         # dataset_name = 'SCAPE_r_pair'
         # dataset_name = 'SHREC19_r_pair'
-        dataset_name = 'DT4D_inter_pair'
+        # dataset_name = 'DT4D_inter_pair'
         # dataset_name = 'DT4D_intra_pair'
+        dataset_name = 'SMAL_nocat_pair'
 
         single_dataset, pair_dataset = data_loading.get_val_dataset(
             dataset_name, 'test', 128, preload=False, return_evecs=True, centering='bbox'
@@ -189,6 +226,8 @@ if __name__ == '__main__':
             file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_1-2ev_64-128-128_remeshed_fixed/eval/epoch_99/FAUST_r_pair-test/no_smoothing/2024-11-04_22-27-59/pairwise_results.json'
         elif dataset_name == 'SCAPE_r_pair':
             file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_1-2ev_64-128-128_remeshed_fixed/eval/epoch_99/SCAPE_r_pair-test/no_smoothing/2024-11-04_22-27-59/pairwise_results.json'
+        elif dataset_name == 'SMAL_nocat_pair':
+            file_name = '/lustre/mlnvme/data/s94zalek_hpc-shape_matching/ddpm_checkpoints/single_64_SMAL_nocat_64_SMAL_isoRemesh_0.2_0.8_nocat_1-2ev_64k/eval/epoch_99/SMAL_nocat_pair-test/no_smoothing/2025-01-24_16-01-31/pairwise_results.json'
                 
         with open(file_name, 'r') as f:
             p2p_saved = json.load(f)
@@ -208,7 +247,7 @@ if __name__ == '__main__':
 
         cmap = get_cmap()
 
-        random_order = torch.randperm(len(idxs_geo_err))[:400]
+        random_order = torch.randperm(len(idxs_geo_err))[:200]
         
         # random_order = [29]
         
