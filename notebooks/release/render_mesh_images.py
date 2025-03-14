@@ -206,10 +206,10 @@ if __name__ == '__main__':
 
         # dataset_name = 'FAUST_r_pair'
         # dataset_name = 'SCAPE_r_pair'
-        # dataset_name = 'SHREC19_r_pair'
+        dataset_name = 'SHREC19_r_pair'
         # dataset_name = 'DT4D_inter_pair'
         # dataset_name = 'DT4D_intra_pair'
-        dataset_name = 'SMAL_nocat_pair'
+        # dataset_name = 'SMAL_nocat_pair'
 
         single_dataset, pair_dataset = data_loading.get_val_dataset(
             dataset_name, 'test', 128, preload=False, return_evecs=True, centering='bbox'
@@ -247,9 +247,9 @@ if __name__ == '__main__':
 
         cmap = get_cmap()
 
-        random_order = torch.randperm(len(idxs_geo_err))[:200]
+        # random_order = torch.randperm(len(idxs_geo_err))[:200]
         
-        # random_order = [29]
+        random_order = [29]
         
         for k in tqdm(random_order):
             

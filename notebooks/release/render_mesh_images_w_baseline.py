@@ -198,7 +198,7 @@ if __name__ == '__main__':
         idxs_geo_err = torch.argsort(geo_err_list, descending=True)
 
 
-        base_path = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/figures/p2p_baseline_consistfm/{dataset_name}'
+        base_path = f'/lustre/mlnvme/data/s94zalek_hpc-shape_matching/figures/p2p_baseline_ulrssm_refine_15/{dataset_name}'
         
         # if os.path.exists(base_path):
         #     os.system(f'rm -r {base_path}')
@@ -208,12 +208,12 @@ if __name__ == '__main__':
 
         cmap = get_cmap()
 
-        # random_order = torch.randperm(len(idxs_geo_err))[:400]
+        random_order = torch.randperm(len(idxs_geo_err))[:400]
         # random_order = torch.randperm(len(idxs_geo_err))
         
         # random_order = [29]
         
-        random_order = [49, 125, 274, 307, 437, 516, 572, 705, 765]
+        # random_order = [49, 125, 274, 307, 437, 516, 572, 705, 765]
         
         for k in tqdm(random_order):
             
@@ -229,25 +229,27 @@ if __name__ == '__main__':
             
             
             # ULRSSM
+            # no refine
             # p2p_baseline = torch.load(f'/home/s94zalek_hpc/baselines/Unsupervised-Learning-of-Robust-Spectral-Shape-Matching/results/dt4d_intra_class/visualization/{indx}.pth')
+            
+            # with refine
+            p2p_baseline = torch.load(f'/home/s94zalek_hpc/baselines/Unsupervised-Learning-of-Robust-Spectral-Shape-Matching/results/dt4d_intra_class_faust_15_archived_20250228_085157/visualization/{indx}.pth')            
             
             # ConsistFM
-            # p2p_baseline = torch.load(f'/home/s94zalek_hpc/baselines/Unsupervised-Learning-of-Robust-Spectral-Shape-Matching/results/dt4d_intra_class/visualization/{indx}.pth')
+            # path_consistfm = f'/home/s94zalek_hpc/baselines/Spatially-and-Spectrally-Consistent-Deep-Functional-Maps/data/results/DT4D_FS/p2p_21'
 
-            path_consistfm = f'/home/s94zalek_hpc/baselines/Spatially-and-Spectrally-Consistent-Deep-Functional-Maps/data/results/DT4D_FS/p2p_21'
+            # first_idx = data_i['first']['id']
+            # second_idx = data_i['second']['id']
 
-            first_idx = data_i['first']['id']
-            second_idx = data_i['second']['id']
-
-            off_first = single_dataset.off_files[first_idx]
-            name_first = off_first.split('/')[-1].split('.')[0]
+            # off_first = single_dataset.off_files[first_idx]
+            # name_first = off_first.split('/')[-1].split('.')[0]
             
-            off_second = single_dataset.off_files[second_idx]
-            name_second = off_second.split('/')[-1].split('.')[0]
+            # off_second = single_dataset.off_files[second_idx]
+            # name_second = off_second.split('/')[-1].split('.')[0]
 
-            p2p_baseline = torch.tensor(
-                np.loadtxt(f'{path_consistfm}/{name_first}_{name_second}.txt')
-            ).int()
+            # p2p_baseline = torch.tensor(
+            #     np.loadtxt(f'{path_consistfm}/{name_first}_{name_second}.txt')
+            # ).int()
 
 
             scene.geometry.clear()

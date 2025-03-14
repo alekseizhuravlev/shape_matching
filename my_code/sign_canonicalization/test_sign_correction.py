@@ -291,32 +291,33 @@ if __name__ == '__main__':
         dataset_list = [
             ('SHREC16_cuts_pair', 'test'),
             ('SHREC16_holes_pair', 'test'),
-            ('FAUST_r', 'test'),
-            ('FAUST_orig', 'test'), 
-            ('FAUST_a', 'test'),
-            ('SCAPE_r_pair', 'test'),
-            ('SCAPE_a_pair', 'test'),
-            ('SHREC19_r', 'train'), 
+            
+            # ('FAUST_orig', 'test'),
+            # ('FAUST_r', 'test'),
+            # ('FAUST_a', 'test'),
+            # ('SCAPE_r_pair', 'test'),
+            # ('SCAPE_a_pair', 'test'),
+            # ('SHREC19_r', 'train'), 
             
         ]
     else:    
         dataset_list = [
             
-            ('SMAL_cat_pair', 'test'),
+            # ('SMAL_cat_pair', 'test'),
             # ('SMAL_cat_pair', 'train'),
             
             # (config["train_folder"], 'train'),
             
-            # ('FAUST_a', 'test'),
-            # ('SHREC19_r', 'test'), 
-            # ('FAUST_r', 'test'),
-            # # ('FAUST_orig', 'test'), 
-            # # ('FAUST_r', 'train'), 
-            # # ('FAUST_orig', 'train'), 
-            # ('SCAPE_r_pair', 'test'),
-            # ('SCAPE_a_pair', 'test'),
-            # # ('SCAPE_r_pair', 'train'),
+            ('FAUST_r', 'test'),
+            ('FAUST_a', 'test'),
+            ('SCAPE_r_pair', 'test'),
+            ('SCAPE_a_pair', 'test'),
+            ('SHREC19_r', 'test'), 
             
+            # ('FAUST_orig', 'test'), 
+            # ('FAUST_r', 'train'), 
+            # ('FAUST_orig', 'train'), 
+            # ('SCAPE_r_pair', 'train'),           
             # ('DT4D_intra_pair', 'test'),
             # ('DT4D_intra_pair', 'train'),
             # ('DT4D_inter_pair', 'test'),
@@ -366,10 +367,11 @@ if __name__ == '__main__':
                     net, test_dataset_curr, n_epochs=100, config=config)
     
             
-            print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')
+            # print(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.1f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.1f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')
+            print(f'{n_iter}.pth: {dataset_name} {split}: mean {100 * (1 - mean_incorrect_signs / feature_dim):.1f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.1f}% (Mean {mean_incorrect_signs:.2f} / {feature_dim} Max {max_incorrect_signs})')
             
             with open(log_file, 'a') as f:
-                f.write(f'{n_iter}.pth: {dataset_name} {split}: mean {mean_incorrect_signs * 100 / feature_dim:.2f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.2f}% (Mean {mean_incorrect_signs:.2f} Max {max_incorrect_signs})\n')
+                f.write(f'{n_iter}.pth: {dataset_name} {split}: mean {100 * (1 - mean_incorrect_signs / feature_dim):.1f}% max_incorrect_signs {max_incorrect_signs * 100 / feature_dim:.1f}% (Mean {mean_incorrect_signs:.2f} Max {max_incorrect_signs})\n')
             
         with open(log_file, 'a') as f:
                 f.write(f'\n')
